@@ -1,0 +1,6 @@
+# Doppler — mapping repo → progetto/config. NESSUN segreto qui (solo nomi).
+# Locale: `doppler run -- npm run dev` inietta i secret del config `dev`.
+# CI/deploy: usano un service token scoped (prd), che ha precedenza su questo file.
+setup:
+  project: marcobellingeri-dev
+  config: dev
