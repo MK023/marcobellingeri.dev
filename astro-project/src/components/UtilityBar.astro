@@ -1,12 +1,45 @@
+---
+import { getRelativeLocaleUrl } from 'astro:i18n';
+import { languages, defaultLang, type Lang } from '../i18n/ui';
+
+const current = (Astro.currentLocale ?? defaultLang) as Lang;
+// Sotto-path senza prefisso lingua → lo switcher punta alla STESSA pagina
+// nell'altra lingua (per ora solo la home, ma resta corretto per rotte future).
+const sub = Astro.url.pathname.replace(new RegExp(`^/${current}(?=/|$)`), '') || '/';
+const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
+  code: l,
+  url: getRelativeLocaleUrl(l, sub),
+  current: l === current,
+}));
+---
+
 <div class="utility-bar mono">
   <span>VOL. 01 — NO. 07</span>
   <span>CASALE MONFERRATO, IT · <span id="live-clock">--:--:--</span></span>
   <div class="utility-actions">
+    <div class="lang-switcher" role="group" aria-label="Language / Lingua">
+      {langOptions.map((o) =>
+        o.current ? (
+          <span class="util-btn lang-opt is-current" aria-current="true" lang={o.code}>{o.code.toUpperCase()}</span>
+        ) : (
+          <a class="util-btn lang-opt" href={o.url} hreflang={o.code} lang={o.code} data-lang={o.code}>{o.code.toUpperCase()}</a>
+        )
+      )}
+    </div>
     <span class="util-btn" id="edition-indicator" style="cursor:default;">☀ DAY EDITION</span>
     <button class="util-btn" id="cmdk-trigger" title="Apri comandi">⌘K COMANDI</button>
     <button class="util-btn" id="print-btn" title="Stampa o salva PDF">STAMPA / PDF</button>
   </div>
 </div>
+
+<style>
+  .lang-switcher{ display:flex; gap:0; }
+  /* le due opzioni lingua condividono un bordo per leggersi come un segmento */
+  .lang-switcher .lang-opt + .lang-opt{ border-left:none; }
+  .lang-opt{ text-decoration:none; }
+  /* lingua attiva = stato invertito (come l'hover di util-btn) */
+  .lang-opt.is-current{ background:var(--ink); color:var(--paper); cursor:default; }
+</style>
 
 <script>
   // ---- live clock (Europe/Rome) ----
@@ -22,6 +55,16 @@
 
   // ---- print / save as PDF ----
   document.getElementById('print-btn')?.addEventListener('click', () => window.print());
+
+  // ---- override lingua: la scelta manuale vince sul geo/IP ----
+  // Memorizza la lingua scelta in un cookie che il Worker geo (al go-live)
+  // rispetterà prima di qualunque redirect per IP/Accept-Language.
+  document.querySelectorAll('.lang-opt[data-lang]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const lang = (el as HTMLElement).dataset.lang;
+      document.cookie = `pref-lang=${lang}; path=/; max-age=31536000; SameSite=Lax`;
+    });
+  });
 
   // ---- day / night edition — automatica, in base all'ora reale del visitatore ----
   const editionIndicator = document.getElementById('edition-indicator');

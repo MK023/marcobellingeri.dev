@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import { getAbsoluteLocaleUrl } from 'astro:i18n';
+import { getAbsoluteLocaleUrl, getRelativeLocaleUrl } from 'astro:i18n';
 import { useTranslations, defaultLang, languages, type Lang } from '../i18n/ui';
 
 interface Props {
@@ -24,6 +24,18 @@ const alternates = (Object.keys(languages) as Lang[]).map((l) => ({
   href: getAbsoluteLocaleUrl(l, path),
 }));
 const xDefault = getAbsoluteLocaleUrl(defaultLang, path);
+
+// Banner-suggerimento lingua (SEO-safe): NESSUN redirect, solo un invito lato
+// client basato su navigator.language. Reso visibile via JS (i crawler vedono
+// `hidden`), la scelta/dismiss scrive il cookie override. Il redirect geo vero
+// resta al Worker Cloudflare (ADR-0001 §4).
+const suggestCopy: Record<Lang, { text: string; cta: string; dismiss: string }> = {
+  en: { text: 'This site is also available in English.', cta: 'Read in English', dismiss: 'Dismiss' },
+  it: { text: 'Questo sito è disponibile anche in italiano.', cta: 'Leggi in italiano', dismiss: 'Chiudi' },
+};
+const suggestTargets = (Object.keys(languages) as Lang[])
+  .filter((l) => l !== lang)
+  .map((l) => ({ code: l, url: getRelativeLocaleUrl(l, path || '/'), ...suggestCopy[l] }));
 ---
 
 <!DOCTYPE html>
@@ -73,6 +85,16 @@ const xDefault = getAbsoluteLocaleUrl(defaultLang, path);
 </head>
 <body>
   <a href="#main-content" class="skip-link">{t('a11y.skipToContent')}</a>
+
+  <div id="lang-suggest" class="lang-suggest mono" hidden>
+    {suggestTargets.map((s) => (
+      <div class="lang-suggest-row" data-lang={s.code} hidden>
+        <span lang={s.code}>{s.text}</span>
+        <a class="util-btn" href={s.url} data-lang={s.code} lang={s.code}>{s.cta}</a>
+        <button class="util-btn" type="button" data-dismiss lang={s.code}>{s.dismiss}</button>
+      </div>
+    ))}
+  </div>
 
   <div class="press-loader" id="press-loader">
     <div class="press-loader-inner">
@@ -131,5 +153,41 @@ const xDefault = getAbsoluteLocaleUrl(defaultLang, path);
     );
     revealEls.forEach((el) => io.observe(el));
   </script>
+  <script>
+    // Banner-suggerimento lingua: mostra l'invito solo se il browser preferisce
+    // una lingua che offriamo, diversa da quella corrente, e se l'utente non ha
+    // già scelto (cookie pref-lang). Nessun redirect → SEO-safe.
+    (function () {
+      function hasCookie(n) {
+        return document.cookie.split('; ').some((c) => c.indexOf(n + '=') === 0);
+      }
+      if (hasCookie('pref-lang')) return;
+      const current = document.documentElement.lang;
+      const nav = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+      const base = nav.slice(0, 2).toLowerCase();
+      if (!base || base === current) return;
+      const banner = document.getElementById('lang-suggest');
+      const row = banner && banner.querySelector('.lang-suggest-row[data-lang="' + base + '"]');
+      if (!banner || !row) return;
+      row.hidden = false;
+      banner.hidden = false;
+      const setPref = (lang) => {
+        document.cookie = 'pref-lang=' + lang + '; path=/; max-age=31536000; SameSite=Lax';
+      };
+      row.querySelector('a')?.addEventListener('click', () => setPref(base));
+      row.querySelector('[data-dismiss]')?.addEventListener('click', () => {
+        setPref(current);
+        banner.hidden = true;
+      });
+    })();
+  </script>
+  <style>
+    .lang-suggest{ border-bottom:3px solid var(--ink); background:var(--paper-dark); }
+    .lang-suggest-row{
+      display:flex; gap:12px; align-items:center; justify-content:center;
+      flex-wrap:wrap; padding:8px 24px;
+      font-size:11px; letter-spacing:0.08em;
+    }
+  </style>
 </body>
 </html>
