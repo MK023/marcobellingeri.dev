@@ -6,11 +6,8 @@
 set -euo pipefail
 
 if command -v gitleaks >/dev/null 2>&1; then
-  # gitleaks 8.x: 'git --staged' è la forma corrente; 'protect --staged' il
-  # fallback per versioni più vecchie. Se una fallisce per uso non valido,
-  # prova l'altra; se trova un secret, esce non-zero e blocca il commit.
-  gitleaks git --staged --redact --no-banner 2>/dev/null \
-    || gitleaks protect --staged --redact --no-banner
+  # gitleaks 8.x: scansiona il diff staged; esce non-zero se trova un secret.
+  gitleaks git --staged --redact --no-banner
   exit $?
 fi
 
