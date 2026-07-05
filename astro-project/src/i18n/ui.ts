@@ -24,8 +24,6 @@ export const ui = {
     'sec.cmd': '$ security headers served by this page',
     'sec.source': 'SOURCE: HEAD SELF · LIVE',
     'sec.loading': 'reading response headers…',
-    'sec.present': 'ON',
-    'sec.missing': '—',
     'sec.note': 'Headers are applied at the edge (Cloudflare) and read live from this page’s response — locally they may show as missing.',
   },
   it: {
@@ -38,8 +36,6 @@ export const ui = {
     'sec.cmd': '$ header di sicurezza serviti da questa pagina',
     'sec.source': 'FONTE: HEAD SELF · LIVE',
     'sec.loading': 'lettura degli header di risposta…',
-    'sec.present': 'ON',
-    'sec.missing': '—',
     'sec.note': 'Gli header sono applicati all’edge (Cloudflare) e letti live dalla risposta di questa pagina — in locale possono risultare assenti.',
   },
 } as const;

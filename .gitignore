@@ -9,6 +9,9 @@ dist/
 # astro generated cache
 .astro/
 
+# graphify knowledge graph (rigenerabile: /graphify --update)
+graphify-out/
+
 # env / secrets
 .env
 .env.*

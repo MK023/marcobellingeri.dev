@@ -25,8 +25,6 @@ const expected = [
     <div
       id="sec-headers"
       data-expected={expected.join(',')}
-      data-present={t('sec.present')}
-      data-missing={t('sec.missing')}
     >
       <p class="live-stack-status mono" id="sec-status">{t('sec.loading')}</p>
     </div>
@@ -42,8 +40,9 @@ const expected = [
     const status = document.getElementById('sec-status');
     if (!box) return;
     const expected = (box.dataset.expected || '').split(',').filter(Boolean);
-    const okLabel = box.dataset.present || 'ON';
-    const missLabel = box.dataset.missing || '—';
+    // Flag costanti, non traducibili (ON / —): inline, non nel dizionario i18n.
+    const okLabel = 'ON';
+    const missLabel = '—';
 
     const cell = (cls: string, text: string) => {
       const el = document.createElement('span');
