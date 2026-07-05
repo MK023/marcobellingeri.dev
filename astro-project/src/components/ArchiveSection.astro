@@ -1,0 +1,149 @@
+<section id="archive" class="reveal">
+  <div class="section-head">
+    <span class="num mono">06</span>
+    <h2 class="display">Archivio</h2>
+  </div>
+  <div class="archive-head">
+    <p class="archive-note">
+      Un numero nuovo ogni mese, generato in automatico: segnali dal mercato,
+      mosse della concorrenza, novità normative. Nessuno lo scrive a mano —
+      gira da solo, di notte, come dovrebbe fare l'infrastruttura buona.
+    </p>
+    <button class="util-btn" id="archive-reload">RICARICA ARCHIVIO</button>
+  </div>
+  <div class="archive-shelf" id="archive-shelf">
+    <p class="archive-status">caricamento numeri arretrati…</p>
+  </div>
+  <div class="issue-reader" id="issue-reader">
+    <p class="archive-status">seleziona un numero dallo scaffale.</p>
+  </div>
+</section>
+
+<script>
+  // ---- issue archive (alimentato da /data/issues/, generato ogni mese via Firecrawl + GitHub Actions) ----
+  type Signal = {
+    category: 'competitor' | 'market' | 'security';
+    label: string;
+    headline: string;
+    summary: string;
+    source_name?: string;
+    source_url?: string;
+  };
+  type Issue = { id: string; number: number; title: string; date: string; signals: Signal[] };
+  type IndexEntry = { id: string; number: number; title: string; date: string };
+
+  (function issueArchive() {
+    const shelf = document.getElementById('archive-shelf');
+    const reader = document.getElementById('issue-reader');
+    const reloadBtn = document.getElementById('archive-reload');
+    if (!shelf || !reader || !reloadBtn) return;
+
+    // Mostrato solo se /data/issues/index.json non è raggiungibile (es. prima
+    // che la GitHub Action abbia prodotto un primo numero reale).
+    const FALLBACK_INDEX: { issues: IndexEntry[] } = {
+      issues: [{ id: 'demo-01', number: 1, title: 'Cloud & Security Watch — Numero Zero', date: '2026-07-01' }],
+    };
+    const FALLBACK_ISSUE: Issue = {
+      id: 'demo-01',
+      number: 1,
+      title: 'Cloud & Security Watch — Numero Zero',
+      date: '2026-07-01',
+      signals: [
+        {
+          category: 'competitor',
+          label: 'Concorrenza',
+          headline: 'Questo è un numero dimostrativo',
+          summary: 'Collega /data/issues/ a una GitHub Action con Firecrawl per popolare questo archivio con segnali reali ogni mese — vedi lo script firecrawl_issue.py.',
+          source_name: 'Setup locale',
+          source_url: '',
+        },
+        {
+          category: 'market',
+          label: 'Mercato del lavoro',
+          headline: 'I numeri reali arriveranno da qui',
+          summary: 'Ogni voce diventerà una card con titolo, sintesi e fonte, generata automaticamente e committata nel repo.',
+          source_name: 'Setup locale',
+          source_url: '',
+        },
+      ],
+    };
+
+    let index: { issues: IndexEntry[] } | null = null;
+    let activeId: string | null = null;
+
+    function tagClass(cat: Signal['category']) {
+      if (cat === 'competitor') return 'signal-tag competitor';
+      if (cat === 'market') return 'signal-tag market';
+      return 'signal-tag security';
+    }
+
+    function renderShelf() {
+      if (!shelf || !index) return;
+      shelf.innerHTML = '';
+      index.issues.slice().reverse().forEach((issue) => {
+        const spine = document.createElement('div');
+        spine.className = 'issue-spine' + (issue.id === activeId ? ' active' : '');
+        spine.setAttribute('role', 'button');
+        spine.setAttribute('tabindex', '0');
+        const month = new Date(issue.date).toLocaleDateString('it-IT', { month: 'short', year: 'numeric' });
+        spine.setAttribute('aria-label', 'Apri numero ' + issue.number + ', ' + month);
+        spine.innerHTML =
+          '<div class="n">N.' + String(issue.number).padStart(2, '0') + '</div>' +
+          '<div class="m">' + month.toUpperCase() + '</div>';
+        spine.addEventListener('click', () => openIssue(issue.id));
+        spine.addEventListener('keydown', (e: KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openIssue(issue.id); }
+        });
+        shelf.appendChild(spine);
+      });
+    }
+
+    function renderReader(issue: Issue) {
+      if (!reader) return;
+      const dateStr = new Date(issue.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+      let html = '<div class="issue-reader-head"><h3 class="display">' + issue.title + '</h3>' +
+        '<span class="date mono">' + dateStr + '</span></div>';
+      issue.signals.forEach((s) => {
+        html += '<div class="signal-card">' +
+          '<span class="' + tagClass(s.category) + '">' + s.label + '</span>' +
+          '<h4>' + s.headline + '</h4>' +
+          '<p>' + s.summary + '</p>' +
+          (s.source_url ? '<a href="' + s.source_url + '" target="_blank" rel="noopener">' + (s.source_name || 'Fonte') + ' ↗</a>' : '') +
+          '</div>';
+      });
+      reader.innerHTML = html;
+    }
+
+    async function openIssue(id: string) {
+      activeId = id;
+      renderShelf();
+      if (reader) reader.innerHTML = '<p class="archive-status">caricamento numero ' + id + '…</p>';
+      try {
+        const res = await fetch('/data/issues/' + id + '.json', { cache: 'no-store' });
+        if (!res.ok) throw new Error('not found');
+        const issue: Issue = await res.json();
+        renderReader(issue);
+      } catch (e) {
+        renderReader(FALLBACK_ISSUE);
+      }
+    }
+
+    async function loadIndex(forceReload: boolean) {
+      if (shelf) shelf.innerHTML = '<p class="archive-status">' + (forceReload ? 'ricarico…' : 'caricamento numeri arretrati…') + '</p>';
+      try {
+        const res = await fetch('/data/issues/index.json', { cache: forceReload ? 'no-store' : 'default' });
+        if (!res.ok) throw new Error('not found');
+        index = await res.json();
+        if (!index || !index.issues || index.issues.length === 0) throw new Error('empty');
+      } catch (e) {
+        index = FALLBACK_INDEX;
+      }
+      activeId = index.issues[index.issues.length - 1].id;
+      renderShelf();
+      openIssue(activeId);
+    }
+
+    reloadBtn.addEventListener('click', () => loadIndex(true));
+    loadIndex(false);
+  })();
+</script>

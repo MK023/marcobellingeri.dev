@@ -1,0 +1,72 @@
+---
+import { getCollection } from 'astro:content';
+
+const cases = (await getCollection('cases')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+---
+
+<section id="field-notes" class="reveal">
+  <div class="section-head">
+    <span class="num mono">04</span>
+    <h2 class="display">Field Notes</h2>
+  </div>
+  <p class="case-archive-note">Un caso reale al mese: problema, approccio, risultato, lezione appresa. Niente teoria — solo cose successe davvero.</p>
+  <div class="case-archive">
+    {cases.map((c, i) => (
+      <div class="case-card">
+        <div class="case-stat-col">
+          {c.data.stat != null && (
+            <div
+              class="big-stat display"
+              id={`case-stat-${i}`}
+              data-target={c.data.stat}
+              data-suffix={c.data.statSuffix ?? ''}
+            >
+              0{c.data.statSuffix ?? ''}
+            </div>
+          )}
+          <span class="cred mono">CASO STUDIO — {c.data.month.toUpperCase()}</span>
+        </div>
+        <div>
+          <h3 class="case-title">{c.data.title}</h3>
+          <div class="case-block"><span class="label mono">PROBLEMA</span><p>{c.data.problem}</p></div>
+          <div class="case-block"><span class="label mono">APPROCCIO</span><p>{c.data.approach}</p></div>
+          <div class="case-block"><span class="label mono">RISULTATO</span><p>{c.data.result}</p></div>
+          <div class="case-block"><span class="label mono">LEZIONE APPRESA</span><p>{c.data.lesson}</p></div>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>
+
+<script>
+  // Count-up per ogni statistica in evidenza, appena entra in viewport.
+  // Nuovo caso al mese = aggiungi un file in src/content/cases/, nient'altro.
+  document.querySelectorAll<HTMLElement>('.big-stat[data-target]').forEach((el) => {
+    const target = parseInt(el.dataset.target || '0', 10);
+    const suffix = el.dataset.suffix || '';
+    let started = false;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !started) {
+            started = true;
+            const duration = 1100;
+            const startTime = performance.now();
+            function tick(now: number) {
+              const progress = Math.min((now - startTime) / duration, 1);
+              const eased = 1 - Math.pow(1 - progress, 3);
+              el.textContent = Math.round(eased * target) + suffix;
+              if (progress < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+            io.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+    io.observe(el);
+  });
+</script>

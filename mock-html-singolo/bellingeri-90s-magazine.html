@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bellingeri — Cloud &amp; Security Edition</title>
+<meta name="description" content="Marco Bellingeri — Cloud Platform &amp; Security Engineer freelance. DevOps, Cloud e Security con un approccio hands-on: pair programming, case study reali, automazione. Casale Monferrato, IT.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#FAFAF7">
+<meta property="og:title" content="Bellingeri — Cloud &amp; Security Edition">
+<meta property="og:description" content="Cloud Platform &amp; Security Engineer freelance. DevOps, Cloud e Security con un approccio hands-on.">
+<meta property="og:type" content="website">
+<script>
+  (function(){
+    try{
+      var h = parseInt(new Date().toLocaleString('en-US', { timeZone: 'Europe/Rome', hour: '2-digit', hour12: false }), 10);
+      if(!(h >= 7 && h < 20)){ document.documentElement.setAttribute('data-mode', 'night'); }
+    }catch(e){}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAFAF7;
+    --paper-dark:#F0EEE7;
+    --ink:#181410;
+    --orange:#FF5A1F;
+    --orange-text:#B8420F;
+    --violet:#6B4FFF;
+    --halftone:#A8A296;
+    --rule:#181410;
+  }
+  html[data-mode="night"]{
+    --paper:#0B0710;
+    --paper-dark:#140D1E;
+    --ink:#F2EDFB;
+    --orange:#FF2FD6;
+    --orange-text:#FF2FD6;
+    --violet:#29E7FF;
+    --halftone:#3A2F4C;
+  }
+  *, *::before, *::after{
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  }
+  html[data-mode="night"] h1.name{
+    color:var(--orange);
+    text-shadow:
+      0 0 1px var(--orange),
+      0 0 6px rgba(255,47,214,0.55),
+      0 0 14px rgba(255,47,214,0.3);
+  }
+  html[data-mode="night"] .section-head h2.display{
+    text-shadow:
+      0 0 1px var(--ink),
+      0 0 5px rgba(242,237,251,0.4),
+      0 0 10px rgba(242,237,251,0.2);
+  }
+  html[data-mode="night"] .big-stat{
+    text-shadow:
+      0 0 1px var(--orange-text),
+      0 0 6px rgba(255,47,214,0.4),
+      0 0 12px rgba(255,47,214,0.22);
+  }
+  html[data-mode="night"] .issue-tag,
+  html[data-mode="night"] .role-chip{
+    box-shadow:0 0 10px rgba(41,231,255,0.35);
+  }
+  html[data-mode="night"] body::after{
+    mix-blend-mode:overlay;
+    opacity:0.05;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Source Serif 4', serif;
+    -webkit-font-smoothing:antialiased;
+    position:relative;
+  }
+  /* subtle print-grain overlay, so the paper never feels perfectly flat */
+  body::after{
+    content:"";
+    position:fixed; inset:0;
+    pointer-events:none;
+    z-index:50;
+    opacity:0.035;
+    mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---- scroll-reveal ---- */
+  .reveal{
+    opacity:0;
+    transform:translateY(28px);
+    transition:opacity 0.7s cubic-bezier(.2,.7,.2,1), transform 0.7s cubic-bezier(.2,.7,.2,1);
+  }
+  .reveal.visible{ opacity:1; transform:translateY(0); }
+  .reveal-stagger.visible > *{ opacity:1; transform:translateY(0); }
+  .reveal-stagger > *{
+    opacity:0; transform:translateY(20px);
+    transition:opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal-stagger > *:nth-child(1){transition-delay:0.05s;}
+  .reveal-stagger > *:nth-child(2){transition-delay:0.14s;}
+  .reveal-stagger > *:nth-child(3){transition-delay:0.23s;}
+  .reveal-stagger > *:nth-child(4){transition-delay:0.32s;}
+  .reveal-stagger > *:nth-child(5){transition-delay:0.41s;}
+  .reveal-stagger > *:nth-child(6){transition-delay:0.5s;}
+
+  @media (prefers-reduced-motion: reduce){
+    .reveal, .reveal-stagger > *{ opacity:1 !important; transform:none !important; transition:none !important; }
+    .halftone-frame{ animation:none !important; }
+  }
+  .mono{font-family:'JetBrains Mono', monospace;}
+  .display{font-family:'Anton', sans-serif; text-transform:uppercase; letter-spacing:0.01em;}
+
+  a{color:inherit;}
+
+  /* ---- masthead utility bar ---- */
+  .utility-bar{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 24px;
+    border-bottom:3px solid var(--ink);
+    font-size:11px;
+    letter-spacing:0.12em;
+    flex-wrap:wrap; gap:8px;
+    position:sticky; top:0;
+    background:var(--paper);
+    z-index:40;
+  }
+  .utility-actions{ display:flex; gap:8px; align-items:center; }
+  .util-btn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:0.08em;
+    background:transparent; color:var(--ink);
+    border:1px solid var(--ink);
+    padding:11px 12px; cursor:pointer;
+    min-height:36px;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .util-btn:hover{ background:var(--ink); color:var(--paper); }
+  .util-btn.copied{ background:var(--orange); border-color:var(--ink); color:var(--ink); }
+
+  /* ---- hero ---- */
+  .hero{
+    position:relative;
+    padding:64px 24px 48px;
+    overflow:hidden;
+    border-bottom:3px solid var(--ink);
+  }
+  .hero::before{
+    content:"";
+    position:absolute;
+    top:-40px; left:-10%;
+    width:120%; height:120px;
+    background:var(--orange);
+    transform:rotate(-4deg) scaleX(0);
+    transform-origin:left center;
+    z-index:0;
+    animation:sweepIn 0.9s cubic-bezier(.16,.9,.2,1) 0.1s forwards;
+  }
+  @keyframes sweepIn{
+    to{ transform:rotate(-4deg) scaleX(1); }
+  }
+  .masthead-wrap{position:relative; z-index:1;}
+  .issue-tag{
+    display:inline-block;
+    font-size:12px;
+    padding:4px 10px;
+    background:var(--ink);
+    color:var(--paper);
+    letter-spacing:0.1em;
+    margin-bottom:18px;
+    opacity:0;
+    animation:riseIn 0.6s ease 0.55s forwards;
+  }
+  h1.name{
+    font-size:clamp(56px, 13vw, 148px);
+    line-height:0.85;
+    margin:0 0 6px;
+    opacity:0;
+    animation:riseIn 0.7s cubic-bezier(.16,.9,.2,1) 0.7s forwards;
+  }
+  @keyframes riseIn{
+    from{ opacity:0; transform:translateY(22px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .role-chip{
+    display:inline-block;
+    border:2px solid var(--ink);
+    padding:6px 14px;
+    font-size:13px;
+    letter-spacing:0.08em;
+    background:var(--paper);
+    margin-bottom:22px;
+    opacity:0;
+    animation:riseIn 0.6s ease 0.95s forwards;
+  }
+  .kicker{
+    max-width:560px;
+    font-style:italic;
+    font-size:20px;
+    line-height:1.4;
+    border-left:4px solid var(--violet);
+    padding-left:16px;
+    margin:0;
+    opacity:0;
+    animation:riseIn 0.6s ease 1.1s forwards;
+  }
+  .halftone-frame{
+    position:absolute;
+    right:24px; top:64px;
+    width:180px; height:180px;
+    border-radius:50%;
+    border:3px solid var(--ink);
+    background-image:radial-gradient(var(--ink) 22%, transparent 23%);
+    background-size:10px 10px;
+    background-color:var(--halftone);
+    opacity:0;
+    display:none;
+    animation:spinIn 60s linear infinite, fadeIn 0.8s ease 0.5s forwards;
+  }
+  @keyframes spinIn{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  @keyframes fadeIn{ to{opacity:0.9;} }
+  @media(min-width:860px){ .halftone-frame{display:block;} }
+
+  /* ---- contents / TOC ---- */
+  .toc{
+    display:flex; flex-wrap:nowrap; gap:0;
+    overflow-x:auto; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    border-bottom:3px solid var(--ink);
+  }
+  .toc::-webkit-scrollbar{ display:none; }
+  .toc a{
+    flex:0 0 auto;
+    text-decoration:none;
+    padding:16px 18px;
+    border-right:1px solid var(--ink);
+    font-size:13px;
+    letter-spacing:0.06em;
+    white-space:nowrap;
+    display:flex; align-items:baseline; gap:8px;
+    position:relative;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .toc a::after{
+    content:"";
+    position:absolute; left:18px; right:18px; bottom:8px;
+    height:2px; background:var(--orange);
+    transform:scaleX(0); transform-origin:left;
+    transition:transform 0.25s ease;
+  }
+  .toc a:hover::after{ transform:scaleX(1); }
+  .toc a:last-child{border-right:none;}
+  .toc a:hover{background:var(--paper-dark);}
+  .toc a.active{ background:var(--ink); color:var(--paper); }
+  .toc a.active .num{ color:var(--orange-text); }
+  .toc a.active::after{ transform:scaleX(1); background:var(--paper); }
+  .toc .num{color:var(--orange-text); font-weight:700;}
+  .toc-hint{
+    display:none;
+    font-family:'JetBrains Mono', monospace; font-size:10px;
+    letter-spacing:0.05em; opacity:0.7;
+    padding:4px 18px; border-bottom:1px solid var(--ink);
+  }
+  @media (max-width:760px){
+    .toc-hint{ display:block; }
+  }
+
+  section{padding:56px 24px; border-bottom:3px solid var(--ink);}
+  section:last-of-type{border-bottom:none;}
+  .section-head{
+    display:flex; align-items:center; gap:14px;
+    margin-bottom:32px;
+  }
+  .section-head .num{
+    font-size:13px; color:var(--paper);
+    background:var(--ink);
+    padding:5px 10px;
+  }
+  .section-head h2{
+    font-size:clamp(28px,4vw,44px);
+    margin:0;
+  }
+
+  /* ---- dossier ---- */
+  .dossier{
+    display:grid; grid-template-columns:1fr; gap:32px;
+    max-width:1100px; margin:0 auto;
+  }
+  @media(min-width:820px){ .dossier{grid-template-columns:1.5fr 1fr;} }
+  .dossier p{font-size:18px; line-height:1.7;}
+  .fact-box{
+    background:var(--violet);
+    color:var(--paper);
+    padding:24px;
+    border:3px solid var(--ink);
+  }
+  .fact-box dl{margin:0;}
+  .fact-box dt{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:0.1em;
+    opacity:0.78; margin-top:16px;
+  }
+  .fact-box dt:first-child{margin-top:0;}
+  .fact-box dd{margin:2px 0 0; font-size:16px; font-weight:600;}
+
+  /* ---- percorso / timeline ---- */
+  .timeline{
+    max-width:1100px; margin:0 auto;
+    display:grid; gap:0;
+  }
+  .tl-item{
+    display:grid; grid-template-columns:100px 1fr; gap:20px;
+    padding:20px 0;
+    border-top:2px dashed var(--ink);
+    align-items:start;
+  }
+  .tl-item:first-child{border-top:none;}
+  .tl-year{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px; letter-spacing:0.06em;
+    padding-top:4px;
+  }
+  .tl-body h3{ margin:0 0 4px; font-size:20px; }
+  .tl-body p{ margin:0; font-size:15px; line-height:1.6; }
+  .tl-tag{
+    display:inline-block;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:0.06em;
+    padding:2px 8px; margin-left:8px;
+    border:2px solid var(--ink);
+    background:var(--orange);
+    vertical-align:middle;
+  }
+
+  /* ---- stack cards ---- */
+  .stack-grid{
+    display:grid; gap:16px;
+    grid-template-columns:repeat(auto-fill, minmax(180px,1fr));
+    max-width:1100px; margin:0 auto;
+  }
+  .stack-card{
+    border:3px solid var(--ink);
+    padding:16px;
+    background:var(--paper-dark);
+    position:relative;
+    transition:transform 0.25s cubic-bezier(.2,.8,.3,1), box-shadow 0.25s ease;
+  }
+  .stack-card:hover{
+    transform:translateY(-6px) rotate(-1deg);
+    box-shadow:6px 8px 0 var(--ink);
+  }
+
+  /* ---- live github stack ---- */
+  .live-stack{
+    max-width:1100px; margin:44px auto 0;
+    border-top:3px double var(--ink);
+    padding-top:28px;
+  }
+  .live-stack-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:16px; flex-wrap:wrap; gap:6px;
+  }
+  .live-stack-head h3{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px; letter-spacing:0.08em; margin:0;
+    text-transform:uppercase;
+  }
+  .live-stack-head .src{ font-size:11px; opacity:0.7; }
+  .lang-bar-row{
+    display:grid; grid-template-columns:120px 1fr 46px;
+    align-items:center; gap:12px; margin-bottom:10px;
+    font-family:'JetBrains Mono', monospace; font-size:12px;
+  }
+  .lang-bar-track{
+    height:12px; background:var(--paper-dark);
+    border:2px solid var(--ink); position:relative; overflow:hidden;
+  }
+  .lang-bar-fill{
+    height:100%; width:0%;
+    transition:width 1.1s cubic-bezier(.2,.8,.2,1);
+  }
+  .lang-bar-pct{ text-align:right; }
+  .live-stack-status{
+    font-family:'JetBrains Mono', monospace; font-size:12px; opacity:0.7;
+  }
+  #lang-bars{ min-height:130px; }
+  #case-archive{ min-height:260px; }
+  #archive-shelf{ min-height:150px; }
+  #issue-reader{ min-height:120px; }
+  .stack-card::before{
+    content:attr(data-tag);
+    position:absolute; top:-13px; left:12px;
+    background:var(--orange);
+    color:var(--ink);
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:0.08em;
+    padding:2px 8px;
+    border:2px solid var(--ink);
+  }
+  .stack-card h3{margin:12px 0 6px; font-size:19px;}
+  .stack-card p{margin:0; font-size:14px; line-height:1.5;}
+
+  /* ---- field notes / case study ---- */
+  .case-archive-note{
+    max-width:1100px; margin:0 auto 32px; font-size:14px; opacity:0.72;
+  }
+  .case-archive{
+    max-width:1100px; margin:0 auto;
+    display:flex; flex-direction:column; gap:0;
+  }
+  .case-card{
+    display:grid; grid-template-columns:1fr; gap:20px;
+    padding:36px 0;
+    border-top:3px double var(--ink);
+  }
+  .case-card:first-child{ border-top:none; padding-top:0; }
+  @media(min-width:820px){ .case-card{grid-template-columns:200px 1fr; align-items:start;} }
+  .case-stat-col{ display:flex; flex-direction:column; gap:6px; }
+  .big-stat{
+    font-size:clamp(64px,11vw,120px);
+    line-height:0.8;
+    color:var(--orange-text);
+    -webkit-text-stroke:2px var(--ink);
+  }
+  .case-card .cred{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:0.06em;
+    color:var(--ink);
+    opacity:0.7;
+  }
+  .case-title{ font-size:22px; margin:2px 0 16px; }
+  .case-block{ margin-bottom:14px; }
+  .case-block:last-child{ margin-bottom:0; }
+  .case-block .label{
+    display:block;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:0.08em;
+    color:var(--orange-text);
+    margin-bottom:4px;
+  }
+  .case-block p{ margin:0; font-size:16px; line-height:1.7; }
+  .archive-status{ font-family:'JetBrains Mono', monospace; font-size:12px; opacity:0.7; }
+
+  /* ---- projects as reviews ---- */
+  .reviews{
+    display:grid; gap:20px;
+    max-width:1100px; margin:0 auto;
+  }
+  .review{
+    border-top:2px dashed var(--ink);
+    padding-top:18px;
+  }
+  .review-toggle{
+    all:unset; box-sizing:border-box;
+    display:flex; justify-content:space-between; align-items:center;
+    width:100%; gap:16px; cursor:pointer;
+  }
+  .review-toggle h3{margin:0; font-size:22px;}
+  .review-chevron{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:0.05em;
+    white-space:nowrap; opacity:0.72;
+    transition:opacity 0.15s ease, color 0.15s ease;
+  }
+  .review-toggle:hover .review-chevron{ opacity:1; color:var(--orange-text); }
+  .review-toggle.open .review-chevron{ opacity:1; }
+  .status{
+    display:inline-block;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:0.08em;
+    padding:3px 8px;
+    border:2px solid var(--ink);
+    margin-top:6px;
+  }
+  .status.shipped{background:var(--orange);}
+  .status.active{background:var(--violet); color:var(--paper);}
+  .status.rnd{background:var(--paper-dark);}
+  .review > p{margin:10px 0 0; font-size:16px; line-height:1.6; max-width:760px;}
+  .review-detail{
+    max-height:0; overflow:hidden; opacity:0;
+    transition:max-height 0.4s ease, opacity 0.3s ease, margin-top 0.4s ease;
+  }
+  .review-detail.open{
+    max-height:700px; opacity:1; margin-top:18px;
+  }
+  .review-detail .case-block{ max-width:760px; }
+  .review{ position:relative; overflow:visible; }
+  .review-preview{
+    position:absolute; top:0; right:0;
+    width:108px; height:108px;
+    border:2px solid var(--ink);
+    opacity:0; transform:translateY(-10px) scale(0.95);
+    pointer-events:none; z-index:5;
+    transition:opacity 0.25s ease, transform 0.25s ease;
+    background-image:radial-gradient(var(--ink) 20%, transparent 21%);
+    background-size:8px 8px;
+  }
+  @media(min-width:760px){
+    .review:hover .review-preview{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  .review-preview .swatch-label{
+    position:absolute; bottom:-11px; left:0;
+    font-family:'JetBrains Mono', monospace; font-size:9px; letter-spacing:0.05em;
+    background:var(--ink); color:var(--paper);
+    padding:2px 6px; white-space:nowrap;
+  }
+  .review-preview.p-orange{ background-color:var(--orange); }
+  .review-preview.p-violet{ background-color:var(--violet); }
+  .review-preview.p-dark{ background-color:var(--paper-dark); }
+
+  /* ---- colophon / footer ---- */
+  footer{
+    padding:40px 24px 60px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+  }
+  .colophon{
+    max-width:1100px; margin:0 auto;
+    display:grid; grid-template-columns:1fr; gap:24px;
+  }
+  @media(min-width:760px){ .colophon{grid-template-columns:repeat(3,1fr);} }
+  .colophon h3{
+    font-family:'Anton', sans-serif;
+    text-transform:uppercase;
+    font-size:15px; margin:0 0 10px;
+    letter-spacing:0.05em;
+  }
+  .colophon a{text-decoration:underline;}
+
+  /* ---- AI badge seal ---- */
+  .ai-seal{
+    width:84px; height:84px;
+    margin-top:14px;
+    position:relative;
+  }
+  .ai-seal svg{
+    width:100%; height:100%;
+    animation:spinIn 22s linear infinite;
+  }
+  .ai-seal .ring-text{
+    fill:var(--ink);
+    font-family:'JetBrains Mono', monospace;
+    font-size:6.4px;
+    letter-spacing:1.5px;
+  }
+  .ai-seal-core{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Anton', sans-serif;
+    font-size:15px;
+    color:var(--ink);
+  }
+  @media (prefers-reduced-motion: reduce){
+    .ai-seal svg{ animation:none; }
+  }
+  .fine-print{
+    max-width:1100px; margin:32px auto 0;
+    border-top:1px solid var(--ink);
+    padding-top:16px;
+    opacity:0.7;
+  }
+
+  /* ---- command palette ---- */
+  .cmdk-overlay{
+    position:fixed; inset:0; z-index:200;
+    background:rgba(24,20,16,0.55);
+    display:none; align-items:flex-start; justify-content:center;
+    padding-top:12vh;
+  }
+  .cmdk-overlay.open{ display:flex; }
+  .cmdk-box{
+    width:min(560px,90vw);
+    background:var(--paper);
+    border:3px solid var(--ink);
+    box-shadow:10px 10px 0 var(--ink);
+  }
+  .cmdk-input{
+    width:100%; border:none; border-bottom:2px solid var(--ink);
+    padding:16px; font-size:16px; font-family:'JetBrains Mono', monospace;
+    background:transparent; color:var(--ink);
+  }
+  .cmdk-input:focus{
+    outline:none;
+    border-bottom-color:var(--orange-text);
+    box-shadow:0 2px 0 0 var(--orange-text);
+  }
+  .cmdk-list{ max-height:320px; overflow-y:auto; }
+  .cmdk-item{
+    padding:12px 16px; display:flex; justify-content:space-between; gap:12px;
+    cursor:pointer; font-size:14px; border-bottom:1px solid var(--paper-dark);
+  }
+  .cmdk-item .k{ font-family:'JetBrains Mono', monospace; font-size:10px; opacity:0.7; }
+  .cmdk-item.active{ background:var(--orange); }
+  .cmdk-hint{
+    padding:8px 16px; font-size:11px; opacity:0.7;
+    font-family:'JetBrains Mono', monospace;
+    border-top:1px solid var(--ink);
+    display:flex; justify-content:space-between;
+  }
+  .cmdk-empty{ padding:16px; font-size:13px; opacity:0.7; }
+
+  /* ---- neon CRT terminal (easter egg) ---- */
+  .neon-terminal-overlay{
+    position:fixed; inset:0; z-index:300;
+    display:none; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 40%, #1a002a 0%, #05000a 70%);
+    padding:20px;
+  }
+  .neon-terminal-overlay.open{ display:flex; }
+  .crt-screen{
+    position:relative;
+    width:min(760px, 100%);
+    height:min(560px, 88vh);
+    background:#050308;
+    border:3px solid #ff2fd6;
+    border-radius:14px;
+    box-shadow:
+      0 0 18px #ff2fd6,
+      0 0 46px rgba(255,47,214,0.45),
+      inset 0 0 60px rgba(15,255,255,0.08);
+    padding:22px 24px 16px;
+    display:flex; flex-direction:column;
+    overflow:hidden;
+    font-family:'JetBrains Mono', monospace;
+    animation:crtPowerOn 0.5s ease-out;
+  }
+  @keyframes crtPowerOn{
+    0%{ transform:scaleY(0.02); opacity:0; filter:brightness(3); }
+    40%{ transform:scaleY(1); opacity:1; }
+    55%{ filter:brightness(1.8); }
+    100%{ filter:brightness(1); }
+  }
+  .scanlines{
+    position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px,
+      transparent 2px, transparent 4px
+    );
+    mix-blend-mode:overlay;
+  }
+  .crt-flicker{
+    position:absolute; inset:0; pointer-events:none;
+    background:rgba(15,255,255,0.02);
+    animation:flicker 6s infinite;
+  }
+  @keyframes flicker{
+    0%,19%,21%,50%,53%,80%,100%{ opacity:1; }
+    20%,52%{ opacity:0.55; }
+  }
+  .neon-close{
+    position:absolute; top:8px; right:10px;
+    background:transparent; border:1px solid #0ff;
+    color:#0ff; font-family:'JetBrains Mono', monospace;
+    width:44px; height:44px; cursor:pointer;
+    font-size:16px;
+    text-shadow:0 0 6px #0ff;
+    box-shadow:0 0 8px rgba(15,255,255,0.5);
+    z-index:5;
+  }
+  .neon-close:hover{ background:#0ff; color:#050308; }
+  .crt-output{
+    flex:1; overflow-y:auto;
+    font-size:13.5px; line-height:1.8;
+    color:#0ff;
+    text-shadow:0 0 4px rgba(15,255,255,0.6);
+    padding-right:6px;
+  }
+  .crt-output .magenta{ color:#ff2fd6; text-shadow:0 0 4px rgba(255,47,214,0.7); }
+  .crt-output .yellow{ color:#ffe94d; text-shadow:0 0 4px rgba(255,233,77,0.6); }
+  .crt-output .dim{ color:#5fd6d6; opacity:0.65; }
+  .crt-output .line{ margin:0 0 2px; white-space:pre-wrap; word-break:break-word; }
+  .crt-inputline{
+    display:flex; align-items:center; gap:8px;
+    border-top:1px solid rgba(15,255,255,0.3);
+    padding-top:10px; margin-top:8px;
+  }
+  .crt-prompt{ color:#ff2fd6; text-shadow:0 0 4px rgba(255,47,214,0.7); font-size:13px; white-space:nowrap; }
+  .crt-input{
+    flex:1; background:transparent; border:none;
+    color:#0ff; font-family:'JetBrains Mono', monospace; font-size:13.5px;
+    text-shadow:0 0 4px rgba(15,255,255,0.6);
+    caret-color:#ff2fd6;
+  }
+  .crt-input:focus{
+    outline:2px solid #29e7ff;
+    outline-offset:2px;
+  }
+  @media (max-width:640px){
+    .crt-screen{ padding:16px 14px 12px; }
+  }
+
+  /* ---- custom cursor: pennino di giorno, reticolo di notte ----
+     Attivo SOLO su dispositivi con puntatore preciso (mouse/trackpad) che
+     supportano hover — mai su touch, e mai se l'utente preferisce meno
+     movimento/effetti. Questo evita di sovrascrivere impostazioni di
+     accessibilità di sistema (cursore ingrandito, alto contrasto) per chi
+     ne ha bisogno. */
+  @media (hover:hover) and (pointer:fine) and (prefers-reduced-motion: no-preference){
+    a, button, .review-toggle, .issue-spine, .util-btn, .cmdk-item, .toc a,
+    .stack-card, .neon-close{
+      cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M14 2 L22 14 L14 26 L6 14 Z' fill='none' stroke='%23181410' stroke-width='2'/%3E%3Cline x1='14' y1='10' x2='14' y2='22' stroke='%23181410' stroke-width='1.5'/%3E%3Ccircle cx='14' cy='16' r='1.5' fill='%23FF5A1F'/%3E%3C/svg%3E") 14 14, pointer;
+    }
+    html[data-mode="night"] a, html[data-mode="night"] button,
+    html[data-mode="night"] .review-toggle, html[data-mode="night"] .issue-spine,
+    html[data-mode="night"] .util-btn, html[data-mode="night"] .cmdk-item,
+    html[data-mode="night"] .toc a, html[data-mode="night"] .stack-card,
+    html[data-mode="night"] .neon-close{
+      cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Ccircle cx='14' cy='14' r='9' fill='none' stroke='%2329E7FF' stroke-width='1.5'/%3E%3Cline x1='14' y1='0' x2='14' y2='7' stroke='%2329E7FF' stroke-width='1.5'/%3E%3Cline x1='14' y1='21' x2='14' y2='28' stroke='%2329E7FF' stroke-width='1.5'/%3E%3Cline x1='0' y1='14' x2='7' y2='14' stroke='%2329E7FF' stroke-width='1.5'/%3E%3Cline x1='21' y1='14' x2='28' y2='14' stroke='%2329E7FF' stroke-width='1.5'/%3E%3Ccircle cx='14' cy='14' r='1.5' fill='%23FF2FD6'/%3E%3C/svg%3E") 14 14, pointer;
+    }
+    .crt-screen, .crt-screen *{
+      cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Ccircle cx='14' cy='14' r='9' fill='none' stroke='%2329E7FF' stroke-width='1.5'/%3E%3Cline x1='14' y1='0' x2='14' y2='7' stroke='%2329E7FF' stroke-width='1.5'/%3E%3Cline x1='14' y1='21' x2='14' y2='28' stroke='%2329E7FF' stroke-width='1.5'/%3E%3Cline x1='0' y1='14' x2='7' y2='14' stroke='%2329E7FF' stroke-width='1.5'/%3E%3Cline x1='21' y1='14' x2='28' y2='14' stroke='%2329E7FF' stroke-width='1.5'/%3E%3Ccircle cx='14' cy='14' r='1.5' fill='%23FF2FD6'/%3E%3C/svg%3E") 14 14, text;
+    }
+    .crt-input{ cursor:text; }
+  }
+
+  /* ---- accessibilità: skip-link e focus visibile ---- */
+  .skip-link{
+    position:fixed; top:-60px; left:12px; z-index:1000;
+    background:var(--orange); color:var(--ink);
+    padding:10px 16px; font-family:'JetBrains Mono', monospace;
+    font-size:13px; text-decoration:none; border:2px solid var(--ink);
+    transition:top 0.2s ease;
+  }
+  .skip-link:focus{ top:12px; }
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible,
+  input:focus-visible, .stack-card:focus-visible, .issue-spine:focus-visible{
+    outline:3px solid var(--orange-text);
+    outline-offset:2px;
+  }
+
+  .press-loader{
+    position:fixed; inset:0; z-index:500;
+    background:var(--paper);
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity 0.35s ease, visibility 0.35s ease;
+  }
+  .press-loader.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  .press-loader-inner{ text-align:center; }
+  .press-line{
+    display:block; font-size:13px; letter-spacing:0.25em;
+    margin-top:16px; color:var(--ink);
+  }
+  .page-flip{
+    perspective:600px;
+    width:120px; height:82px;
+    margin:0 auto;
+  }
+  .book{
+    display:flex;
+    width:100%; height:100%;
+    box-shadow:0 6px 18px rgba(0,0,0,0.18);
+  }
+  .leaf{
+    width:60px; height:82px;
+    box-sizing:border-box;
+    background:var(--paper-dark);
+    border:1px solid var(--ink);
+    padding:10px 7px;
+  }
+  .leaf span{
+    display:block; height:2px; margin-bottom:7px;
+    background:var(--ink); opacity:0.3; border-radius:1px;
+  }
+  .leaf span:nth-child(2){ width:78%; }
+  .leaf span:nth-child(3){ width:55%; }
+  .leaf-left{ border-right:none; }
+  .right-stack{
+    position:relative; width:60px; height:82px;
+  }
+  .right-stack .leaf{
+    position:absolute; top:0; left:0;
+  }
+  .leaf-back{ z-index:1; }
+  .leaf-front{
+    z-index:2;
+    transform-origin:left center;
+    backface-visibility:hidden;
+    background:var(--paper-dark);
+    animation:pageTurn 0.85s ease-in-out forwards;
+  }
+  @keyframes pageTurn{
+    0%{ transform:rotateY(0deg); box-shadow:-6px 0 10px rgba(0,0,0,0.12); }
+    45%{ background:var(--orange); }
+    100%{ transform:rotateY(-178deg); box-shadow:none; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .press-loader{ display:none; }
+  }
+
+  /* ---- print ---- */
+  @media print{
+    .utility-bar, .toc, .cmdk-overlay, .halftone-frame, .neon-terminal-overlay{ display:none !important; }
+    html[data-mode="night"]{
+      --paper:#EDE6D6; --paper-dark:#E0D6BC; --ink:#181410;
+      --orange:#FF5A1F; --violet:#6B4FFF; --halftone:#A8A296;
+    }
+    html[data-mode="night"] h1.name,
+    html[data-mode="night"] .section-head h2.display,
+    html[data-mode="night"] .big-stat{ text-shadow:none; }
+    body::after{ display:none !important; }
+    .reveal, .reveal-stagger > *{ opacity:1 !important; transform:none !important; }
+    section{ break-inside:avoid; }
+  }
+
+  /* ---- issue archive ---- */
+  .archive-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    flex-wrap:wrap; gap:10px; margin-bottom:20px;
+  }
+  .archive-note{ font-size:13px; opacity:0.72; max-width:520px; }
+  .archive-shelf{
+    display:flex; gap:12px; overflow-x:auto; padding-bottom:8px;
+    max-width:1100px; margin:0 auto 24px;
+  }
+  .issue-spine{
+    flex:0 0 auto;
+    width:96px; min-height:150px;
+    background:var(--ink); color:var(--paper);
+    border:2px solid var(--ink);
+    display:flex; flex-direction:column; justify-content:space-between;
+    padding:12px 10px;
+    cursor:pointer;
+    font-family:'JetBrains Mono', monospace;
+    transition:transform 0.2s ease, background 0.2s ease;
+  }
+  .issue-spine:hover{ transform:translateY(-6px); }
+  .issue-spine.active{ background:var(--orange); color:var(--ink); }
+  .issue-spine .n{ font-family:'Anton', sans-serif; font-size:26px; line-height:1; }
+  .issue-spine .m{ font-size:10px; letter-spacing:0.05em; opacity:0.85; }
+  .issue-reader{
+    max-width:1100px; margin:0 auto;
+    border:3px solid var(--ink);
+    background:var(--paper-dark);
+    padding:24px;
+    min-height:80px;
+  }
+  .issue-reader-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:18px; flex-wrap:wrap; gap:8px;
+  }
+  .issue-reader-head h3{ margin:0; font-size:22px; }
+  .issue-reader-head .date{ font-family:'JetBrains Mono', monospace; font-size:11px; opacity:0.7; }
+  .signal-card{
+    border-top:2px dashed var(--ink);
+    padding:14px 0;
+  }
+  .signal-card:first-child{ border-top:none; }
+  .signal-tag{
+    display:inline-block;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:0.06em;
+    padding:2px 8px; border:2px solid var(--ink);
+    margin-bottom:6px;
+  }
+  .signal-tag.competitor{ background:var(--orange); }
+  .signal-tag.market{ background:var(--violet); color:var(--paper); }
+  .signal-tag.security{ background:var(--paper); }
+  .signal-card h4{ margin:0 0 4px; font-size:16px; }
+  .signal-card p{ margin:0 0 4px; font-size:14px; line-height:1.6; }
+  .signal-card a{ font-size:12px; text-decoration:underline; }
+  .archive-status{ font-family:'JetBrains Mono', monospace; font-size:12px; opacity:0.7; }
+
+  /* ---- appuntamenti / calendly ---- */
+  .booking-frame{
+    max-width:900px; margin:0 auto;
+    border:3px solid var(--ink);
+    background:var(--paper-dark);
+    padding:20px;
+    position:relative;
+  }
+  .booking-frame::before{
+    content:"CLASSIFIED — PRENOTAZIONI APERTE";
+    position:absolute; top:-13px; left:20px;
+    background:var(--violet); color:var(--paper);
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:0.08em;
+    padding:3px 10px; border:2px solid var(--ink);
+  }
+  .booking-note{
+    max-width:900px; margin:0 auto 18px;
+    font-size:14px; opacity:0.78;
+  }
+  .calendly-inline-widget{
+    background:var(--paper);
+    border:2px solid var(--ink);
+  }
+  .booking-placeholder{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:6px;
+    min-height:280px;
+    border:2px dashed var(--ink);
+    padding:24px;
+    font-size:14px; max-width:420px; margin:0 auto;
+  }
+</style>
+</head>
+<body>
+
+  <div class="press-loader" id="press-loader">
+    <div class="press-loader-inner">
+      <div class="page-flip">
+        <div class="book">
+          <div class="leaf leaf-left">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="right-stack">
+            <div class="leaf leaf-back">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="leaf leaf-front">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="press-line mono">SFOGLIANDO…</span>
+    </div>
+  </div>
+
+  <a href="#main-content" class="skip-link">Salta al contenuto</a>
+
+  <div class="utility-bar mono">
+    <span>VOL. 01 — NO. 07</span>
+    <span>CASALE MONFERRATO, IT · <span id="live-clock">--:--:--</span></span>
+    <div class="utility-actions">
+      <span class="util-btn" id="edition-indicator" style="cursor:default;">☀ DAY EDITION</span>
+      <button class="util-btn" id="cmdk-trigger" title="Apri comandi">⌘K COMANDI</button>
+      <button class="util-btn" id="print-btn" title="Stampa o salva PDF">STAMPA / PDF</button>
+    </div>
+  </div>
+
+  <header class="hero">
+    <div class="halftone-frame" aria-hidden="true"></div>
+    <div class="masthead-wrap">
+      <span class="issue-tag mono">CLOUD &amp; SECURITY EDITION</span>
+      <h1 class="name display">Bellingeri</h1>
+      <span class="role-chip mono">CLOUD PLATFORM &amp; SECURITY ENGINEER</span>
+      <p class="kicker">"Infrastruttura che regge il peso — e la fiducia — di chi la usa."</p>
+    </div>
+  </header>
+
+  <nav class="toc mono" id="toc-nav">
+    <a href="#dossier" data-section="dossier"><span class="num">01</span> DOSSIER</a>
+    <a href="#percorso" data-section="percorso"><span class="num">02</span> PERCORSO</a>
+    <a href="#stack" data-section="stack"><span class="num">03</span> STACK</a>
+    <a href="#field-notes" data-section="field-notes"><span class="num">04</span> FIELD NOTES</a>
+    <a href="#projects" data-section="projects"><span class="num">05</span> PROGETTI</a>
+    <a href="#archive" data-section="archive"><span class="num">06</span> ARCHIVIO</a>
+    <a href="#booking" data-section="booking"><span class="num">07</span> APPUNTAMENTI</a>
+    <a href="#contact" data-section="contact"><span class="num">08</span> CONTATTI</a>
+  </nav>
+  <p class="toc-hint mono">← scorri per vedere tutte le sezioni →</p>
+
+  <main id="main-content">
+
+  <section id="dossier" class="reveal">
+    <div class="section-head">
+      <span class="num mono">01</span>
+      <h2 class="display">Dossier</h2>
+    </div>
+    <div class="dossier">
+      <p>
+        Freelance Cloud Platform &amp; Security Engineer con base a Casale Monferrato,
+        al lavoro sotto regime forfettario. Il profilo è deliberatamente orientato a
+        DevOps + Cloud + Security, con un approccio hands-on: pair programming come
+        metodo di lavoro principale, non prompt-e-vai. Python è lo strumento di
+        elezione per automazione, tooling interno e sicurezza applicativa.
+      </p>
+      <p>
+        Fuori dal terminale, la stessa attenzione al dettaglio si ritrova nella
+        passione per l'artigianato giapponese — penne stilografiche, inchiostri,
+        orologeria meccanica — un promemoria che le cose fatte bene richiedono
+        pazienza, sia che si tratti di un pennino a 18kt sia di un refactor Redis.
+      </p>
+      <aside class="fact-box">
+        <dl>
+          <dt>SEDE</dt><dd>Casale Monferrato (AL)</dd>
+          <dt>REGIME</dt><dd>Forfettario — gestione Fiscozen</dd>
+          <dt>FOCUS</dt><dd>DevOps · Cloud · Security</dd>
+          <dt>LINGUAGGIO</dt><dd>Python</dd>
+          <dt>METODO</dt><dd>Pair programming, non one-shot</dd>
+          <dt>GITHUB</dt><dd>MK023</dd>
+        </dl>
+      </aside>
+    </div>
+  </section>
+
+  <section id="percorso" class="reveal">
+    <div class="section-head">
+      <span class="num mono">02</span>
+      <h2 class="display">Percorso</h2>
+    </div>
+    <div class="timeline reveal-stagger">
+      <div class="tl-item">
+        <div class="tl-year mono">ESIS</div>
+        <div class="tl-body">
+          <h3>Sviluppo &amp; primi passi infra</h3>
+          <p>Prime esperienze strutturate su sistemi in produzione, dove nasce l'attenzione per l'affidabilità come requisito, non come optional.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year mono">FAIRFIELD</div>
+        <div class="tl-body">
+          <h3>Debt collection company <span class="tl-tag">41× REDIS</span></h3>
+          <p>Un breve incarico (circa un mese e mezzo) che ha comunque prodotto un refactor completo del layer di caching Redis — proposto ed eseguito in autonomia, con impatto misurabile sulla query critica del sistema.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-year mono">OGGI</div>
+        <div class="tl-body">
+          <h3>Freelance — Cloud &amp; Security</h3>
+          <p>Regime forfettario, focus deliberato su DevOps + Cloud + Security. In parallelo: sviluppo di prodotti propri (JobSearch, vital-signs) e formazione continua.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="stack" class="reveal">
+    <div class="section-head">
+      <span class="num mono">03</span>
+      <h2 class="display">Stack</h2>
+    </div>
+    <div class="stack-grid reveal-stagger">
+      <div class="stack-card" data-tag="CORE">
+        <h3>Python</h3>
+        <p>Typer, Rich, httpx, pytest — automazione e tooling da riga di comando.</p>
+      </div>
+      <div class="stack-card" data-tag="INFRA">
+        <h3>Cloud &amp; DevOps</h3>
+        <p>Provisioning, pipeline, containerizzazione, gestione ambienti multi-cloud.</p>
+      </div>
+      <div class="stack-card" data-tag="SEC">
+        <h3>Security</h3>
+        <p>Audit di configurazioni, gestione segreti, hardening dello stack AI-to-OS.</p>
+      </div>
+      <div class="stack-card" data-tag="DATA">
+        <h3>SQLite / Redis</h3>
+        <p>Persistenza leggera e caching ad alte prestazioni.</p>
+      </div>
+      <div class="stack-card" data-tag="AI">
+        <h3>Anthropic SDK</h3>
+        <p>Integrazione di agenti e RAG in prodotti reali per clienti.</p>
+      </div>
+      <div class="stack-card" data-tag="QA">
+        <h3>SonarQube</h3>
+        <p>Qualità del codice come pratica continua, non come rifinitura finale.</p>
+      </div>
+    </div>
+
+    <div class="live-stack">
+      <div class="live-stack-head">
+        <h3 class="mono">$ derivato da github.com/MK023 — tutti i repo pubblici</h3>
+        <span class="src mono">FONTE: GITHUB API, LIVE</span>
+      </div>
+      <div id="lang-bars">
+        <p class="live-stack-status mono" id="lang-status">caricamento dati in corso…</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="field-notes" class="reveal">
+    <div class="section-head">
+      <span class="num mono">04</span>
+      <h2 class="display">Field Notes</h2>
+    </div>
+    <p class="case-archive-note">Un caso reale al mese: problema, approccio, risultato, lezione appresa. Niente teoria — solo cose successe davvero.</p>
+    <div class="case-archive" id="case-archive">
+      <p class="archive-status">caricamento casi…</p>
+    </div>
+  </section>
+
+  <section id="projects" class="reveal">
+    <div class="section-head">
+      <span class="num mono">05</span>
+      <h2 class="display">Progetti</h2>
+    </div>
+    <div class="reviews reveal-stagger">
+      <div class="review">
+        <div class="review-preview p-orange" aria-hidden="true"><span class="swatch-label mono">JOBSEARCH</span></div>
+        <button class="review-toggle" data-target="case-jobsearch">
+          <div>
+            <h3>JobSearch</h3>
+            <span class="status shipped mono">VALIDATO</span>
+          </div>
+          <span class="review-chevron mono">DETTAGLI ＋</span>
+        </button>
+        <p>
+          Estrae annunci LinkedIn reali, li scompone per competenze richieste per
+          macro-categoria e li confronta onestamente con le skill effettive del
+          candidato. Validato su se stesso: più colloqui in quattro mesi che in
+          tutta la carriera precedente.
+        </p>
+        <div class="review-detail" id="case-jobsearch">
+          <div class="case-block"><span class="label mono">PROBLEMA</span><p>Le candidature andavano a caso: stesso CV per annunci molto diversi, nessun modo onesto di sapere quali competenze mancassero davvero rispetto a un ruolo specifico.</p></div>
+          <div class="case-block"><span class="label mono">APPROCCIO</span><p>Scraping di annunci LinkedIn reali, estrazione delle competenze richieste per macro-categoria, confronto diretto e onesto con le skill effettive — nessun abbellimento, nemmeno su se stesso.</p></div>
+          <div class="case-block"><span class="label mono">RISULTATO</span><p>Più colloqui in quattro mesi che in tutta la carriera precedente. Il metodo si è generalizzato: funziona su qualunque CV, non solo sul mio.</p></div>
+        </div>
+      </div>
+      <div class="review">
+        <div class="review-preview p-violet" aria-hidden="true"><span class="swatch-label mono">VITAL-SIGNS</span></div>
+        <button class="review-toggle" data-target="case-vitalsigns">
+          <div>
+            <h3>vital-signs</h3>
+            <span class="status active mono">ATTIVO</span>
+          </div>
+          <span class="review-chevron mono">DETTAGLI ＋</span>
+        </button>
+        <p>
+          Tool di audit di sicurezza per l'intero stack, dall'AI al sistema
+          operativo. Nato da una scoperta concreta: un token esposto in un file
+          JSON leggibile da chiunque.
+        </p>
+        <div class="review-detail" id="case-vitalsigns">
+          <div class="case-block"><span class="label mono">PROBLEMA</span><p>Un token trovato per caso in un file JSON world-readable — nessuno lo aveva notato perché nessuno lo stava cercando sistematicamente.</p></div>
+          <div class="case-block"><span class="label mono">APPROCCIO</span><p>Costruito un tool che ispeziona l'intero stack AI-to-OS in modo ripetibile, non un controllo una tantum fatto a occhio.</p></div>
+          <div class="case-block"><span class="label mono">RISULTATO</span><p>Uso attivo e continuo, non un esperimento archiviato — cresce ogni volta che trovo una nuova categoria di rischio da controllare.</p></div>
+        </div>
+      </div>
+      <div class="review">
+        <div class="review-preview p-dark" aria-hidden="true"><span class="swatch-label mono">ATLAS</span></div>
+        <button class="review-toggle" data-target="case-atlas">
+          <div>
+            <h3>Atlas</h3>
+            <span class="status rnd mono">R&amp;D</span>
+          </div>
+          <span class="review-chevron mono">DETTAGLI ＋</span>
+        </button>
+        <p>
+          Knowledge graph personale costruito su Obsidian, con un'ambizione più
+          filosofica che tecnica: mappare memoria e identità. Esplorato anche come
+          possibile SaaS verticale con RAG.
+        </p>
+        <div class="review-detail" id="case-atlas">
+          <div class="case-block"><span class="label mono">PROBLEMA</span><p>Le note sparse non si parlavano tra loro: idee, letture, progetti finivano isolati invece di connettersi.</p></div>
+          <div class="case-block"><span class="label mono">APPROCCIO</span><p>Un grafo di conoscenza personale su Obsidian, pensato non solo come archivio ma come domanda aperta su come memoria e identità si costruiscono nel tempo.</p></div>
+          <div class="case-block"><span class="label mono">RISULTATO</span><p>Deprioritizzato come prodotto rispetto a JobSearch, ma resta lo strumento di pensiero più usato — e l'idea di una versione SaaS con RAG resta sul tavolo.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="archive" class="reveal">
+    <div class="section-head">
+      <span class="num mono">06</span>
+      <h2 class="display">Archivio</h2>
+    </div>
+    <div class="archive-head">
+      <p class="archive-note">
+        Un numero nuovo ogni mese, generato in automatico: segnali dal mercato,
+        mosse della concorrenza, novità normative. Nessuno lo scrive a mano —
+        gira da solo, di notte, come dovrebbe fare l'infrastruttura buona.
+      </p>
+      <button class="util-btn" id="archive-reload">RICARICA ARCHIVIO</button>
+    </div>
+    <div class="archive-shelf" id="archive-shelf">
+      <p class="archive-status">caricamento numeri arretrati…</p>
+    </div>
+    <div class="issue-reader" id="issue-reader">
+      <p class="archive-status">seleziona un numero dallo scaffale.</p>
+    </div>
+  </section>
+
+  <section id="booking" class="reveal">
+    <div class="section-head">
+      <span class="num mono">07</span>
+      <h2 class="display">Appuntamenti</h2>
+    </div>
+    <p class="booking-note">
+      Slot liberi, fuso orario gestito in automatico, conferma via email —
+      niente scambi di messaggi per trovare un orario. Ogni prenotazione
+      confermata finisce anche in un log privato, così non si perde nulla.
+    </p>
+    <div class="booking-frame">
+      <div class="calendly-inline-widget" data-url="https://calendly.com/marco-bellingeri/30min" style="min-width:300px; height:630px;"></div>
+      <div class="booking-placeholder" id="booking-placeholder">
+        <p class="mono" style="font-size:12px; letter-spacing:0.06em; opacity:0.75; margin-bottom:8px;">IN CONFIGURAZIONE</p>
+        <p>Qui apparirà il calendario prenotazioni non appena colleghi il tuo link Calendly reale al posto del placeholder nel codice.</p>
+      </div>
+    </div>
+  </section>
+
+  </main>
+
+  <div class="neon-terminal-overlay" id="neon-terminal">
+    <div class="crt-screen">
+      <div class="scanlines"></div>
+      <div class="crt-flicker"></div>
+      <button class="neon-close" id="neon-close" aria-label="Chiudi terminale">✕</button>
+      <div class="crt-output" id="crt-output"></div>
+      <div class="crt-inputline">
+        <span class="crt-prompt">guest@bellingeri:~$</span>
+        <input class="crt-input" id="crt-input" type="text" autocomplete="off" spellcheck="false" aria-label="Terminale interattivo">
+      </div>
+    </div>
+  </div>
+
+  <footer id="contact" class="reveal">
+    <div class="colophon">
+      <div>
+        <h3>Contatti</h3>
+        <a href="mailto:marco.bellingeri@gmail.com">marco.bellingeri@gmail.com</a>
+        <button class="util-btn" id="copy-email-btn" style="margin-left:8px;">COPIA</button><br>
+        Casale Monferrato, Alessandria, IT
+      </div>
+      <div>
+        <h3>Online</h3>
+        <a href="https://github.com/MK023" target="_blank" rel="noopener">github.com/MK023</a><br>
+        <a href="#" target="_blank" rel="noopener">linkedin.com/in/ — da completare</a>
+      </div>
+      <div>
+        <h3>Colophon</h3>
+        Impaginato in Anton, Source Serif 4, JetBrains Mono.<br>
+        Stampato digitalmente, ovunque tu sia.
+        <div class="ai-seal" title="Sviluppato in pair programming con Claude Code">
+          <svg viewBox="0 0 100 100">
+            <path id="badgeCirclePath" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" fill="none"/>
+            <text class="ring-text">
+              <textPath href="#badgeCirclePath" startOffset="0%">
+                COSTRUITO CON CLAUDE CODE • PAIR PROGRAMMING, NON PROMPT-E-VAI •
+              </textPath>
+            </text>
+          </svg>
+          <div class="ai-seal-core">✳</div>
+        </div>
+      </div>
+    </div>
+    <p class="fine-print">© Marco Bellingeri — Cloud &amp; Security Edition. Tutti i diritti, nessun bug in produzione (si spera).</p>
+  </footer>
+
+  <div class="cmdk-overlay" id="cmdk-overlay">
+    <div class="cmdk-box">
+      <input class="cmdk-input mono" id="cmdk-input" type="text" placeholder="Digita un comando o una sezione…" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="cmdk-list" aria-autocomplete="list" aria-label="Cerca un comando">
+      <div class="cmdk-list mono" id="cmdk-list" role="listbox"></div>
+      <div class="cmdk-hint">
+        <span>↑↓ NAVIGA · ENTER APRI</span>
+        <span>ESC CHIUDI</span>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Scroll-reveal for sections and staggered groups
+    const revealEls = document.querySelectorAll('.reveal, .reveal-stagger');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if(entry.isIntersecting){
+          entry.target.classList.add('visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.01, rootMargin: '0px 0px -20px 0px' });
+    revealEls.forEach(el => io.observe(el));
+
+    // Reusable count-up: call on any element with data-target, animates once visible
+    function animateCountUp(el){
+      const target = parseInt(el.dataset.target, 10);
+      const suffix = el.dataset.suffix || '×';
+      let started = false;
+      const statIo = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if(entry.isIntersecting && !started){
+            started = true;
+            const duration = 1100;
+            const startTime = performance.now();
+            function tick(now){
+              const progress = Math.min((now - startTime) / duration, 1);
+              const eased = 1 - Math.pow(1 - progress, 3);
+              const val = Math.round(eased * target);
+              el.textContent = val + suffix;
+              if(progress < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+            statIo.unobserve(el);
+          }
+        });
+      }, { threshold: 0.5 });
+      statIo.observe(el);
+    }
+    window.animateCountUp = animateCountUp;
+  </script>
+
+  <script>
+    // ---- live clock (Europe/Rome) ----
+    const clockEl = document.getElementById('live-clock');
+    function tickClock(){
+      clockEl.textContent = new Date().toLocaleTimeString('it-IT', {
+        timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    // ---- print / save as PDF ----
+    document.getElementById('print-btn').addEventListener('click', () => window.print());
+
+    // ---- day / night edition — automatica, in base all'ora reale del visitatore ----
+    const editionIndicator = document.getElementById('edition-indicator');
+    function setMode(mode){
+      if(mode === 'night'){
+        document.documentElement.setAttribute('data-mode', 'night');
+        editionIndicator.textContent = '☾ NIGHT EDITION';
+      } else {
+        document.documentElement.removeAttribute('data-mode');
+        editionIndicator.textContent = '☀ DAY EDITION';
+      }
+    }
+    function autoMode(){
+      const hourStr = new Date().toLocaleString('en-US', { timeZone: 'Europe/Rome', hour: '2-digit', hour12: false });
+      const h = parseInt(hourStr, 10);
+      return (h >= 7 && h < 20) ? 'day' : 'night';
+    }
+    setMode(autoMode());
+    setInterval(() => setMode(autoMode()), 60000);
+
+    // ---- copy email ----
+    const copyBtn = document.getElementById('copy-email-btn');
+    if(copyBtn){
+      copyBtn.addEventListener('click', async () => {
+        try{
+          await navigator.clipboard.writeText('marco.bellingeri@gmail.com');
+          const original = copyBtn.textContent;
+          copyBtn.textContent = 'COPIATO ✓';
+          copyBtn.classList.add('copied');
+          setTimeout(() => { copyBtn.textContent = original; copyBtn.classList.remove('copied'); }, 1800);
+        }catch(e){
+          copyBtn.textContent = 'ERRORE';
+        }
+      });
+    }
+
+    // ---- live GitHub language stats ----
+    (function loadGithubStack(){
+      const statusEl = document.getElementById('lang-status');
+      const container = document.getElementById('lang-bars');
+      const colors = ['#FF5A1F', '#6B4FFF', '#181410', '#A8875B', '#3B7A57', '#B23A48'];
+
+      fetch('https://api.github.com/users/MK023/repos?per_page=100&sort=updated')
+        .then(res => {
+          if(!res.ok) throw new Error('github api error');
+          return res.json();
+        })
+        .then(repos => {
+          const counts = {};
+          repos.forEach(r => {
+            if(r.fork) return;
+            if(!r.language) return;
+            counts[r.language] = (counts[r.language] || 0) + 1;
+          });
+          const entries = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,6);
+          if(entries.length === 0){
+            statusEl.textContent = 'nessun linguaggio pubblico rilevato al momento.';
+            return;
+          }
+          const total = entries.reduce((s,[,c]) => s+c, 0);
+          container.innerHTML = '';
+          entries.forEach(([lang, count], i) => {
+            const pct = Math.round((count/total)*100);
+            const row = document.createElement('div');
+            row.className = 'lang-bar-row';
+            row.innerHTML =
+              '<span>' + lang + '</span>' +
+              '<span class="lang-bar-track"><span class="lang-bar-fill" style="background:' + colors[i % colors.length] + '"></span></span>' +
+              '<span class="lang-bar-pct">' + pct + '%</span>';
+            container.appendChild(row);
+            requestAnimationFrame(() => {
+              row.querySelector('.lang-bar-fill').style.width = pct + '%';
+            });
+          });
+        })
+        .catch(() => {
+          statusEl.textContent = 'dati live non disponibili in questo momento — vedi le card qui sopra per lo stack dichiarato.';
+        });
+    })();
+
+    // ---- command palette (Cmd/Ctrl+K) ----
+    (function commandPalette(){
+      const overlay = document.getElementById('cmdk-overlay');
+      const input = document.getElementById('cmdk-input');
+      const list = document.getElementById('cmdk-list');
+      const trigger = document.getElementById('cmdk-trigger');
+
+      const commands = [
+        { label: 'Vai a — Dossier', hint: '01', action: () => scrollToId('dossier') },
+        { label: 'Vai a — Percorso', hint: '02', action: () => scrollToId('percorso') },
+        { label: 'Vai a — Stack', hint: '03', action: () => scrollToId('stack') },
+        { label: 'Vai a — Field Notes', hint: '04', action: () => scrollToId('field-notes') },
+        { label: 'Vai a — Progetti', hint: '05', action: () => scrollToId('projects') },
+        { label: 'Vai a — Archivio', hint: '06', action: () => scrollToId('archive') },
+        { label: 'Vai a — Appuntamenti', hint: '07', action: () => scrollToId('booking') },
+        { label: 'Vai a — Contatti', hint: '08', action: () => scrollToId('contact') },
+        { label: 'Apri GitHub — MK023', hint: '↗', action: () => window.open('https://github.com/MK023', '_blank') },
+        { label: 'Copia indirizzo email', hint: '⧉', action: () => copyBtn && copyBtn.click() },
+        { label: 'Stampa / Salva PDF', hint: '⎙', action: () => window.print() },
+        { label: 'Apri terminale segreto', hint: '⌨', action: () => window.openNeonTerminal && window.openNeonTerminal() },
+      ];
+
+      let filtered = commands;
+      let activeIndex = 0;
+
+      function scrollToId(id){
+        document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        close();
+      }
+
+      function render(){
+        list.innerHTML = '';
+        if(filtered.length === 0){
+          list.innerHTML = '<div class="cmdk-empty">Nessun comando trovato.</div>';
+          return;
+        }
+        filtered.forEach((cmd, i) => {
+          const item = document.createElement('div');
+          item.className = 'cmdk-item' + (i === activeIndex ? ' active' : '');
+          item.setAttribute('role', 'option');
+          item.setAttribute('aria-selected', i === activeIndex ? 'true' : 'false');
+          item.innerHTML = '<span>' + cmd.label + '</span><span class="k">' + cmd.hint + '</span>';
+          item.addEventListener('mouseenter', () => { activeIndex = i; render(); });
+          item.addEventListener('click', () => cmd.action());
+          list.appendChild(item);
+        });
+      }
+
+      function open(){
+        overlay.classList.add('open');
+        input.value = '';
+        filtered = commands;
+        activeIndex = 0;
+        render();
+        setTimeout(() => input.focus(), 30);
+      }
+      function close(){
+        overlay.classList.remove('open');
+      }
+
+      trigger.addEventListener('click', open);
+      overlay.addEventListener('click', (e) => { if(e.target === overlay) close(); });
+
+      input.addEventListener('input', () => {
+        const q = input.value.toLowerCase();
+        filtered = commands.filter(c => c.label.toLowerCase().includes(q));
+        activeIndex = 0;
+        render();
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if(e.key === 'ArrowDown'){ e.preventDefault(); activeIndex = Math.min(activeIndex+1, filtered.length-1); render(); }
+        if(e.key === 'ArrowUp'){ e.preventDefault(); activeIndex = Math.max(activeIndex-1, 0); render(); }
+        if(e.key === 'Enter'){ e.preventDefault(); if(filtered[activeIndex]) filtered[activeIndex].action(); }
+        if(e.key === 'Escape'){ close(); }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k'){
+          e.preventDefault();
+          overlay.classList.contains('open') ? close() : open();
+        }
+        if(e.key === 'Escape' && overlay.classList.contains('open')) close();
+      });
+    })();
+
+    // ---- neon CRT terminal + konami trigger ----
+    (function neonTerminal(){
+      const overlay = document.getElementById('neon-terminal');
+      const output = document.getElementById('crt-output');
+      const input = document.getElementById('crt-input');
+      const closeBtn = document.getElementById('neon-close');
+
+      let cmdHistory = [];
+      let historyPos = -1;
+
+      function printLine(html, cls){
+        const div = document.createElement('div');
+        div.className = 'line' + (cls ? ' ' + cls : '');
+        div.innerHTML = html;
+        output.appendChild(div);
+        output.scrollTop = output.scrollHeight;
+      }
+
+      const REDIS_LOG = [
+        '# contesto: sistema di debt collection, layer di cache sotto carico',
+        '- throughput query critica: baseline',
+        '+ throughput query critica: <span class="yellow">41×</span> baseline',
+        '# intervento: refactor completo del layer Redis',
+        '# proposto ed eseguito in autonomia, zero downtime'
+      ];
+
+      const COMMANDS = {
+        help(){
+          printLine('Comandi disponibili:', 'magenta');
+          [
+            ['whoami', 'chi sono'],
+            ['ls', 'elenca le sezioni nascoste'],
+            ['cat redis.log', 'il log del refactor 41×'],
+            ['cat classified.txt', 'dossier riservato — declassificato'],
+            ['projects', 'i progetti attivi'],
+            ['contact', 'come contattarmi'],
+            ['neon', 'più neon. sempre più neon.'],
+            ['matrix', 'per i nostalgici'],
+            ['clear', 'pulisci lo schermo'],
+            ['exit', 'chiudi il terminale (o ESC)'],
+          ].forEach(([c,d]) => printLine('  <span class="yellow">' + c.padEnd(18) + '</span>' + d));
+        },
+        whoami(){
+          printLine('marco bellingeri — cloud platform &amp; security engineer');
+          printLine('<span class="dim">freelance · casale monferrato, it · github.com/MK023</span>');
+        },
+        ls(){
+          printLine('dossier/  percorso/  stack/  field-notes/  projects/  archive/  contact/');
+        },
+        'cat redis.log'(){
+          REDIS_LOG.forEach(l => printLine(l));
+        },
+        'cat classified.txt'(){
+          printLine('DECLASSIFICATO — accesso concesso.', 'magenta');
+          printLine('&gt; calibro principale: Pilot Custom 845 Urushi rosso, pennino 18kt medio, Iroshizuku Kon-peki.');
+          printLine('&gt; Valorant: Sentinel main, Killjoy/Cypher — difendi il perimetro, sempre.');
+          printLine('&gt; il refactor 41× è nato scoprendo una cache invalidata troppo spesso. il bug più costoso è spesso il più noioso.');
+          printLine('&gt; ascolto: Sennheiser Momentum 4, lossless, modalità emotiva anche in debug.');
+        },
+        projects(){
+          printLine('<span class="yellow">jobsearch</span>      — scraping LinkedIn + cross-check onesto delle skill');
+          printLine('<span class="yellow">vital-signs</span>    — audit di sicurezza stack AI-to-OS');
+          printLine('<span class="yellow">atlas</span>          — knowledge graph personale su Obsidian');
+        },
+        contact(){
+          printLine('email:   <a href="mailto:marco.bellingeri@gmail.com" style="color:#0ff;">marco.bellingeri@gmail.com</a>');
+          printLine('github:  <a href="https://github.com/MK023" target="_blank" rel="noopener" style="color:#0ff;">github.com/MK023</a>');
+        },
+        neon(){
+          document.documentElement.style.setProperty('filter', 'saturate(1.6)');
+          printLine('saturazione neon: massima. (ricarica la pagina per tornare normale)', 'magenta');
+        },
+        matrix(){
+          printLine('wake up, marco...', 'magenta');
+          runMatrixRain(1800);
+        },
+        clear(){
+          output.innerHTML = '';
+        },
+        exit(){
+          close();
+        },
+        'sudo make me a sandwich'(){
+          printLine('[sudo] password for guest: ', 'dim');
+          printLine('Permission denied. <span class="dim">(principio del privilegio minimo — chiedilo per bene.)</span>', 'magenta');
+        },
+      };
+
+      function runMatrixRain(duration){
+        const chars = 'アカサタナ01アイウエオABCDEFGHIJK';
+        const rows = 6;
+        let elapsed = 0;
+        const interval = setInterval(() => {
+          let line = '';
+          for(let i=0;i<48;i++) line += chars[Math.floor(Math.random()*chars.length)];
+          printLine(line, 'magenta');
+          elapsed += 90;
+          if(elapsed >= duration){ clearInterval(interval); printLine('...still building real infrastructure though.', 'dim'); }
+        }, 90);
+      }
+
+      function bootSequence(){
+        output.innerHTML = '';
+        const lines = [
+          ['BELLINGERI-OS v1.0 — CLOUD & SECURITY TERMINAL', 'magenta'],
+          ['boot: checking perimeter defenses... <span class="yellow">OK</span>', null],
+          ['boot: mounting /dev/redis... <span class="yellow">OK</span>', null],
+          ['boot: loading pair-programming daemon... <span class="yellow">OK</span>', null],
+          ['', null],
+          ["digita 'help' per i comandi disponibili.", 'dim'],
+        ];
+        let i = 0;
+        function next(){
+          if(i >= lines.length) return;
+          printLine(lines[i][0], lines[i][1]);
+          i++;
+          setTimeout(next, 140);
+        }
+        next();
+      }
+
+      function open(){
+        overlay.classList.add('open');
+        bootSequence();
+        setTimeout(() => input.focus(), 200);
+      }
+      function close(){
+        overlay.classList.remove('open');
+      }
+      window.openNeonTerminal = open;
+
+      closeBtn.addEventListener('click', close);
+      overlay.addEventListener('click', (e) => { if(e.target === overlay) close(); });
+
+      input.addEventListener('keydown', (e) => {
+        if(e.key === 'Escape'){ close(); return; }
+        if(e.key === 'ArrowUp'){
+          e.preventDefault();
+          if(cmdHistory.length){ historyPos = Math.max(0, historyPos-1); input.value = cmdHistory[historyPos] || ''; }
+          return;
+        }
+        if(e.key === 'ArrowDown'){
+          e.preventDefault();
+          if(cmdHistory.length){ historyPos = Math.min(cmdHistory.length, historyPos+1); input.value = cmdHistory[historyPos] || ''; }
+          return;
+        }
+        if(e.key !== 'Enter') return;
+
+        const raw = input.value;
+        const cmd = raw.trim().toLowerCase();
+        if(cmd.length){ cmdHistory.push(raw); historyPos = cmdHistory.length; }
+        printLine('<span class="magenta">guest@bellingeri:~$</span> ' + (raw || ''));
+        input.value = '';
+
+        if(!cmd){ return; }
+        if(COMMANDS[cmd]){
+          COMMANDS[cmd]();
+        } else {
+          printLine('comando non trovato: ' + cmd + ' <span class="dim">— prova \'help\'</span>', 'magenta');
+        }
+      });
+
+      // Konami code opens the terminal
+      const sequence = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+      let pos = 0;
+      document.addEventListener('keydown', (e) => {
+        if(overlay.classList.contains('open')) return;
+        const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+        if(key === sequence[pos]){
+          pos++;
+          if(pos === sequence.length){ pos = 0; open(); }
+        } else {
+          pos = (key === sequence[0]) ? 1 : 0;
+        }
+      });
+    })();
+
+    // ---- issue archive (fed by /data/issues/, generated monthly via Firecrawl + GitHub Actions) ----
+    (function issueArchive(){
+      const shelf = document.getElementById('archive-shelf');
+      const reader = document.getElementById('issue-reader');
+      const reloadBtn = document.getElementById('archive-reload');
+
+      // Shown only if /data/issues/index.json isn't reachable yet (e.g. opened
+      // locally, or before the GitHub Action has produced a first real issue).
+      const FALLBACK_INDEX = {
+        issues: [
+          { id: 'demo-01', number: 1, title: 'Cloud & Security Watch — Numero Zero', date: '2026-07-01' }
+        ]
+      };
+      const FALLBACK_ISSUE = {
+        id: 'demo-01', number: 1, title: 'Cloud & Security Watch — Numero Zero', date: '2026-07-01',
+        signals: [
+          {
+            category: 'competitor', label: 'Concorrenza',
+            headline: 'Questo è un numero dimostrativo',
+            summary: 'Collega /data/issues/ a una GitHub Action con Firecrawl per popolare questo archivio con segnali reali ogni mese — vedi lo script firecrawl_issue.py.',
+            source_name: 'Setup locale', source_url: ''
+          },
+          {
+            category: 'market', label: 'Mercato del lavoro',
+            headline: 'I numeri reali arriveranno da qui',
+            summary: 'Ogni voce diventerà una card con titolo, sintesi e fonte, generata automaticamente e committata nel repo.',
+            source_name: 'Setup locale', source_url: ''
+          }
+        ]
+      };
+
+      let index = null;
+      let activeId = null;
+
+      function tagClass(cat){
+        if(cat === 'competitor') return 'signal-tag competitor';
+        if(cat === 'market') return 'signal-tag market';
+        return 'signal-tag security';
+      }
+
+      function renderShelf(){
+        shelf.innerHTML = '';
+        index.issues.slice().reverse().forEach(issue => {
+          const spine = document.createElement('div');
+          spine.className = 'issue-spine' + (issue.id === activeId ? ' active' : '');
+          spine.setAttribute('role', 'button');
+          spine.setAttribute('tabindex', '0');
+          const month = new Date(issue.date).toLocaleDateString('it-IT', { month: 'short', year: 'numeric' });
+          spine.setAttribute('aria-label', 'Apri numero ' + issue.number + ', ' + month);
+          spine.innerHTML =
+            '<div class="n">N.' + String(issue.number).padStart(2,'0') + '</div>' +
+            '<div class="m">' + month.toUpperCase() + '</div>';
+          spine.addEventListener('click', () => openIssue(issue.id));
+          spine.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openIssue(issue.id); }
+          });
+          shelf.appendChild(spine);
+        });
+      }
+
+      function renderReader(issue){
+        const dateStr = new Date(issue.date).toLocaleDateString('it-IT', { day:'numeric', month:'long', year:'numeric' });
+        let html = '<div class="issue-reader-head"><h3 class="display">' + issue.title + '</h3>' +
+                    '<span class="date mono">' + dateStr + '</span></div>';
+        issue.signals.forEach(s => {
+          html += '<div class="signal-card">' +
+                  '<span class="' + tagClass(s.category) + '">' + s.label + '</span>' +
+                  '<h4>' + s.headline + '</h4>' +
+                  '<p>' + s.summary + '</p>' +
+                  (s.source_url ? '<a href="' + s.source_url + '" target="_blank" rel="noopener">' + (s.source_name || 'Fonte') + ' ↗</a>' : '') +
+                  '</div>';
+        });
+        reader.innerHTML = html;
+      }
+
+      async function openIssue(id){
+        activeId = id;
+        renderShelf();
+        reader.innerHTML = '<p class="archive-status">caricamento numero ' + id + '…</p>';
+        try{
+          const res = await fetch('data/issues/' + id + '.json', { cache: 'no-store' });
+          if(!res.ok) throw new Error('not found');
+          const issue = await res.json();
+          renderReader(issue);
+        }catch(e){
+          renderReader(FALLBACK_ISSUE);
+        }
+      }
+
+      async function loadIndex(forceReload){
+        shelf.innerHTML = '<p class="archive-status">' + (forceReload ? 'ricarico…' : 'caricamento numeri arretrati…') + '</p>';
+        try{
+          const res = await fetch('data/issues/index.json', { cache: forceReload ? 'no-store' : 'default' });
+          if(!res.ok) throw new Error('not found');
+          index = await res.json();
+          if(!index.issues || index.issues.length === 0) throw new Error('empty');
+        }catch(e){
+          index = FALLBACK_INDEX;
+        }
+        activeId = index.issues[index.issues.length - 1].id;
+        renderShelf();
+        openIssue(activeId);
+      }
+
+      reloadBtn.addEventListener('click', () => loadIndex(true));
+      loadIndex(false);
+    })();
+    // ---- booking placeholder guard ----
+    (function bookingGuard(){
+      const widget = document.querySelector('.calendly-inline-widget');
+      const placeholder = document.getElementById('booking-placeholder');
+      if(widget && widget.dataset.url && widget.dataset.url.includes('TUO-LINK-QUI')){
+        widget.style.display = 'none';
+      } else if(placeholder){
+        placeholder.style.display = 'none';
+      }
+    })();
+    // ---- case archive (Field Notes) — un caso al mese, schema fisso ----
+    (function caseArchive(){
+      const container = document.getElementById('case-archive');
+
+      const FALLBACK_CASES = [
+        {
+          id: '2026-07',
+          month: 'Luglio 2026',
+          title: 'Refactor Redis — Fairfield (debt collection)',
+          stat: 41, statSuffix: '×',
+          problem: 'La query critica del sistema era lenta sotto carico: la cache Redis veniva invalidata molto più spesso di quanto servisse davvero, vanificando gran parte del beneficio del caching.',
+          approach: 'Analisi dei pattern di invalidazione reali, non presunti. Refactor completo della strategia di caching, proposto ed eseguito in autonomia, senza fermare il sistema che il team usava ogni giorno.',
+          result: 'Throughput della query critica portato a 41 volte il valore di partenza, zero downtime durante il rollout.',
+          lesson: 'Il bug più costoso è spesso il più noioso: nessuna invalidazione era "sbagliata" singolarmente, il problema era la disciplina complessiva nella gestione della cache.'
+        }
+      ];
+
+      function renderCases(cases){
+        container.innerHTML = '';
+        cases.forEach((c, i) => {
+          const card = document.createElement('div');
+          card.className = 'case-card';
+          const statId = 'case-stat-' + i;
+          card.innerHTML =
+            '<div class="case-stat-col">' +
+              (c.stat != null ? '<div class="big-stat display" id="' + statId + '" data-target="' + c.stat + '" data-suffix="' + (c.statSuffix || '') + '">0' + (c.statSuffix || '') + '</div>' : '') +
+              '<span class="cred mono">CASO STUDIO — ' + c.month.toUpperCase() + '</span>' +
+            '</div>' +
+            '<div>' +
+              '<h3 class="case-title">' + c.title + '</h3>' +
+              '<div class="case-block"><span class="label mono">PROBLEMA</span><p>' + c.problem + '</p></div>' +
+              '<div class="case-block"><span class="label mono">APPROCCIO</span><p>' + c.approach + '</p></div>' +
+              '<div class="case-block"><span class="label mono">RISULTATO</span><p>' + c.result + '</p></div>' +
+              '<div class="case-block"><span class="label mono">LEZIONE APPRESA</span><p>' + c.lesson + '</p></div>' +
+            '</div>';
+          container.appendChild(card);
+          if(c.stat != null){
+            const el = document.getElementById(statId);
+            if(el && window.animateCountUp) window.animateCountUp(el);
+          }
+        });
+      }
+
+      fetch('data/cases.json', { cache: 'no-store' })
+        .then(res => { if(!res.ok) throw new Error('not found'); return res.json(); })
+        .then(data => {
+          if(!data.cases || data.cases.length === 0) throw new Error('empty');
+          renderCases(data.cases.slice().reverse());
+        })
+        .catch(() => renderCases(FALLBACK_CASES.slice().reverse()));
+    })();
+    // ---- press loader: brief, then out of the way (solo alla prima visita di sessione) ----
+    (function pressLoader(){
+      const loader = document.getElementById('press-loader');
+      if(!loader) return;
+      let seen = false;
+      try{ seen = sessionStorage.getItem('bellingeri-loader-seen') === '1'; }catch(e){}
+      if(seen){
+        loader.classList.add('hidden');
+        loader.style.display = 'none';
+        return;
+      }
+      const hide = () => {
+        loader.classList.add('hidden');
+        try{ sessionStorage.setItem('bellingeri-loader-seen', '1'); }catch(e){}
+      };
+      setTimeout(hide, 780);
+    })();
+    // ---- project case-study accordions ----
+    (function reviewAccordions(){
+      document.querySelectorAll('.review-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const detail = document.getElementById(btn.dataset.target);
+          const isOpen = detail.classList.contains('open');
+          detail.classList.toggle('open', !isOpen);
+          btn.classList.toggle('open', !isOpen);
+          btn.querySelector('.review-chevron').textContent = isOpen ? 'DETTAGLI ＋' : 'CHIUDI －';
+        });
+      });
+    })();
+    // ---- scroll-spy: evidenzia la sezione attiva nel sommario ----
+    (function scrollSpy(){
+      const links = Array.from(document.querySelectorAll('#toc-nav a'));
+      if(!links.length) return;
+      const sections = links
+        .map(a => document.getElementById(a.dataset.section))
+        .filter(Boolean);
+
+      const spyIo = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const link = document.querySelector('#toc-nav a[data-section="' + entry.target.id + '"]');
+          if(!link) return;
+          if(entry.isIntersecting){
+            links.forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+            // tiene la voce attiva visibile nella striscia scorrevole, senza scrollare la pagina
+            const nav = document.getElementById('toc-nav');
+            const linkLeft = link.offsetLeft;
+            const linkRight = linkLeft + link.offsetWidth;
+            if(linkLeft < nav.scrollLeft || linkRight > nav.scrollLeft + nav.clientWidth){
+              nav.scrollTo({ left: linkLeft - 20, behavior: 'smooth' });
+            }
+          }
+        });
+      }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+
+      sections.forEach(s => spyIo.observe(s));
+    })();
+  </script>
+
+  <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
+
+</body>
+</html>

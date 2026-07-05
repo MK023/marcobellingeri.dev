@@ -1,0 +1,116 @@
+<div class="cmdk-overlay" id="cmdk-overlay">
+  <div class="cmdk-box">
+    <input
+      class="cmdk-input mono"
+      id="cmdk-input"
+      type="text"
+      placeholder="Digita un comando o una sezione…"
+      autocomplete="off"
+      role="combobox"
+      aria-expanded="true"
+      aria-controls="cmdk-list"
+      aria-autocomplete="list"
+      aria-label="Cerca un comando"
+    />
+    <div class="cmdk-list mono" id="cmdk-list" role="listbox"></div>
+    <div class="cmdk-hint">
+      <span>↑↓ NAVIGA · ENTER APRI</span>
+      <span>ESC CHIUDI</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  declare global {
+    interface Window { openNeonTerminal?: () => void; }
+  }
+
+  type Command = { label: string; hint: string; action: () => void };
+
+  (function commandPalette() {
+    const overlay = document.getElementById('cmdk-overlay');
+    const input = document.getElementById('cmdk-input') as HTMLInputElement | null;
+    const list = document.getElementById('cmdk-list');
+    const trigger = document.getElementById('cmdk-trigger');
+    if (!overlay || !input || !list || !trigger) return;
+
+    function scrollToId(id: string) {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+      close();
+    }
+
+    const commands: Command[] = [
+      { label: 'Vai a — Dossier', hint: '01', action: () => scrollToId('dossier') },
+      { label: 'Vai a — Percorso', hint: '02', action: () => scrollToId('percorso') },
+      { label: 'Vai a — Stack', hint: '03', action: () => scrollToId('stack') },
+      { label: 'Vai a — Field Notes', hint: '04', action: () => scrollToId('field-notes') },
+      { label: 'Vai a — Progetti', hint: '05', action: () => scrollToId('projects') },
+      { label: 'Vai a — Archivio', hint: '06', action: () => scrollToId('archive') },
+      { label: 'Vai a — Appuntamenti', hint: '07', action: () => scrollToId('booking') },
+      { label: 'Vai a — Contatti', hint: '08', action: () => scrollToId('contact') },
+      { label: 'Apri GitHub — MK023', hint: '↗', action: () => window.open('https://github.com/MK023', '_blank') },
+      { label: 'Copia indirizzo email', hint: '⧉', action: () => (document.getElementById('copy-email-btn') as HTMLButtonElement | null)?.click() },
+      { label: 'Stampa / Salva PDF', hint: '⎙', action: () => window.print() },
+      { label: 'Apri terminale segreto', hint: '⌨', action: () => window.openNeonTerminal && window.openNeonTerminal() },
+    ];
+
+    let filtered = commands;
+    let activeIndex = 0;
+
+    function render() {
+      if (!list) return;
+      list.innerHTML = '';
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="cmdk-empty">Nessun comando trovato.</div>';
+        return;
+      }
+      filtered.forEach((cmd, i) => {
+        const item = document.createElement('div');
+        item.className = 'cmdk-item' + (i === activeIndex ? ' active' : '');
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', i === activeIndex ? 'true' : 'false');
+        item.innerHTML = '<span>' + cmd.label + '</span><span class="k">' + cmd.hint + '</span>';
+        item.addEventListener('mouseenter', () => { activeIndex = i; render(); });
+        item.addEventListener('click', () => cmd.action());
+        list.appendChild(item);
+      });
+    }
+
+    function open() {
+      overlay!.classList.add('open');
+      input!.value = '';
+      filtered = commands;
+      activeIndex = 0;
+      render();
+      setTimeout(() => input!.focus(), 30);
+    }
+    function close() {
+      overlay!.classList.remove('open');
+    }
+
+    trigger.addEventListener('click', open);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    input.addEventListener('input', () => {
+      const q = input.value.toLowerCase();
+      filtered = commands.filter((c) => c.label.toLowerCase().includes(q));
+      activeIndex = 0;
+      render();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); activeIndex = Math.min(activeIndex + 1, filtered.length - 1); render(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); activeIndex = Math.max(activeIndex - 1, 0); render(); }
+      if (e.key === 'Enter') { e.preventDefault(); if (filtered[activeIndex]) filtered[activeIndex].action(); }
+      if (e.key === 'Escape') { close(); }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        overlay!.classList.contains('open') ? close() : open();
+      }
+      if (e.key === 'Escape' && overlay!.classList.contains('open')) close();
+    });
+  })();
+</script>

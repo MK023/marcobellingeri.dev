@@ -1,0 +1,108 @@
+---
+type Project = {
+  id: string;
+  name: string;
+  status: 'shipped' | 'active' | 'rnd';
+  statusLabel: string;
+  swatchClass: 'p-orange' | 'p-violet' | 'p-dark';
+  summary: string;
+  problem: string;
+  approach: string;
+  result: string;
+};
+
+// Nuovo progetto? Aggiungi un oggetto qui — il markup si genera da solo.
+const projects: Project[] = [
+  {
+    id: 'case-jobsearch',
+    name: 'JobSearch',
+    status: 'shipped',
+    statusLabel: 'VALIDATO',
+    swatchClass: 'p-orange',
+    summary:
+      "Estrae annunci LinkedIn reali, li scompone per competenze richieste per macro-categoria e li confronta onestamente con le skill effettive del candidato. Validato su se stesso: più colloqui in quattro mesi che in tutta la carriera precedente.",
+    problem:
+      'Le candidature andavano a caso: stesso CV per annunci molto diversi, nessun modo onesto di sapere quali competenze mancassero davvero rispetto a un ruolo specifico.',
+    approach:
+      'Scraping di annunci LinkedIn reali, estrazione delle competenze richieste per macro-categoria, confronto diretto e onesto con le skill effettive — nessun abbellimento, nemmeno su se stesso.',
+    result:
+      'Più colloqui in quattro mesi che in tutta la carriera precedente. Il metodo si è generalizzato: funziona su qualunque CV, non solo sul mio.',
+  },
+  {
+    id: 'case-vitalsigns',
+    name: 'vital-signs',
+    status: 'active',
+    statusLabel: 'ATTIVO',
+    swatchClass: 'p-violet',
+    summary:
+      "Tool di audit di sicurezza per l'intero stack, dall'AI al sistema operativo. Nato da una scoperta concreta: un token esposto in un file JSON leggibile da chiunque.",
+    problem:
+      'Un token trovato per caso in un file JSON world-readable — nessuno lo aveva notato perché nessuno lo stava cercando sistematicamente.',
+    approach:
+      "Costruito un tool che ispeziona l'intero stack AI-to-OS in modo ripetibile, non un controllo una tantum fatto a occhio.",
+    result:
+      'Uso attivo e continuo, non un esperimento archiviato — cresce ogni volta che trovo una nuova categoria di rischio da controllare.',
+  },
+  {
+    id: 'case-atlas',
+    name: 'Atlas',
+    status: 'rnd',
+    statusLabel: 'R&D',
+    swatchClass: 'p-dark',
+    summary:
+      "Knowledge graph personale costruito su Obsidian, con un'ambizione più filosofica che tecnica: mappare memoria e identità. Esplorato anche come possibile SaaS verticale con RAG.",
+    problem:
+      'Le note sparse non si parlavano tra loro: idee, letture, progetti finivano isolati invece di connettersi.',
+    approach:
+      'Un grafo di conoscenza personale su Obsidian, pensato non solo come archivio ma come domanda aperta su come memoria e identità si costruiscono nel tempo.',
+    result:
+      "Deprioritizzato come prodotto rispetto a JobSearch, ma resta lo strumento di pensiero più usato — e l'idea di una versione SaaS con RAG resta sul tavolo.",
+  },
+];
+---
+
+<section id="projects" class="reveal">
+  <div class="section-head">
+    <span class="num mono">05</span>
+    <h2 class="display">Progetti</h2>
+  </div>
+  <div class="reviews reveal-stagger">
+    {projects.map((p) => (
+      <div class="review">
+        <div class={`review-preview ${p.swatchClass}`} aria-hidden="true">
+          <span class="swatch-label mono">{p.name.toUpperCase()}</span>
+        </div>
+        <button class="review-toggle" data-target={p.id}>
+          <div>
+            <h3>{p.name}</h3>
+            <span class={`status ${p.status} mono`}>{p.statusLabel}</span>
+          </div>
+          <span class="review-chevron mono">DETTAGLI ＋</span>
+        </button>
+        <p>{p.summary}</p>
+        <div class="review-detail" id={p.id}>
+          <div class="case-block"><span class="label mono">PROBLEMA</span><p>{p.problem}</p></div>
+          <div class="case-block"><span class="label mono">APPROCCIO</span><p>{p.approach}</p></div>
+          <div class="case-block"><span class="label mono">RISULTATO</span><p>{p.result}</p></div>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>
+
+<script>
+  // ---- project case-study accordions ----
+  document.querySelectorAll<HTMLButtonElement>('.review-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      if (!targetId) return;
+      const detail = document.getElementById(targetId);
+      if (!detail) return;
+      const isOpen = detail.classList.contains('open');
+      detail.classList.toggle('open', !isOpen);
+      btn.classList.toggle('open', !isOpen);
+      const chevron = btn.querySelector('.review-chevron');
+      if (chevron) chevron.textContent = isOpen ? 'DETTAGLI ＋' : 'CHIUDI －';
+    });
+  });
+</script>

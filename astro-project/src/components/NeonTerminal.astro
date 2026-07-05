@@ -1,0 +1,200 @@
+<div class="neon-terminal-overlay" id="neon-terminal">
+  <div class="crt-screen">
+    <div class="scanlines"></div>
+    <div class="crt-flicker"></div>
+    <button class="neon-close" id="neon-close" aria-label="Chiudi terminale">✕</button>
+    <div class="crt-output" id="crt-output"></div>
+    <div class="crt-inputline">
+      <span class="crt-prompt">guest@bellingeri:~$</span>
+      <input class="crt-input" id="crt-input" type="text" autocomplete="off" spellcheck="false" aria-label="Terminale interattivo" />
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- neon CRT terminal + konami trigger ----
+  declare global {
+    interface Window { openNeonTerminal?: () => void; }
+  }
+
+  (function neonTerminal() {
+    const overlay = document.getElementById('neon-terminal');
+    const output = document.getElementById('crt-output');
+    const input = document.getElementById('crt-input') as HTMLInputElement | null;
+    const closeBtn = document.getElementById('neon-close');
+    if (!overlay || !output || !input || !closeBtn) return;
+
+    let cmdHistory: string[] = [];
+    let historyPos = -1;
+
+    function printLine(html: string, cls?: string | null) {
+      const div = document.createElement('div');
+      div.className = 'line' + (cls ? ' ' + cls : '');
+      div.innerHTML = html;
+      output!.appendChild(div);
+      output!.scrollTop = output!.scrollHeight;
+    }
+
+    const REDIS_LOG = [
+      '# contesto: sistema di debt collection, layer di cache sotto carico',
+      '- throughput query critica: baseline',
+      '+ throughput query critica: <span class="yellow">41×</span> baseline',
+      '# intervento: refactor completo del layer Redis',
+      '# proposto ed eseguito in autonomia, zero downtime',
+    ];
+
+    const COMMANDS: Record<string, () => void> = {
+      help() {
+        printLine('Comandi disponibili:', 'magenta');
+        (
+          [
+            ['whoami', 'chi sono'],
+            ['ls', 'elenca le sezioni nascoste'],
+            ['cat redis.log', 'il log del refactor 41×'],
+            ['cat classified.txt', 'dossier riservato — declassificato'],
+            ['projects', 'i progetti attivi'],
+            ['contact', 'come contattarmi'],
+            ['neon', 'più neon. sempre più neon.'],
+            ['matrix', 'per i nostalgici'],
+            ['clear', 'pulisci lo schermo'],
+            ['exit', "chiudi il terminale (o ESC)"],
+          ] as [string, string][]
+        ).forEach(([c, d]) => printLine('  <span class="yellow">' + c.padEnd(18) + '</span>' + d));
+      },
+      whoami() {
+        printLine('marco bellingeri — cloud platform &amp; security engineer');
+        printLine('<span class="dim">freelance · casale monferrato, it · github.com/MK023</span>');
+      },
+      ls() {
+        printLine('dossier/  percorso/  stack/  field-notes/  projects/  archive/  contact/');
+      },
+      'cat redis.log'() {
+        REDIS_LOG.forEach((l) => printLine(l));
+      },
+      'cat classified.txt'() {
+        printLine('DECLASSIFICATO — accesso concesso.', 'magenta');
+        printLine('&gt; calibro principale: Pilot Custom 845 Urushi rosso, pennino 18kt medio, Iroshizuku Kon-peki.');
+        printLine('&gt; Valorant: Sentinel main, Killjoy/Cypher — difendi il perimetro, sempre.');
+        printLine('&gt; il refactor 41× è nato scoprendo una cache invalidata troppo spesso. il bug più costoso è spesso il più noioso.');
+        printLine('&gt; ascolto: Sennheiser Momentum 4, lossless, modalità emotiva anche in debug.');
+      },
+      projects() {
+        printLine('<span class="yellow">jobsearch</span>      — scraping LinkedIn + cross-check onesto delle skill');
+        printLine('<span class="yellow">vital-signs</span>    — audit di sicurezza stack AI-to-OS');
+        printLine('<span class="yellow">atlas</span>          — knowledge graph personale su Obsidian');
+      },
+      contact() {
+        printLine('email:   <a href="mailto:marco.bellingeri@gmail.com" style="color:#0ff;">marco.bellingeri@gmail.com</a>');
+        printLine('github:  <a href="https://github.com/MK023" target="_blank" rel="noopener" style="color:#0ff;">github.com/MK023</a>');
+      },
+      neon() {
+        document.documentElement.style.setProperty('filter', 'saturate(1.6)');
+        printLine('saturazione neon: massima. (ricarica la pagina per tornare normale)', 'magenta');
+      },
+      matrix() {
+        printLine('wake up, marco...', 'magenta');
+        runMatrixRain(1800);
+      },
+      clear() {
+        output!.innerHTML = '';
+      },
+      exit() {
+        close();
+      },
+      'sudo make me a sandwich'() {
+        printLine('[sudo] password for guest: ', 'dim');
+        printLine("Permission denied. <span class=\"dim\">(principio del privilegio minimo — chiedilo per bene.)</span>", 'magenta');
+      },
+    };
+
+    function runMatrixRain(duration: number) {
+      const chars = 'アカサタナ01アイウエオABCDEFGHIJK';
+      let elapsed = 0;
+      const interval = setInterval(() => {
+        let line = '';
+        for (let i = 0; i < 48; i++) line += chars[Math.floor(Math.random() * chars.length)];
+        printLine(line, 'magenta');
+        elapsed += 90;
+        if (elapsed >= duration) {
+          clearInterval(interval);
+          printLine('...still building real infrastructure though.', 'dim');
+        }
+      }, 90);
+    }
+
+    function bootSequence() {
+      output!.innerHTML = '';
+      const lines: [string, string | null][] = [
+        ['BELLINGERI-OS v1.0 — CLOUD & SECURITY TERMINAL', 'magenta'],
+        ['boot: checking perimeter defenses... <span class="yellow">OK</span>', null],
+        ['boot: mounting /dev/redis... <span class="yellow">OK</span>', null],
+        ['boot: loading pair-programming daemon... <span class="yellow">OK</span>', null],
+        ['', null],
+        ["digita 'help' per i comandi disponibili.", 'dim'],
+      ];
+      let i = 0;
+      function next() {
+        if (i >= lines.length) return;
+        printLine(lines[i][0], lines[i][1]);
+        i++;
+        setTimeout(next, 140);
+      }
+      next();
+    }
+
+    function open() {
+      overlay!.classList.add('open');
+      bootSequence();
+      setTimeout(() => input!.focus(), 200);
+    }
+    function close() {
+      overlay!.classList.remove('open');
+    }
+    window.openNeonTerminal = open;
+
+    closeBtn.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (cmdHistory.length) { historyPos = Math.max(0, historyPos - 1); input!.value = cmdHistory[historyPos] || ''; }
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (cmdHistory.length) { historyPos = Math.min(cmdHistory.length, historyPos + 1); input!.value = cmdHistory[historyPos] || ''; }
+        return;
+      }
+      if (e.key !== 'Enter') return;
+
+      const raw = input!.value;
+      const cmd = raw.trim().toLowerCase();
+      if (cmd.length) { cmdHistory.push(raw); historyPos = cmdHistory.length; }
+      printLine('<span class="magenta">guest@bellingeri:~$</span> ' + (raw || ''));
+      input!.value = '';
+
+      if (!cmd) return;
+      if (COMMANDS[cmd]) {
+        COMMANDS[cmd]();
+      } else {
+        printLine("comando non trovato: " + cmd + " <span class=\"dim\">— prova 'help'</span>", 'magenta');
+      }
+    });
+
+    // Konami code apre il terminale
+    const sequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    let pos = 0;
+    document.addEventListener('keydown', (e) => {
+      if (overlay!.classList.contains('open')) return;
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (key === sequence[pos]) {
+        pos++;
+        if (pos === sequence.length) { pos = 0; open(); }
+      } else {
+        pos = key === sequence[0] ? 1 : 0;
+      }
+    });
+  })();
+</script>

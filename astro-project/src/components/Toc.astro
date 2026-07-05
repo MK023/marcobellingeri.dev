@@ -1,0 +1,48 @@
+<nav class="toc mono" id="toc-nav">
+  <a href="#dossier" data-section="dossier"><span class="num">01</span> DOSSIER</a>
+  <a href="#percorso" data-section="percorso"><span class="num">02</span> PERCORSO</a>
+  <a href="#stack" data-section="stack"><span class="num">03</span> STACK</a>
+  <a href="#field-notes" data-section="field-notes"><span class="num">04</span> FIELD NOTES</a>
+  <a href="#projects" data-section="projects"><span class="num">05</span> PROGETTI</a>
+  <a href="#archive" data-section="archive"><span class="num">06</span> ARCHIVIO</a>
+  <a href="#booking" data-section="booking"><span class="num">07</span> APPUNTAMENTI</a>
+  <a href="#contact" data-section="contact"><span class="num">08</span> CONTATTI</a>
+</nav>
+<p class="toc-hint mono">← scorri per vedere tutte le sezioni →</p>
+
+<script>
+  // ---- scroll-spy: evidenzia la sezione attiva nel sommario ----
+  (function scrollSpy() {
+    const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('#toc-nav a'));
+    if (!links.length) return;
+    const sections = links
+      .map((a) => document.getElementById(a.dataset.section || ''))
+      .filter((el): el is HTMLElement => Boolean(el));
+
+    const spyIo = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const link = document.querySelector<HTMLAnchorElement>(
+            '#toc-nav a[data-section="' + entry.target.id + '"]'
+          );
+          if (!link) return;
+          if (entry.isIntersecting) {
+            links.forEach((l) => l.classList.remove('active'));
+            link.classList.add('active');
+            // tiene la voce attiva visibile nella striscia scorrevole, senza scrollare la pagina
+            const nav = document.getElementById('toc-nav');
+            if (!nav) return;
+            const linkLeft = link.offsetLeft;
+            const linkRight = linkLeft + link.offsetWidth;
+            if (linkLeft < nav.scrollLeft || linkRight > nav.scrollLeft + nav.clientWidth) {
+              nav.scrollTo({ left: linkLeft - 20, behavior: 'smooth' });
+            }
+          }
+        });
+      },
+      { rootMargin: '-45% 0px -50% 0px', threshold: 0 }
+    );
+
+    sections.forEach((s) => spyIo.observe(s));
+  })();
+</script>

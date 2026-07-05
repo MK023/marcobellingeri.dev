@@ -1,0 +1,44 @@
+<div class="utility-bar mono">
+  <span>VOL. 01 — NO. 07</span>
+  <span>CASALE MONFERRATO, IT · <span id="live-clock">--:--:--</span></span>
+  <div class="utility-actions">
+    <span class="util-btn" id="edition-indicator" style="cursor:default;">☀ DAY EDITION</span>
+    <button class="util-btn" id="cmdk-trigger" title="Apri comandi">⌘K COMANDI</button>
+    <button class="util-btn" id="print-btn" title="Stampa o salva PDF">STAMPA / PDF</button>
+  </div>
+</div>
+
+<script>
+  // ---- live clock (Europe/Rome) ----
+  const clockEl = document.getElementById('live-clock');
+  function tickClock() {
+    if (!clockEl) return;
+    clockEl.textContent = new Date().toLocaleTimeString('it-IT', {
+      timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // ---- print / save as PDF ----
+  document.getElementById('print-btn')?.addEventListener('click', () => window.print());
+
+  // ---- day / night edition — automatica, in base all'ora reale del visitatore ----
+  const editionIndicator = document.getElementById('edition-indicator');
+  function setMode(mode: 'day' | 'night') {
+    if (mode === 'night') {
+      document.documentElement.setAttribute('data-mode', 'night');
+      if (editionIndicator) editionIndicator.textContent = '☾ NIGHT EDITION';
+    } else {
+      document.documentElement.removeAttribute('data-mode');
+      if (editionIndicator) editionIndicator.textContent = '☀ DAY EDITION';
+    }
+  }
+  function autoMode(): 'day' | 'night' {
+    const hourStr = new Date().toLocaleString('en-US', { timeZone: 'Europe/Rome', hour: '2-digit', hour12: false });
+    const h = parseInt(hourStr, 10);
+    return h >= 7 && h < 20 ? 'day' : 'night';
+  }
+  setMode(autoMode());
+  setInterval(() => setMode(autoMode()), 60000);
+</script>

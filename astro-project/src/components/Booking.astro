@@ -1,0 +1,38 @@
+---
+// Cambia qui quando aggiorni il link Calendly — un solo posto da toccare.
+const CALENDLY_URL = 'https://calendly.com/marco-bellingeri/30min';
+---
+
+<section id="booking" class="reveal">
+  <div class="section-head">
+    <span class="num mono">07</span>
+    <h2 class="display">Appuntamenti</h2>
+  </div>
+  <p class="booking-note">
+    Slot liberi, fuso orario gestito in automatico, conferma via email —
+    niente scambi di messaggi per trovare un orario. Ogni prenotazione
+    confermata finisce anche in un log privato, così non si perde nulla.
+  </p>
+  <div class="booking-frame">
+    <div class="calendly-inline-widget" data-url={CALENDLY_URL} style="min-width:300px; height:630px;"></div>
+    <div class="booking-placeholder" id="booking-placeholder">
+      <p class="mono" style="font-size:12px; letter-spacing:0.06em; opacity:0.75; margin-bottom:8px;">IN CONFIGURAZIONE</p>
+      <p>Qui apparirà il calendario prenotazioni non appena colleghi il tuo link Calendly reale al posto del placeholder nel codice.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+  // ---- booking placeholder guard ----
+  (function bookingGuard() {
+    const widget = document.querySelector<HTMLElement>('.calendly-inline-widget');
+    const placeholder = document.getElementById('booking-placeholder');
+    if (widget && widget.dataset.url && widget.dataset.url.includes('TUO-LINK-QUI')) {
+      widget.style.display = 'none';
+    } else if (placeholder) {
+      placeholder.style.display = 'none';
+    }
+  })();
+</script>
+
+<script src="https://assets.calendly.com/assets/external/widget.js" async></script>

@@ -1,0 +1,53 @@
+<footer id="contact" class="reveal">
+  <div class="colophon">
+    <div>
+      <h3>Contatti</h3>
+      <a href="mailto:marco.bellingeri@gmail.com">marco.bellingeri@gmail.com</a>
+      <button class="util-btn" id="copy-email-btn" style="margin-left:8px;">COPIA</button><br />
+      Casale Monferrato, Alessandria, IT
+    </div>
+    <div>
+      <h3>Online</h3>
+      <a href="https://github.com/MK023" target="_blank" rel="noopener">github.com/MK023</a><br />
+      <a href="#" target="_blank" rel="noopener">linkedin.com/in/ — da completare</a>
+    </div>
+    <div>
+      <h3>Colophon</h3>
+      Impaginato in Anton, Source Serif 4, JetBrains Mono.<br />
+      Stampato digitalmente, ovunque tu sia.
+      <div class="ai-seal" title="Sviluppato in pair programming con Claude Code">
+        <svg viewBox="0 0 100 100">
+          <path id="badgeCirclePath" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" fill="none"></path>
+          <text class="ring-text">
+            <textPath href="#badgeCirclePath" startOffset="0%">
+              COSTRUITO CON CLAUDE CODE • PAIR PROGRAMMING, NON PROMPT-E-VAI •
+            </textPath>
+          </text>
+        </svg>
+        <div class="ai-seal-core">✳</div>
+      </div>
+    </div>
+  </div>
+  <p class="fine-print">© Marco Bellingeri — Cloud &amp; Security Edition. Tutti i diritti, nessun bug in produzione (si spera).</p>
+</footer>
+
+<script>
+  // ---- copy email ----
+  const copyBtn = document.getElementById('copy-email-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText('marco.bellingeri@gmail.com');
+        const original = copyBtn.textContent;
+        copyBtn.textContent = 'COPIATO ✓';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.textContent = original;
+          copyBtn.classList.remove('copied');
+        }, 1800);
+      } catch (e) {
+        copyBtn.textContent = 'ERRORE';
+      }
+    });
+  }
+</script>

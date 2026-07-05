@@ -1,0 +1,115 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Bellingeri — Cloud & Security Edition',
+  description = "Marco Bellingeri — Cloud Platform & Security Engineer freelance. DevOps, Cloud e Security con un approccio hands-on: pair programming, case study reali, automazione. Casale Monferrato, IT.",
+} = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#FAFAF7" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="website" />
+
+  <!--
+    Rilevamento giorno/notte eseguito PRIMA del primo paint, per evitare
+    qualunque lampo di colore sbagliato al caricamento (vedi commit precedenti:
+    questo bug esisteva ed è stato risolto spostando la logica qui).
+  -->
+  <script is:inline>
+    (function () {
+      try {
+        var h = parseInt(
+          new Date().toLocaleString('en-US', { timeZone: 'Europe/Rome', hour: '2-digit', hour12: false }),
+          10
+        );
+        if (!(h >= 7 && h < 20)) {
+          document.documentElement.setAttribute('data-mode', 'night');
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Anton&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Salta al contenuto</a>
+
+  <div class="press-loader" id="press-loader">
+    <div class="press-loader-inner">
+      <div class="page-flip">
+        <div class="book">
+          <div class="leaf leaf-left">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="right-stack">
+            <div class="leaf leaf-back">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="leaf leaf-front">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="press-line mono">SFOGLIANDO…</span>
+    </div>
+  </div>
+
+  <slot />
+
+  <script>
+    // Loader: solo alla prima visita di sessione
+    const loader = document.getElementById('press-loader');
+    if (loader) {
+      let seen = false;
+      try { seen = sessionStorage.getItem('bellingeri-loader-seen') === '1'; } catch (e) {}
+      if (seen) {
+        loader.classList.add('hidden');
+        loader.style.display = 'none';
+      } else {
+        setTimeout(() => {
+          loader.classList.add('hidden');
+          try { sessionStorage.setItem('bellingeri-loader-seen', '1'); } catch (e) {}
+        }, 780);
+      }
+    }
+  </script>
+  <script>
+    // Scroll-reveal per sezioni e gruppi in staggered — globale, si applica
+    // a qualunque elemento .reveal / .reveal-stagger in qualsiasi componente.
+    const revealEls = document.querySelectorAll('.reveal, .reveal-stagger');
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.01, rootMargin: '0px 0px -20px 0px' }
+    );
+    revealEls.forEach((el) => io.observe(el));
+  </script>
+</body>
+</html>
