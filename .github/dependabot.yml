@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # dipendenze npm del progetto Astro
+  - package-ecosystem: "npm"
+    directory: "/astro-project"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+
+  # pin/aggiornamento delle GitHub Actions usate nei workflow
+  - package-ecosystem: "github-actions"
+    directory: "/astro-project"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(ci)"
