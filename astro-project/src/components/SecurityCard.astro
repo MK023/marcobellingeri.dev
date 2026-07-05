@@ -1,0 +1,74 @@
+---
+import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+const t = useTranslations(lang);
+
+// Header attesi = quelli serviti da public/_headers. La card li rilegge LIVE
+// dalla risposta della pagina stessa (auto-referenziale): il sito dimostra
+// ciò che predica.
+const expected = [
+  'Content-Security-Policy',
+  'Strict-Transport-Security',
+  'X-Content-Type-Options',
+  'Referrer-Policy',
+  'Permissions-Policy',
+];
+---
+
+<section id="security" class="reveal">
+  <div class="live-stack">
+    <div class="live-stack-head">
+      <h3 class="mono">{t('sec.cmd')}</h3>
+      <span class="src mono">{t('sec.source')}</span>
+    </div>
+    <div
+      id="sec-headers"
+      data-expected={expected.join(',')}
+      data-present={t('sec.present')}
+      data-missing={t('sec.missing')}
+    >
+      <p class="live-stack-status mono" id="sec-status">{t('sec.loading')}</p>
+    </div>
+    <p class="sec-note mono">{t('sec.note')}</p>
+  </div>
+</section>
+
+<script>
+  // Legge live gli header di sicurezza dalla risposta della pagina (same-origin:
+  // gli header sono leggibili). DOM costruito con textContent → nessun innerHTML.
+  (function loadSecurityHeaders() {
+    const box = document.getElementById('sec-headers');
+    const status = document.getElementById('sec-status');
+    if (!box) return;
+    const expected = (box.dataset.expected || '').split(',').filter(Boolean);
+    const okLabel = box.dataset.present || 'ON';
+    const missLabel = box.dataset.missing || '—';
+
+    const cell = (cls: string, text: string) => {
+      const el = document.createElement('span');
+      el.className = cls;
+      el.textContent = text;
+      return el;
+    };
+
+    fetch(window.location.href, { method: 'HEAD' })
+      .then((res) => {
+        box.replaceChildren();
+        expected.forEach((name) => {
+          const val = res.headers.get(name);
+          const row = document.createElement('div');
+          row.className = 'sec-row' + (val ? '' : ' is-missing');
+          row.append(
+            cell('sec-name', name),
+            cell('sec-flag', val ? okLabel : missLabel),
+            cell('sec-val', val || ''),
+          );
+          box.appendChild(row);
+        });
+      })
+      .catch(() => {
+        if (status) status.textContent = missLabel;
+      });
+  })();
+</script>

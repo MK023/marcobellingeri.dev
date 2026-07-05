@@ -368,6 +368,29 @@
     font-family:'JetBrains Mono', monospace; font-size:12px; opacity:0.7;
   }
   #lang-bars{ min-height:130px; }
+
+  /* security card (C3) — righe create via JS, quindi stili GLOBALI (come lang-bar) */
+  #sec-headers{ min-height:150px; }
+  .sec-row{
+    display:grid; grid-template-columns:minmax(170px,240px) 48px 1fr;
+    align-items:baseline; gap:12px; margin-bottom:10px; padding-bottom:8px;
+    border-bottom:1px solid var(--halftone);
+    font-family:'JetBrains Mono', monospace; font-size:12px;
+  }
+  .sec-name{ font-weight:700; }
+  .sec-flag{
+    text-align:center; padding:2px 4px;
+    background:var(--ink); color:var(--paper); letter-spacing:0.08em;
+  }
+  .sec-row.is-missing .sec-flag{
+    background:transparent; color:var(--halftone); border:1px solid var(--halftone);
+  }
+  .sec-val{ opacity:0.75; word-break:break-word; }
+  .sec-note{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; opacity:0.6; margin-top:14px;
+  }
+
   #case-archive{ min-height:260px; }
   #archive-shelf{ min-height:150px; }
   #issue-reader{ min-height:120px; }
