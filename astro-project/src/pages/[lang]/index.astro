@@ -1,0 +1,43 @@
+---
+import type { Lang } from '../../i18n/ui';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import UtilityBar from '../../components/UtilityBar.astro';
+import Hero from '../../components/Hero.astro';
+import Toc from '../../components/Toc.astro';
+import Dossier from '../../components/Dossier.astro';
+import Percorso from '../../components/Percorso.astro';
+import StackSection from '../../components/StackSection.astro';
+import FieldNotes from '../../components/FieldNotes.astro';
+import Projects from '../../components/Projects.astro';
+import ArchiveSection from '../../components/ArchiveSection.astro';
+import Booking from '../../components/Booking.astro';
+import NeonTerminal from '../../components/NeonTerminal.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import CommandPalette from '../../components/CommandPalette.astro';
+
+export function getStaticPaths() {
+  return [{ params: { lang: 'en' } }, { params: { lang: 'it' } }];
+}
+
+const { lang } = Astro.params as { lang: Lang };
+---
+
+<BaseLayout lang={lang}>
+  <UtilityBar />
+  <Hero />
+  <Toc />
+
+  <main id="main-content">
+    <Dossier />
+    <Percorso />
+    <StackSection />
+    <FieldNotes />
+    <Projects />
+    <ArchiveSection />
+    <Booking />
+  </main>
+
+  <NeonTerminal />
+  <SiteFooter />
+  <CommandPalette />
+</BaseLayout>

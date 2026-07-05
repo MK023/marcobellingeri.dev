@@ -1,36 +1,20 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import UtilityBar from '../components/UtilityBar.astro';
-import Hero from '../components/Hero.astro';
-import Toc from '../components/Toc.astro';
-import Dossier from '../components/Dossier.astro';
-import Percorso from '../components/Percorso.astro';
-import StackSection from '../components/StackSection.astro';
-import FieldNotes from '../components/FieldNotes.astro';
-import Projects from '../components/Projects.astro';
-import ArchiveSection from '../components/ArchiveSection.astro';
-import Booking from '../components/Booking.astro';
-import NeonTerminal from '../components/NeonTerminal.astro';
-import SiteFooter from '../components/SiteFooter.astro';
-import CommandPalette from '../components/CommandPalette.astro';
+// ponytail: placeholder di root. Il redirect geo-aware vero
+// (request.cf.country + Accept-Language, crawler esenti, override via cookie)
+// sarà di competenza di un Worker Cloudflare al go-live — vedi ADR-0001 §4.
+// Nel frattempo un meta-refresh statico evita che `/` dia 404 in dev/preview.
+const fallback = '/en/';
 ---
 
-<BaseLayout>
-  <UtilityBar />
-  <Hero />
-  <Toc />
-
-  <main id="main-content">
-    <Dossier />
-    <Percorso />
-    <StackSection />
-    <FieldNotes />
-    <Projects />
-    <ArchiveSection />
-    <Booking />
-  </main>
-
-  <NeonTerminal />
-  <SiteFooter />
-  <CommandPalette />
-</BaseLayout>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="refresh" content={`0; url=${fallback}`} />
+    <link rel="canonical" href="https://marcobellingeri.dev/en/" />
+    <title>Bellingeri — Cloud & Security Edition</title>
+  </head>
+  <body>
+    <a href={fallback}>Continue to marcobellingeri.dev →</a>
+  </body>
+</html>

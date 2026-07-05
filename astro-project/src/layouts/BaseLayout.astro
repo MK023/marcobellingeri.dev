@@ -1,28 +1,48 @@
 ---
 import '../styles/global.css';
+import { getAbsoluteLocaleUrl } from 'astro:i18n';
+import { useTranslations, defaultLang, languages, type Lang } from '../i18n/ui';
 
 interface Props {
+  lang?: Lang;
   title?: string;
   description?: string;
+  // Path della pagina senza prefisso lingua (per gli hreflang). '' = home.
+  path?: string;
 }
 
-const {
-  title = 'Bellingeri — Cloud & Security Edition',
-  description = "Marco Bellingeri — Cloud Platform & Security Engineer freelance. DevOps, Cloud e Security con un approccio hands-on: pair programming, case study reali, automazione. Casale Monferrato, IT.",
-} = Astro.props;
+const { lang = defaultLang, title, description, path = '' } = Astro.props;
+
+const t = useTranslations(lang);
+const pageTitle = title ?? t('site.title');
+const pageDescription = description ?? t('site.description');
+
+// hreflang reciproci + x-default, tutti assoluti (site è configurato).
+const canonical = getAbsoluteLocaleUrl(lang, path);
+const alternates = (Object.keys(languages) as Lang[]).map((l) => ({
+  hreflang: l,
+  href: getAbsoluteLocaleUrl(l, path),
+}));
+const xDefault = getAbsoluteLocaleUrl(defaultLang, path);
 ---
 
 <!DOCTYPE html>
-<html lang="it">
+<html lang={lang}>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{title}</title>
-  <meta name="description" content={description} />
+  <title>{pageTitle}</title>
+  <meta name="description" content={pageDescription} />
   <meta name="robots" content="index, follow" />
   <meta name="theme-color" content="#FAFAF7" />
-  <meta property="og:title" content={title} />
-  <meta property="og:description" content={description} />
+  <link rel="canonical" href={canonical} />
+  {alternates.map((a) => (
+    <link rel="alternate" hreflang={a.hreflang} href={a.href} />
+  ))}
+  <link rel="alternate" hreflang="x-default" href={xDefault} />
+  <meta property="og:title" content={pageTitle} />
+  <meta property="og:description" content={pageDescription} />
+  <meta property="og:locale" content={t('og.locale')} />
   <meta property="og:type" content="website" />
 
   <!--
@@ -52,7 +72,7 @@ const {
   />
 </head>
 <body>
-  <a href="#main-content" class="skip-link">Salta al contenuto</a>
+  <a href="#main-content" class="skip-link">{t('a11y.skipToContent')}</a>
 
   <div class="press-loader" id="press-loader">
     <div class="press-loader-inner">
@@ -71,7 +91,7 @@ const {
           </div>
         </div>
       </div>
-      <span class="press-line mono">SFOGLIANDO…</span>
+      <span class="press-line mono">{t('loader.label')}</span>
     </div>
   </div>
 

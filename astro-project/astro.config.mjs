@@ -6,4 +6,14 @@ import { defineConfig } from 'astro/config';
 export default defineConfig({
   site: 'https://marcobellingeri.dev', // sostituisci col dominio reale quando lo hai
   output: 'static',
+  // i18n IT/EN — EN primario (target anglosassone). Entrambe le lingue prefissate
+  // (/en/ e /it/) → hreflang espliciti, nessun default ambiguo, SEO/AEO internazionali.
+  // Il geo-redirect su `/` è demandato a un Worker Cloudflare al go-live (ADR-0001 §4).
+  i18n: {
+    locales: ['en', 'it'],
+    defaultLocale: 'en',
+    routing: {
+      prefixDefaultLocale: true,
+    },
+  },
 });
