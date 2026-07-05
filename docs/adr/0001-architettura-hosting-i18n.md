@@ -67,10 +67,10 @@ di `/it/`. Reconciliazione adottata:
 Agente/i AI generano il numero → commit → **Workers Build** auto-deploy. Trigger:
 **GitHub Action** (come ora) *oppure* **Cloudflare Cron Trigger** — deciso in B2.
 
-### 6. RAG: **differito** (YAGNI)
-Quando il componente live / il canale YT lo richiederà: **Cloudflare Vectorize +
-Workers AI** (nativo, un'unica piattaforma, coerente col "security by design").
-Alternativa: **Supabase pgvector** (già padroneggiato in monferrinoAI/rubble).
+### 6. RAG store: **Supabase (pgvector)** — deciso
+Aggiornamento (2026-07-05): scelto **Supabase pgvector** (non Vectorize) come
+store del RAG e source-of-truth di draft/review. Già padroneggiato da Marco
+(monferrinoAI/rubble). Dettaglio pipeline e schema in **ADR-0002**.
 
 ### 7. Security by design
 WAF/managed rules Cloudflare; header di sicurezza portati da `vercel.json` →
