@@ -28,6 +28,16 @@ Utile come:
 Non è più il file su cui continuare a lavorare — da qui in poi le modifiche
 vanno fatte nel progetto Astro.
 
+## Git hooks (secret guard)
+
+Rete anti-secret pre-commit (interim finché la repo è privata). Ad ogni
+clone attivala una volta:
+
+```bash
+git config core.hooksPath .githooks
+brew install gitleaks   # opzionale ma consigliato: copertura reale vs grep
+```
+
 ## Prossimi passi consigliati
 1. `npm install && npm run dev` dentro `astro-project/` — verifica che tutto
    funzioni dopo la migrazione (probabile qualche piccolo errore di battitura

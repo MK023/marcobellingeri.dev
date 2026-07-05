@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Pre-commit secret guard.
+# Rete di sicurezza interim finché la repo è privata (secret scanning di
+# piattaforma non disponibile su piano free). Preferisce gitleaks; se assente,
+# usa una guardia grep minima. Attivo via: git config core.hooksPath .githooks
+set -euo pipefail
+
+if command -v gitleaks >/dev/null 2>&1; then
+  # gitleaks 8.x: 'git --staged' è la forma corrente; 'protect --staged' il
+  # fallback per versioni più vecchie. Se una fallisce per uso non valido,
+  # prova l'altra; se trova un secret, esce non-zero e blocca il commit.
+  gitleaks git --staged --redact --no-banner 2>/dev/null \
+    || gitleaks protect --staged --redact --no-banner
+  exit $?
+fi
+
+# --- fallback senza gitleaks: grep su valori assegnati tipo secret ---
+echo "gitleaks non installato: uso guardia grep di ripiego (installa gitleaks per copertura reale)." >&2
+if git diff --cached -U0 --no-color \
+   | grep -nEi "(api[_-]?key|secret|token|passwd|password|bearer)[[:space:]]*[:=][[:space:]]*['\"]?[A-Za-z0-9_/+.=-]{20,}" ; then
+  echo "" >&2
+  echo "✖ Possibile secret nelle modifiche staged (vedi sopra). Commit bloccato." >&2
+  echo "  Falso positivo? Bypassa con:  git commit --no-verify" >&2
+  exit 1
+fi
+exit 0
