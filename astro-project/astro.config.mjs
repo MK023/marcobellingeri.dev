@@ -1,4 +1,5 @@
 import { defineConfig } from 'astro/config';
+import sitemap from '@astrojs/sitemap';
 
 // Config minimale: nessun adapter framework aggiuntivo, output statico puro.
 // Se in futuro serviranno funzioni server-side (es. proxy verso FastAPI),
@@ -16,4 +17,16 @@ export default defineConfig({
       prefixDefaultLocale: true,
     },
   },
+  // Sitemap per-lingua: hreflang coerenti con quelli del BaseLayout (en/it).
+  integrations: [
+    sitemap({
+      // Il root `/` è solo un redirect placeholder: escluderlo evita un secondo
+      // hreflang="en" in conflitto. Canonici = /en/ e /it/.
+      filter: (page) => page !== 'https://marcobellingeri.dev/',
+      i18n: {
+        defaultLocale: 'en',
+        locales: { en: 'en', it: 'it' },
+      },
+    }),
+  ],
 });
