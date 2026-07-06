@@ -22,8 +22,11 @@ async function scrape(url) {
   return { markdown: j.data?.markdown ?? "", title: j.data?.metadata?.title ?? null, url: j.data?.metadata?.url ?? url };
 }
 
-const sources = await select("competitor_sources?select=id,name,url&active=eq.true");
-console.log(`competitors: ${sources.length} fonti attive.`);
+// --limit N: scrape solo le prime N fonti attive (test/ops, controllo costo).
+const limIdx = process.argv.indexOf("--limit");
+const limit = limIdx > -1 ? Number(process.argv[limIdx + 1]) : null;
+const sources = await select(`competitor_sources?select=id,name,url&active=eq.true&order=name${limit ? `&limit=${limit}` : ""}`);
+console.log(`competitors: ${sources.length} fonti attive${limit ? ` (--limit ${limit})` : ""}.`);
 
 for (const s of sources) {
   let hit;

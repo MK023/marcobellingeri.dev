@@ -25,17 +25,20 @@ Ogni comando gira sotto `doppler run --`. Env attesi:
 ## Comandi
 
 ```bash
-doppler run -- node engine/ingest.mjs <vertical>   # Valyu -> signals (regole 3-tier)
-doppler run -- node engine/embed.mjs               # chunk+embed article_chunks del draft
-doppler run -- node engine/competitors.mjs         # Firecrawl -> competitor_snapshots -> chunks
-node engine/lib/voyage.mjs                          # self-check del chunker (no rete)
+doppler run -- node engine/ingest.mjs <vertical> [--angle "<focus>"]  # Valyu proof pass -> signals
+doppler run -- node engine/embed.mjs                                   # chunk+embed article_chunks
+doppler run -- node engine/retrieve.mjs "<query>" [it|en]              # healthcheck RAG (gated a published)
+doppler run -- node engine/competitors.mjs [--limit N]                 # Firecrawl -> snapshots -> chunks
+node engine/lib/voyage.mjs                                             # self-check del chunker (no rete)
 ```
 
 ## Moduli
 
-- `lib/supabase.mjs` — REST client PostgREST (service_role): `select/insert/update/remove`.
-- `lib/voyage.mjs` — `chunk()` paragraph-aware + `embed()` voyage-3.5/`document` + `toVector()`.
+- `lib/supabase.mjs` — REST client PostgREST (service_role): `select/insert/update/remove/rpc`.
+- `lib/voyage.mjs` — `chunk()` paragraph-aware + `embed()` voyage-3.5 (`document`/`query`) + `toVector()`.
 - `lib/valyu.mjs` — `search()` su `/v1/search` (motore di sourcing primario).
+- `primary-sources.json` — registro allowlist fonti primarie (proof pass); curato a mano.
+- `retrieve.mjs` — read-end del RAG (query→match_article_chunks). NON è l'endpoint pubblico C1 (rate-limit/guardrail/AI-Act = roadmap).
 
 ## Sicurezza
 
