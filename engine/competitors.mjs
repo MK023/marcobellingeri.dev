@@ -1,0 +1,54 @@
+// Canale 2 — radar competitor INTERNO. Firecrawl scrape delle fonti attive ->
+// competitor_snapshots (uno per scrape, storico) -> competitor_chunks (embed RAG).
+// Run: doppler run -- node engine/competitors.mjs
+//
+// ponytail: MVP scrape-and-store. changeTracking di Firecrawl ("riassumi solo se
+// cambiato", ADR-0004) è l'upgrade per tagliare costo/rumore e deduplicare gli
+// snapshot — si aggiunge quando la cadenza di run lo richiede.
+import { select, insert } from "./lib/supabase.mjs";
+import { chunk, embed, toVector } from "./lib/voyage.mjs";
+
+const { FIRECRAWL_API_KEY } = process.env;
+
+async function scrape(url) {
+  if (!FIRECRAWL_API_KEY) throw new Error("missing env: FIRECRAWL_API_KEY (usa `doppler run`)");
+  const r = await fetch("https://api.firecrawl.dev/v2/scrape", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${FIRECRAWL_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ url, formats: [{ type: "markdown" }], onlyMainContent: true }),
+  });
+  if (!r.ok) throw new Error(`firecrawl ${r.status}: ${await r.text()}`);
+  const j = await r.json();
+  return { markdown: j.data?.markdown ?? "", title: j.data?.metadata?.title ?? null, url: j.data?.metadata?.url ?? url };
+}
+
+const sources = await select("competitor_sources?select=id,name,url&active=eq.true");
+console.log(`competitors: ${sources.length} fonti attive.`);
+
+for (const s of sources) {
+  let hit;
+  try {
+    hit = await scrape(s.url);
+  } catch (e) {
+    console.error(`competitors: scrape fallito ${s.name}: ${e.message}`);
+    continue; // una fonte rotta non ferma il radar
+  }
+  if (!hit.markdown.trim()) {
+    console.log(`competitors: ${s.name} — vuoto, skip.`);
+    continue;
+  }
+  const [snap] = await insert("competitor_snapshots", [{
+    source_id: s.id,
+    title: hit.title,
+    url: hit.url,
+    raw_content: hit.markdown,
+    summary: hit.markdown.replace(/\s+/g, " ").trim().slice(0, 320),
+  }], { returning: true });
+
+  const parts = chunk(hit.markdown);
+  const vecs = await embed(parts); // input_type=document
+  const rows = parts.map((content, i) => ({ snapshot_id: snap.id, chunk_index: i, content, embedding: toVector(vecs[i]) }));
+  await insert("competitor_chunks", rows);
+  console.log(`competitors: ${s.name} — snapshot + ${rows.length} chunk.`);
+}
+console.log("competitors: fatto.");
