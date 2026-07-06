@@ -10,8 +10,10 @@ updates:
       prefix: "chore(deps)"
 
   # pin/aggiornamento delle GitHub Actions usate nei workflow
+  # (directory "/" = .github/workflows alla root, dove vivono da quando
+  # monthly-issue fu spostato dalla vecchia posizione in astro-project)
   - package-ecosystem: "github-actions"
-    directory: "/astro-project"
+    directory: "/"
     schedule:
       interval: "weekly"
     commit-message:
