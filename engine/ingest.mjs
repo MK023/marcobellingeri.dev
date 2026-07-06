@@ -32,18 +32,40 @@ export function buildQuery(vertical, angle = DEFAULT_ANGLE) {
 }
 
 // Risultati Valyu -> righe signals (stage discovery, tier/independent NULL).
+// Filtri anti-rumore (derivati empiricamente, 2026-07-07):
+//  - dedup titolo+dominio within-batch: stesso documento via URL diversi
+//    (caso reale: NAIC Model Bulletin entrato 2 volte);
+//  - titoli-spazzatura (metadata PDF rotti, es. "1") -> fallback slug URL,
+//    per il triage umano del verify;
+//  - relevance_score persistito -> qualita' dei filtri misurabile nel tempo.
+//  - NB: NIENTE soglia score piu' alta ne' filtro lunghezza (evidenza: l'oro
+//    survey sta a 0.69-0.76, il rumore scora anche 0.86; snippet corti = lead oro).
 export function mapResults(results, vertical) {
-  return results
-    .filter((r) => r.url)
-    .map((r) => ({
+  const seen = new Set();
+  const out = [];
+  for (const r of results) {
+    if (!r.url) continue;
+    let url;
+    try { url = new URL(r.url); } catch { continue; } // url malformato = rumore
+    const domain = url.hostname.replace(/^www\./, "");
+    const title = (r.title ?? r.source ?? "").trim();
+    const key = `${domain}|${title.toLowerCase().replace(/\s+/g, " ")}`;
+    if (title && seen.has(key)) continue;
+    seen.add(key);
+    const garbage = title.length < 4 || /^\d+$/.test(title);
+    const name = garbage ? (url.pathname.split("/").filter(Boolean).pop() ?? title) : title;
+    out.push({
       source_url: r.url,
-      source_name: (r.title ?? r.source ?? "").slice(0, 200) || null,
+      source_name: name.slice(0, 200) || null,
       category: vertical,
       stage: "discovery",
       tier: null,
       independent: null,
+      relevance: r.relevance_score ?? null,
       raw_content: (r.content ?? "").slice(0, 2000),
-    }));
+    });
+  }
+  return out;
 }
 
 // Scarta gli url gia' presenti sul numero e aggancia issue_id ai nuovi.
