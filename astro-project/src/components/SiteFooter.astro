@@ -1,3 +1,9 @@
+---
+import { getRelativeLocaleUrl } from 'astro:i18n';
+const lang = Astro.currentLocale ?? 'en';
+const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
+---
+
 <footer id="contact" class="reveal">
   <div class="colophon">
     <div>
@@ -28,7 +34,7 @@
       </div>
     </div>
   </div>
-  <p class="fine-print">© Marco Bellingeri — Cloud &amp; Security Edition. Tutti i diritti, nessun bug in produzione (si spera).</p>
+  <p class="fine-print">© Marco Bellingeri — Cloud &amp; Security Edition. Tutti i diritti, nessun bug in produzione (si spera). · <a href={privacyUrl}>Privacy</a></p>
 </footer>
 
 <script>

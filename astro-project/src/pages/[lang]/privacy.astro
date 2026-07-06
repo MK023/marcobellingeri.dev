@@ -1,0 +1,117 @@
+---
+import type { Lang } from '../../i18n/ui';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export function getStaticPaths() {
+  return [{ params: { lang: 'en' } }, { params: { lang: 'it' } }];
+}
+
+const { lang } = Astro.params as { lang: Lang };
+
+// Placeholder legali: Marco li compila prima del go-live.
+const TITOLARE = '[TITOLARE — nome / ragione sociale]';
+const CONTATTO = 'marco.bellingeri@gmail.com';
+const PIVA = '[P.IVA / dati fiscali, se applicabile]';
+const UPDATED = '[DATA — aggiornare alla pubblicazione]';
+
+// Body per-lingua (il resto del sito segue lo stesso pattern: body nei componenti).
+const copy = {
+  en: {
+    title: 'Privacy Policy',
+    intro:
+      'This is a static personal website. It does not collect personal data directly and uses no tracking or analytics. Below, exactly what happens to any data.',
+    controllerH: 'Data controller',
+    controller: `Controller: ${TITOLARE}. Contact: ${CONTATTO}. ${PIVA}.`,
+    dataH: 'Data collected',
+    data: 'None directly. The site is served statically. The hosting provider (Cloudflare) may keep technical access logs (IP, user agent) for security and delivery, under its own policy.',
+    cookiesH: 'Cookies',
+    cookies:
+      'Only one, functional and consent-exempt: `pref-lang`, which remembers your language choice. No analytics, advertising, or tracking cookies are set.',
+    thirdH: 'Third-party services',
+    third: [
+      'Calendly (booking): loaded only when you click to open the calendar — never before. Once loaded it may set its own cookies, under Calendly’s policy.',
+      'Cloudflare (hosting/CDN): serves the site and may process technical logs.',
+      'GitHub API (client-side): public repository stats are fetched in your browser; no personal data is sent.',
+      'Monthly issue pipeline (server-side, not in your browser): Firecrawl scrapes public sources, Anthropic (Claude) drafts content, Supabase stores it. Sources are public pages only; no personal data is retained.',
+    ],
+    aiH: 'AI-generated content',
+    ai: 'The archive’s “monthly issue” is generated with AI assistance (Anthropic/Claude) and always reviewed by a human before publishing. Source material is limited to public pages, respecting robots.txt and terms of service.',
+    transferH: 'Non-EU transfers',
+    transfer:
+      'Some providers (Calendly, Anthropic, GitHub, Cloudflare) are US-based. Transfers rely on their respective safeguards (Standard Contractual Clauses / adequacy frameworks).',
+    rightsH: 'Your rights',
+    rights: `Under the GDPR you may request access, rectification, erasure, restriction, portability, or object to processing. Write to ${CONTATTO}.`,
+    updated: `Last updated: ${UPDATED}`,
+  },
+  it: {
+    title: 'Informativa Privacy',
+    intro:
+      'Questo è un sito personale statico. Non raccoglie dati personali in modo diretto e non usa tracciamento o analytics. Qui sotto, esattamente cosa accade ai dati.',
+    controllerH: 'Titolare del trattamento',
+    controller: `Titolare: ${TITOLARE}. Contatto: ${CONTATTO}. ${PIVA}.`,
+    dataH: 'Dati raccolti',
+    data: 'Nessuno in modo diretto. Il sito è servito staticamente. Il provider di hosting (Cloudflare) può conservare log tecnici di accesso (IP, user agent) per sicurezza ed erogazione, secondo la propria policy.',
+    cookiesH: 'Cookie',
+    cookies:
+      'Uno solo, funzionale ed esente da consenso: `pref-lang`, che ricorda la lingua scelta. Nessun cookie di analytics, pubblicità o tracciamento.',
+    thirdH: 'Servizi di terze parti',
+    third: [
+      'Calendly (prenotazioni): caricato solo quando clicchi per aprire il calendario — mai prima. Una volta caricato può impostare cookie propri, secondo la policy di Calendly.',
+      'Cloudflare (hosting/CDN): serve il sito e può trattare log tecnici.',
+      'GitHub API (lato client): le statistiche pubbliche dei repository sono recuperate nel tuo browser; nessun dato personale viene inviato.',
+      'Pipeline del numero mensile (lato server, non nel tuo browser): Firecrawl fa scraping di fonti pubbliche, Anthropic (Claude) redige le bozze, Supabase le archivia. Le fonti sono solo pagine pubbliche; nessun dato personale viene conservato.',
+    ],
+    aiH: 'Contenuti generati con AI',
+    ai: 'Il “numero mensile” dell’archivio è generato con assistenza AI (Anthropic/Claude) e sempre revisionato da una persona prima della pubblicazione. Le fonti sono limitate a pagine pubbliche, nel rispetto di robots.txt e termini di servizio.',
+    transferH: 'Trasferimenti extra-UE',
+    transfer:
+      'Alcuni fornitori (Calendly, Anthropic, GitHub, Cloudflare) hanno sede negli USA. I trasferimenti si basano sulle rispettive garanzie (Clausole Contrattuali Standard / framework di adeguatezza).',
+    rightsH: 'I tuoi diritti',
+    rights: `Ai sensi del GDPR puoi richiedere accesso, rettifica, cancellazione, limitazione, portabilità od opporti al trattamento. Scrivi a ${CONTATTO}.`,
+    updated: `Ultimo aggiornamento: ${UPDATED}`,
+  },
+}[lang];
+---
+
+<BaseLayout lang={lang} title={copy.title} path="privacy">
+  <main id="main-content" class="legal-page">
+    <h1 class="display">{copy.title}</h1>
+    <p class="legal-intro">{copy.intro}</p>
+
+    <h2>{copy.controllerH}</h2>
+    <p>{copy.controller}</p>
+
+    <h2>{copy.dataH}</h2>
+    <p>{copy.data}</p>
+
+    <h2>{copy.cookiesH}</h2>
+    <p>{copy.cookies}</p>
+
+    <h2>{copy.thirdH}</h2>
+    <ul>
+      {copy.third.map((item) => <li>{item}</li>)}
+    </ul>
+
+    <h2>{copy.aiH}</h2>
+    <p>{copy.ai}</p>
+
+    <h2>{copy.transferH}</h2>
+    <p>{copy.transfer}</p>
+
+    <h2>{copy.rightsH}</h2>
+    <p>{copy.rights}</p>
+
+    <p class="legal-updated mono">{copy.updated}</p>
+  </main>
+</BaseLayout>
+
+<style>
+  .legal-page{ max-width:70ch; margin:0 auto; padding:64px 24px; }
+  .legal-page h1{ margin-bottom:16px; }
+  .legal-page h2{ margin:32px 0 8px; font-size:18px; }
+  .legal-page p, .legal-page li{ line-height:1.6; }
+  .legal-page ul{ padding-left:20px; }
+  .legal-page li{ margin-bottom:8px; }
+  .legal-intro{ opacity:0.8; }
+  .legal-updated{ margin-top:40px; font-size:12px; opacity:0.6; }
+</style>
