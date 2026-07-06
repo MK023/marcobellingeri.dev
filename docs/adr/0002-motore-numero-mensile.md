@@ -1,6 +1,8 @@
 # ADR 0002 — Motore del numero mensile (human-in-the-loop, Supabase RAG)
 
-- **Stato**: Accettato (design; implementazione differita — nessuna key ancora)
+- **Stato**: Accettato — **integrato/superato in parte da [ADR-0004](0004-sourcing-due-canali.md)**
+  (2026-07-06: sourcing → Valyu, engine → Node/TS, export §pipeline[5] corretto,
+  decisioni aperte sciolte; il cardine human-in-the-loop e il modello dati restano validi)
 - **Data**: 2026-07-05
 - **Blocco**: B2 (motore del "numero mensile")
 - **Dipende da**: [ADR-0001](0001-architettura-hosting-i18n.md)

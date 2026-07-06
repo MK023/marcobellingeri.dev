@@ -1,6 +1,7 @@
-# Bellingeri — pacchetto completo
+# marcobellingeri.dev
 
-Due cose, dentro questo zip:
+Monorepo del sito personale: frontend Astro + schema Supabase (RAG) + docs/ADR.
+Due directory principali:
 
 ## 1. `astro-project/`
 Il progetto vero, quello su cui lavorare in VSCode e da cui partire per il
@@ -51,16 +52,13 @@ Si tagga a milestone (blocco chiuso), non a ogni commit. Le [GitHub Releases](ht
 ## Roadmap
 
 - [x] **Foundation** (`v0.1.0`) — Astro static bilingue EN/IT, security-by-design, i18n + sitemap, componenti show-off, secrets su Doppler, postura GDPR
+- [x] **Backend numero mensile + RAG** — due canali su Supabase pgvector ([ADR-0004](docs/adr/0004-sourcing-due-canali.md)): sourcing Valyu → verify 3-tier → bozza Claude (human-in-the-loop) → embed voyage-3.5; numero #1 in draft; competitor-watch interno
+- [ ] **Collegamento** — rendering Archivio DB-backed (con escaping, vedi ADR-0004 §4), engine in `engine/` + GitHub Actions, publish del #1
 - [ ] **Go-live** (`v1.0.0`) — dominio su Cloudflare, repo pubblica, deploy
-- [ ] **Numero mensile RAG** (`v1.1`) — pipeline Firecrawl → Claude → Supabase pgvector, human-in-the-loop
-- [ ] **Blog** (`v1.2`) — Hashnode (POSSE: own-site source of truth + canonical)
-- [ ] **Terminale C1** (`v1.3`) — interfaccia RAG reale (`ask`), endpoint con rate-limit + guardrail + disclosure AI Act art.50
+- [ ] **Blog** (`v1.x`) — Hashnode (POSSE: own-site source of truth + canonical)
+- [ ] **Terminale C1** (`v1.x`) — interfaccia RAG reale (`ask`), endpoint con rate-limit + guardrail + disclosure AI Act art.50
 
-## Prossimi passi consigliati
-1. `npm install && npm run dev` dentro `astro-project/` — verifica che tutto
-   funzioni dopo la migrazione (probabile qualche piccolo errore di battitura
-   al primo giro, normale)
-2. Sostituisci il link LinkedIn placeholder in `SiteFooter.astro`
-3. Personalizza `SOURCES` in `firecrawl_issue.py` se vuoi cambiare le fonti
-   dell'Archivio
-4. Quando sei pronto: dominio su Cloudflare → repo pubblica → deploy
+## Note legacy
+`astro-project/firecrawl_issue.py` e `public/data/issues/` sono il vecchio
+meccanismo dell'Archivio (ritirato, [ADR-0004](docs/adr/0004-sourcing-due-canali.md)):
+verranno rimossi col rewrite DB-backed di `ArchiveSection`.

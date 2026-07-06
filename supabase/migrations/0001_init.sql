@@ -60,8 +60,8 @@ create table signals (
   scraped_at  timestamptz not null default now()
 );
 
--- Chunk + embedding per il RAG. Modello scelto: Voyage voyage-3 → vector(1024)
--- (deciso in B3; free tier 200M token/modello).
+-- Chunk + embedding per il RAG. Modello scelto: Voyage voyage-3.5 → vector(1024)
+-- (free tier 200M token/modello; cfr. ADR-0004 — "voyage-3" era stale).
 create table article_chunks (
   id          uuid primary key default gen_random_uuid(),
   article_id  uuid not null references articles(id) on delete cascade,
