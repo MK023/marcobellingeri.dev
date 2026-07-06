@@ -1,0 +1,121 @@
+name: Backend CI
+
+# Tutto automatico, niente step manuali (scelta 2026-07-07):
+#  - test (unit+integration, zero secret) su PR e push main
+#  - gitleaks full-history su PR e push main
+#  - db-rebuild: migration 0001->0007 + seed su Postgres+pgvector EFFIMERO,
+#    con assert su schema e publish gate -> "ricostruibile da zero" verificato a ogni push
+#  - e2e (secrets, DB live, dati sintetici+teardown) SOLO su push main, mai su PR
+on:
+  pull_request:
+    paths: ["engine/**", "supabase/**", ".github/workflows/backend-ci.yml"]
+  push:
+    branches: [main]
+    paths: ["engine/**", "supabase/**", ".github/workflows/backend-ci.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Unit + integration (zero rete, e2e skippa)
+        working-directory: engine
+        run: npm test
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0 # full history
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  db-rebuild:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Bootstrap ambiente (schema extensions + ruoli Supabase)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/ci/bootstrap.sql
+      - name: Applica migration 0001 -> 0007
+        run: |
+          for f in supabase/migrations/*.sql; do
+            echo "== $f"
+            psql -v ON_ERROR_STOP=1 -f "$f"
+          done
+      - name: Seed idempotente (2 volte, stesso risultato)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/seeds/competitors.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/seeds/competitors.sql
+      - name: Assert schema + publish gate
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare n int;
+          begin
+            -- 8 tabelle, tutte con RLS
+            select count(*) into n from pg_tables where schemaname='public';
+            if n <> 8 then raise exception 'attese 8 tabelle, trovate %', n; end if;
+            select count(*) into n from pg_tables t
+              join pg_class c on c.relname = t.tablename
+              where t.schemaname='public' and not c.relrowsecurity;
+            if n <> 0 then raise exception '% tabelle senza RLS', n; end if;
+            -- trigger del gate presente
+            if not exists (select 1 from pg_trigger where tgname='issues_publish_gate') then
+              raise exception 'trigger issues_publish_gate assente';
+            end if;
+            -- seed idempotente: roster esattamente 10
+            select count(*) into n from competitor_sources;
+            if n <> 10 then raise exception 'seed non idempotente: % fonti', n; end if;
+            -- il gate MORDE: publish senza prova deve fallire
+            insert into issues (number, period, sector) values (1, '2099-01', 'ci');
+            begin
+              update issues set status='published' where period='2099-01';
+              raise exception 'il publish gate NON ha bloccato';
+            exception when others then
+              if sqlerrm not like 'gate:%' then raise; end if;
+            end;
+            raise notice 'db-rebuild OK: schema, RLS, seed, gate verificati';
+          end $$;
+          SQL
+
+  e2e:
+    # DB live (dati sintetici 9999-01 + teardown provato) -> solo post-merge su main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, db-rebuild]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: E2E su DB live (gate + retrieval)
+        working-directory: engine
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
+        run: npm run test:e2e
