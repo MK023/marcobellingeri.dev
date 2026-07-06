@@ -1,0 +1,13 @@
+{
+  "name": "marcobellingeri-engine",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Backend engine del sito: ingest (Valyu) -> embed (voyage-3.5) -> competitor watch (Firecrawl). Human-in-the-loop: la generazione del numero resta gated a un'approvazione umana.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "ingest": "node ingest.mjs",
+    "embed": "node embed.mjs",
+    "competitors": "node competitors.mjs"
+  }
+}
