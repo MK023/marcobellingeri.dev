@@ -9,11 +9,15 @@ process.env.SUPABASE_URL = "https://fake.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "sk_fake";
 process.env.EMBEDDING_API_KEY = "vk_fake";
 process.env.VALYU_API_KEY = "valyu_fake";
+process.env.LANGFUSE_BASE_URL = "https://fake.langfuse.local";
+process.env.LANGFUSE_PUBLIC_KEY = "pk_fake";
+process.env.LANGFUSE_SECRET_KEY = "sk_lf_fake";
 
 const { buildAllowlist, buildQuery, mapResults, dedupFresh, DEFAULT_ANGLE } = await import("../ingest.mjs");
 const { embed } = await import("../lib/voyage.mjs");
 const { select, insert, rpc } = await import("../lib/supabase.mjs");
 const { search } = await import("../lib/valyu.mjs");
+const { startTrace } = await import("../lib/langfuse.mjs");
 
 const realFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = realFetch; });
@@ -130,6 +134,45 @@ test("supabase: header service_role e Prefer corretti; error -> throw con status
 
   globalThis.fetch = async () => new Response("permission denied", { status: 403 });
   await assert.rejects(() => select("signals?select=id"), /403/);
+});
+
+// ---- langfuse tracing (OTLP) --------------------------------------------------
+
+test("langfuse: OTLP shape corretta — root+span, stessa traceId, auth Basic, attributi trace", async () => {
+  const calls = mockFetch(() => ({}));
+  const trace = startTrace("test-run", { tags: ["t1"], metadata: { vertical: "insurance" } });
+  await trace.span("step-a", { input: { q: 1 }, summarize: (r) => ({ n: r }) }, async () => 42);
+  await trace.flush();
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].url.endsWith("/api/public/otel/v1/traces"));
+  assert.match(calls[0].init.headers.Authorization, /^Basic /);
+  const spans = JSON.parse(calls[0].init.body).resourceSpans[0].scopeSpans[0].spans;
+  assert.equal(spans.length, 2, "root + 1 span");
+  const [root, child] = spans;
+  assert.match(root.traceId, /^[0-9a-f]{32}$/);
+  assert.equal(child.traceId, root.traceId, "stessa trace");
+  assert.equal(child.parentSpanId, root.spanId, "span annidato sotto la root");
+  assert.ok(root.attributes.some((a) => a.key === "langfuse.trace.name" && a.value.stringValue === "test-run"));
+  assert.ok(root.attributes.some((a) => a.key === "langfuse.trace.metadata.vertical"));
+  assert.ok(child.attributes.some((a) => a.key === "langfuse.observation.output" && a.value.stringValue === '{"n":42}'));
+});
+
+test("langfuse: errore di fn -> span ERROR, errore RIPROPAGATO, root status error", async () => {
+  const calls = mockFetch(() => ({}));
+  const trace = startTrace("test-err");
+  await assert.rejects(() => trace.span("boom", {}, async () => { throw new Error("kaputt"); }), /kaputt/);
+  await trace.flush();
+  const spans = JSON.parse(calls[0].init.body).resourceSpans[0].scopeSpans[0].spans;
+  assert.equal(spans[1].status.code, 2, "span in errore");
+  assert.ok(spans[1].attributes.some((a) => a.key === "langfuse.observation.level" && a.value.stringValue === "ERROR"));
+  assert.equal(spans[0].status.code, 2, "root riflette l'errore");
+});
+
+test("langfuse: fail-open — invio 500 NON rompe la pipeline", async () => {
+  globalThis.fetch = async () => new Response("boom", { status: 500 });
+  const trace = startTrace("test-failopen");
+  await trace.span("ok", {}, async () => 1);
+  await trace.flush(); // non deve lanciare
 });
 
 // ---- valyu client -----------------------------------------------------------

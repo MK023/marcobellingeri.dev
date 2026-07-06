@@ -2,17 +2,19 @@ name: Radar competitor (Canale 2)
 
 # Refresh del radar competitor INTERNO: scrape delle fonti attive via Firecrawl,
 # snapshot + embedding nel RAG interno (mai pubblicato). Gira il 1 di ogni mese
-# alle 06:00 UTC o a mano ("Run workflow"). I secret sono sincronizzati nei
-# GitHub Actions secrets da Doppler (config prd).
+# alle 06:00 UTC. I secret sono sincronizzati nei GitHub Actions secrets da
+# Doppler (config prd). Osservabilita': trace Langfuse per run + issue
+# automatica se fallisce (un cron non deve mai fallire in silenzio).
 #
 # NB: la generazione del numero pubblico (Canale 1) NON e qui: e human-in-the-loop
-# (ingest Valyu + scrittura + gate umano), si lancia a mano, mai schedulata.
+# (ingest Valyu + scrittura + gate umano), mai schedulata.
 on:
   schedule:
     - cron: "0 6 1 * *"
 
 permissions:
   contents: read # l'engine scrive sul DB (Supabase), non sul repo
+  issues: write # per l'issue automatica on-failure
 
 jobs:
   competitor-radar:
@@ -29,4 +31,15 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
         run: node engine/competitors.mjs # zero dipendenze npm: nessun install
+      - name: Apri issue se il radar fallisce
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Radar competitor fallito ($(date -u +%F))" \
+            --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID — trace su Langfuse (competitor-radar)."

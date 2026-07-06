@@ -11,7 +11,8 @@ on:
   schedule:
     - cron: "0 5 */3 * *"
 
-permissions: {}
+permissions:
+  issues: write # per l'issue automatica on-failure
 
 jobs:
   ping:
@@ -28,3 +29,11 @@ jobs:
             -H "Authorization: Bearer $SUPABASE_ANON_KEY")
           echo "keepalive -> HTTP $code"
           test "$code" = "200"
+      - name: Apri issue se il ping fallisce
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Keepalive Supabase fallito ($(date -u +%F)) — rischio pause a 7gg" \
+            --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
