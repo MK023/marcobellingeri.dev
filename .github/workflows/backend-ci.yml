@@ -16,6 +16,12 @@ on:
 permissions:
   contents: read
 
+# un solo run alla volta per ref: l'e2e usa un namespace sintetico fisso
+# (9999-01) sul DB live — run concorrenti si pesterebbero i piedi
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest
