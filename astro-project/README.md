@@ -28,10 +28,7 @@ src/
     cases/*.md                  — un file = un caso studio mensile
   pages/index.astro             — assembla tutti i componenti
 public/
-  data/issues/                  — numeri dell'Archivio (generati da GitHub Action)
-firecrawl_issue.py              — genera un numero dell'Archivio via Firecrawl
-.github/workflows/
-  monthly-issue.yml             — esegue firecrawl_issue.py il 1° di ogni mese
+  data/issues/                  — numeri legacy dell'Archivio (JSON statico, in dismissione)
 vercel.json                     — header di sicurezza (CSP, HSTS, ecc.) + caching
 ```
 
@@ -43,23 +40,17 @@ aggiorna da sola al prossimo build.
 
 ## Come funziona l'Archivio
 
-A differenza di Field Notes, l'Archivio **non** usa le Content Collections:
-i numeri vengono generati a runtime da `firecrawl_issue.py` (via GitHub
-Action mensile) e scritti in `public/data/issues/`, poi letti dal browser
-con una `fetch` — così l'Archivio si aggiorna senza dover rifare il build
-del sito ogni volta.
-
-Prima di attivarlo:
-1. Personalizza la lista `SOURCES` in `firecrawl_issue.py` con i concorrenti/fonti reali da monitorare
-2. Aggiungi il secret `FIRECRAWL_API_KEY` nel repo GitHub (Settings → Secrets and variables → Actions)
-3. Il workflow gira da solo il 1° di ogni mese (o manualmente da GitHub → Actions → Run workflow)
+**In migrazione al DB.** Il vecchio meccanismo (JSON generato da `firecrawl_issue.py`
+e letto via `fetch`) è superato: il numero mensile vive ora su Supabase (pipeline
+`engine/`, vedi [ADR-0004](../docs/adr/0004-sourcing-due-canali.md)). Il componente
+`ArchiveSection.astro` legge ancora il JSON statico in `public/data/issues/` finché
+non viene riscritto DB-backed (con escaping/validazione `source_url`, ADR-0004 §4).
 
 ## Da personalizzare prima del deploy
 
 - `src/components/Booking.astro` — verifica il link Calendly (`CALENDLY_URL`)
 - `src/components/SiteFooter.astro` — link LinkedIn (attualmente placeholder)
 - `astro.config.mjs` — campo `site` con il dominio reale
-- `firecrawl_issue.py` — lista `SOURCES`
 
 ## Deploy su Vercel
 

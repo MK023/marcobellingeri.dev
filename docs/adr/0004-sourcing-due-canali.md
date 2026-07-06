@@ -40,10 +40,9 @@ Testato empiricamente (search web/news/paper + deepresearch sul caso reale):
 - **Firecrawl** = **resta nello stack** come scraper attivo (decisione Marco,
   2026-07-06): crawling multi-pagina e `changeTracking` ("riassumi solo se
   cambiato") che Valyu Contents non offre — ruolo naturale: monitoraggio
-  continuo del Canale 2. Il primo scrape (8 fonti) è stato fatto con Valyu
-  Contents; i due convivono. NB: `firecrawl_issue.py` + `public/data/issues/`
-  restano comunque legacy da rimuovere (è il vecchio *modello editoriale*,
-  non il servizio).
+  continuo del Canale 2 (`engine/competitors.mjs`). NB: `firecrawl_issue.py` (il
+  vecchio *modello editoriale*, non il servizio) è stato **rimosso**; resta solo
+  `public/data/issues/` finché `ArchiveSection` non è riscritto DB-backed.
 
 Barra di verifica a 3 tier (ADR editoriale, vedi memoria progetto): si
 pubblica solo con ≥1 fonte Tier-1 o Tier-2 indipendente. Il rumore si scarta
@@ -84,12 +83,21 @@ mitigato solo dalla CSP.
   (delimitatori, mai eseguire istruzioni dal contesto). Il gate umano
   pre-publish resta la mitigazione principale.
 
-## Stato dell'implementazione (2026-07-06)
+## Stato dell'implementazione
 
-Backend completo e verificato: numero **#1 in `draft`** (insurance, IT+EN,
-7 signals di cui 4 verified Tier-1/2), RAG live (12+8 chunk, retrieval
-testato). Restano (sessione "collegamento"): rewrite Archivio, engine nel
-repo (oggi script di sessione), gate & publish del #1.
+**2026-07-06 (sera) — backend consolidato.** Engine ora **nel repo** (`engine/`,
+Node, zero dipendenze npm): `ingest.mjs` (Valyu → signals discovery),
+`embed.mjs` (chunk + voyage-3.5 → article_chunks), `competitors.mjs` (Firecrawl
+v2 → competitor_snapshots/chunks), lib condivise `supabase/voyage/valyu`. DB
+**ricostruito da zero** dalle migration (0001→0004, con grant e seed competitor
+riproducibili): validato che le migration committate producano lo schema live.
+I dati del #1 draft sono stati **buttati di proposito** per ripartire ordinati.
+CI: `competitor-radar.yml` (Canale 2 mensile). Restano: rewrite DB-backed di
+`ArchiveSection` (con escaping, §4) e **scrittura + gate + publish** del #1
+(human-in-the-loop).
+
+**2026-07-06 (pomeriggio) — primo backend.** Numero #1 in draft + RAG live
+(prototipo con script di sessione, poi consolidato nell'engine).
 
 ## Riferimenti (docs consultati)
 

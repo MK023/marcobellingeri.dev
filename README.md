@@ -1,7 +1,7 @@
 # marcobellingeri.dev
 
-Monorepo del sito personale: frontend Astro + schema Supabase (RAG) + docs/ADR.
-Due directory principali:
+Monorepo del sito personale: frontend Astro + engine backend Node (`engine/`) +
+schema Supabase (`supabase/`, RAG) + docs/ADR. Due directory principali per il sito:
 
 ## 1. `astro-project/`
 Il progetto vero, quello su cui lavorare in VSCode e da cui partire per il
@@ -53,13 +53,16 @@ Si tagga a milestone (blocco chiuso), non a ogni commit. Le [GitHub Releases](ht
 
 - [x] **Foundation** (`v0.1.0`) — Astro static bilingue EN/IT, security-by-design, i18n + sitemap, componenti show-off, secrets su Doppler, postura GDPR
 - [x] **Backend numero mensile + RAG** — due canali su Supabase pgvector ([ADR-0004](docs/adr/0004-sourcing-due-canali.md)): sourcing Valyu → verify 3-tier → bozza Claude (human-in-the-loop) → embed voyage-3.5; numero #1 in draft; competitor-watch interno
-- [ ] **Collegamento** — rendering Archivio DB-backed (con escaping, vedi ADR-0004 §4), engine in `engine/` + GitHub Actions, publish del #1
+- [x] **Engine nel repo** — pipeline `engine/` (ingest Valyu → embed voyage-3.5 → radar competitor Firecrawl), DB ricostruibile da migration (`supabase/`), CI radar Canale 2
+- [ ] **Collegamento** — rendering Archivio DB-backed (con escaping, vedi ADR-0004 §4) + publish del #1
 - [ ] **Go-live** (`v1.0.0`) — dominio su Cloudflare, repo pubblica, deploy
 - [ ] **Blog** (`v1.x`) — Hashnode (POSSE: own-site source of truth + canonical)
 - [ ] **Terminale C1** (`v1.x`) — interfaccia RAG reale (`ask`), endpoint con rate-limit + guardrail + disclosure AI Act art.50
 
 ## Note legacy
-`astro-project/firecrawl_issue.py` e `public/data/issues/` sono il vecchio
-meccanismo dell'Archivio (superato, [ADR-0004](docs/adr/0004-sourcing-due-canali.md)):
-verranno rimossi col rewrite DB-backed di `ArchiveSection`. Il servizio
-Firecrawl resta invece nello stack (scraping/changeTracking Canale 2).
+Il vecchio script `firecrawl_issue.py` (modello editoriale superato,
+[ADR-0004](docs/adr/0004-sourcing-due-canali.md)) è stato **rimosso**: lo
+sostituisce l'engine in `engine/`. Resta solo `astro-project/public/data/issues/`
+(JSON statico ancora letto da `ArchiveSection`), che sparirà col rewrite
+DB-backed del componente. Il servizio Firecrawl resta nello stack (scraping/
+changeTracking Canale 2, ora in `engine/competitors.mjs`).
