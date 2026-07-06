@@ -1,0 +1,30 @@
+name: Supabase keepalive
+
+# Il free tier Supabase PAUSA il progetto dopo 7 giorni senza attivita'.
+# Ping ultra-leggero ogni 3 giorni (margine 2x): una GET con chiave anon
+# conta come attivita'. Nessuna action, nessun checkout: solo curl.
+#
+# NB (gotcha noto): GitHub disabilita gli schedule dopo 60 giorni senza
+# attivita' sul REPO — se il progetto va in pausa lunga, questo cron si spegne
+# in silenzio e Supabase pausera'. Con sviluppo attivo non succede.
+on:
+  schedule:
+    - cron: "0 5 */3 * *"
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping REST (query minima, chiave anon)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/issues?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "keepalive -> HTTP $code"
+          test "$code" = "200"
