@@ -43,3 +43,8 @@ export async function update(table, filter, patch) {
 export async function remove(table, filter) {
   await rest(`${table}?${filter}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
 }
+
+// Chiama una funzione RPC (es. match_article_chunks). Ritorna il JSON.
+export async function rpc(fn, args) {
+  return (await rest(`rpc/${fn}`, { method: "POST", body: JSON.stringify(args) })).json();
+}
