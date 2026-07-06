@@ -1,8 +1,8 @@
 name: Genera numero mensile dell'archivio
 
 # Gira in automatico il 1° di ogni mese alle 06:00 UTC, oppure a mano da
-# GitHub ("Run workflow"). Richiede il secret FIRECRAWL_API_KEY nel repo:
-# Settings -> Secrets and variables -> Actions -> New repository secret.
+# GitHub ("Run workflow"). Il secret FIRECRAWL_API_KEY è sincronizzato nei
+# GitHub Actions secrets da Doppler (config prd) — non va aggiunto a mano.
 on:
   schedule:
     - cron: "0 6 1 * *"
@@ -14,6 +14,10 @@ permissions:
 jobs:
   build-issue:
     runs-on: ubuntu-latest
+    # Lo script e i dati vivono in astro-project/ (il checkout è alla root del repo).
+    defaults:
+      run:
+        working-directory: astro-project
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4

@@ -17,6 +17,9 @@ graphify-out/
 .env.*
 !.env.example
 
+# python
+__pycache__/
+
 # os / editor
 .DS_Store
 *.log
