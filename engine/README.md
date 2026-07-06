@@ -21,6 +21,17 @@ Ogni comando gira sotto `doppler run --`. Env attesi:
 | `EMBEDDING_API_KEY` | Voyage voyage-3.5 (embedding 1024-dim) |
 | `VALYU_API_KEY` | sourcing Canale 1 |
 | `FIRECRAWL_API_KEY` | scraping competitor Canale 2 |
+| `LANGFUSE_BASE_URL/_PUBLIC_KEY/_SECRET_KEY` | tracing (opzionali: senza, il tracing è no-op) |
+
+## Osservabilità
+
+Ogni script emette una **trace Langfuse** via endpoint OTel (`lib/langfuse.mjs`,
+OTLP HTTP/JSON, zero deps): `ingest-proof-pass`, `embed-articles`,
+`competitor-radar` (in CI: ogni run mensile del radar = una trace ispezionabile).
+**Fail-open by design**: senza chiavi = disattivo; un errore di invio non rompe
+mai la pipeline. Input/output degli span = riassunti piccoli, mai `raw_content`
+di terzi. I cron (radar, keepalive) aprono una **GitHub Issue automatica** se
+falliscono — nessun rosso silenzioso.
 
 ## Comandi
 

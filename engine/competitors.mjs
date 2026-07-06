@@ -7,6 +7,7 @@
 // snapshot — si aggiunge quando la cadenza di run lo richiede.
 import { select, insert } from "./lib/supabase.mjs";
 import { chunk, embed, toVector } from "./lib/voyage.mjs";
+import { startTrace } from "./lib/langfuse.mjs";
 
 const { FIRECRAWL_API_KEY } = process.env;
 
@@ -32,31 +33,35 @@ if (limIdx > -1 && (!Number.isInteger(limit) || limit < 1)) {
 }
 const sources = await select(`competitor_sources?select=id,name,url&active=eq.true&order=name${limit ? `&limit=${limit}` : ""}`);
 console.log(`competitors: ${sources.length} fonti attive${limit ? ` (--limit ${limit})` : ""}.`);
+const trace = startTrace("competitor-radar", { metadata: { sources: sources.length } });
 
 for (const s of sources) {
-  let hit;
   try {
-    hit = await scrape(s.url);
+    await trace.span(s.name, { input: { url: s.url }, summarize: (n) => ({ chunks: n }) }, async () => {
+      const hit = await scrape(s.url);
+      if (!hit.markdown.trim()) {
+        console.log(`competitors: ${s.name} — vuoto, skip.`);
+        return 0;
+      }
+      const [snap] = await insert("competitor_snapshots", [{
+        source_id: s.id,
+        title: hit.title,
+        url: hit.url,
+        raw_content: hit.markdown,
+        summary: hit.markdown.replace(/\s+/g, " ").trim().slice(0, 320),
+      }], { returning: true });
+
+      const parts = chunk(hit.markdown);
+      const vecs = await embed(parts); // input_type=document
+      const rows = parts.map((content, i) => ({ snapshot_id: snap.id, chunk_index: i, content, embedding: toVector(vecs[i]) }));
+      await insert("competitor_chunks", rows);
+      console.log(`competitors: ${s.name} — snapshot + ${rows.length} chunk.`);
+      return rows.length;
+    });
   } catch (e) {
-    console.error(`competitors: scrape fallito ${s.name}: ${e.message}`);
+    console.error(`competitors: fallito ${s.name}: ${e.message}`); // lo span registra ERROR
     continue; // una fonte rotta non ferma il radar
   }
-  if (!hit.markdown.trim()) {
-    console.log(`competitors: ${s.name} — vuoto, skip.`);
-    continue;
-  }
-  const [snap] = await insert("competitor_snapshots", [{
-    source_id: s.id,
-    title: hit.title,
-    url: hit.url,
-    raw_content: hit.markdown,
-    summary: hit.markdown.replace(/\s+/g, " ").trim().slice(0, 320),
-  }], { returning: true });
-
-  const parts = chunk(hit.markdown);
-  const vecs = await embed(parts); // input_type=document
-  const rows = parts.map((content, i) => ({ snapshot_id: snap.id, chunk_index: i, content, embedding: toVector(vecs[i]) }));
-  await insert("competitor_chunks", rows);
-  console.log(`competitors: ${s.name} — snapshot + ${rows.length} chunk.`);
 }
 console.log("competitors: fatto.");
+await trace.flush();

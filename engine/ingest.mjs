@@ -15,6 +15,7 @@
 import { readFileSync } from "node:fs";
 import { select, insert } from "./lib/supabase.mjs";
 import { search } from "./lib/valyu.mjs";
+import { startTrace } from "./lib/langfuse.mjs";
 
 export const DEFAULT_ANGLE = "AI governance, oversight, regulation and audit readiness";
 
@@ -94,14 +95,18 @@ async function main() {
     console.warn(`ingest: nessuna allowlist per '${vertical}' — proof pass sul solo core (${(registry.core ?? []).length} fonti). Curare engine/primary-sources.json.`);
   }
   console.log(`ingest: angolo = "${angle}".`);
+  const trace = startTrace("ingest-proof-pass", { tags: [vertical], metadata: { vertical, angle, dry } });
 
-  const results = await search(buildQuery(vertical, angle), { searchType: "all", includedSources: included, maxResults: 12, relevanceThreshold: 0.5 });
+  const results = await trace.span("valyu-search",
+    { input: { query: buildQuery(vertical, angle), allowlist: included.length }, summarize: (r) => ({ results: r.length }) },
+    () => search(buildQuery(vertical, angle), { searchType: "all", includedSources: included, maxResults: 12, relevanceThreshold: 0.5 }));
   console.log(`ingest: proof pass Valyu (${included.length} fonti in allowlist) -> ${results.length} risultati.`);
   const mapped = mapResults(results, vertical);
 
   if (dry) {
     for (const m of mapped) console.log(`  [dry] ${m.source_url}  ·  ${m.source_name ?? "(no title)"}`);
     console.log(`ingest: --dry, ${mapped.length} candidati-prova mappati, nessuna scrittura.`);
+    await trace.flush();
     return;
   }
 
@@ -119,8 +124,11 @@ async function main() {
 
   const seen = (await select(`signals?select=source_url&issue_id=eq.${issue.id}`)).map((s) => s.source_url);
   const fresh = dedupFresh(mapped, seen, issue.id);
-  if (fresh.length) await insert("signals", fresh);
+  await trace.span("signals-insert",
+    { input: { mapped: mapped.length, dejaVu: seen.length }, summarize: () => ({ fresh: fresh.length, issue: issue.number }) },
+    async () => { if (fresh.length) await insert("signals", fresh); });
   console.log(`ingest: ${fresh.length} nuovi candidati-prova (discovery) su #${issue.number}. Verify+tier = passo editoriale.`);
+  await trace.flush();
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) await main();
