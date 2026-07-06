@@ -1,0 +1,21 @@
+# Marco Bellingeri — Cloud Platform & Security Engineer
+
+> Sito personale di Marco Bellingeri, freelance Cloud Platform & Security Engineer
+> (Casale Monferrato, IT). DevOps, Cloud e Security con approccio hands-on: pair
+> programming, case study reali, automazione. Bilingue EN (primario) / IT.
+
+## Pagine
+
+- [Home (EN)](https://marcobellingeri.dev/en/): dossier, percorso, stack, case study, progetti, contatti
+- [Home (IT)](https://marcobellingeri.dev/it/): versione italiana
+
+## Trasparenza AI
+
+- Il "numero mensile" dell'archivio è generato con assistenza AI (Claude/Anthropic)
+  con revisione umana obbligatoria prima della pubblicazione (human-in-the-loop).
+- Gli header di sicurezza mostrati nella pagina sono letti live dalla risposta reale.
+
+## Contatti
+
+- Email: marco.bellingeri@gmail.com
+- GitHub: https://github.com/MK023
