@@ -13,6 +13,7 @@ create table issues (
   id           uuid primary key default gen_random_uuid(),
   number       int  not null,                 -- progressivo del numero
   period       text not null,                 -- es. '2026-07'
+  sector       text,                           -- verticale del caso (healthcare, legal, logistics…); i numeri ruotano i settori
   status       issue_status not null default 'draft',
   created_at   timestamptz not null default now(),
   approved_at  timestamptz,                   -- valorizzato al gate umano
@@ -50,7 +51,11 @@ create table signals (
   issue_id    uuid references issues(id) on delete set null,
   source_url  text not null,
   source_name text,
-  category    text,                             -- competitor | market | security ...
+  category    text,                             -- verticale/categoria della fonte
+  stage       text not null default 'discovery' -- modello a 2 stadi: 'discovery' (lead, es. last30days) | 'verify' (prova)
+              check (stage in ('discovery', 'verify')),
+  tier        int check (tier in (1, 2, 3)),    -- barra verify: 1=istituz./primaria+indip · 2=testata seria · 3=community/vendor (mai da solo)
+  independent boolean,                           -- indipendente dal vendor? (filtro anti-vendor; nullo in discovery)
   raw_content text,
   scraped_at  timestamptz not null default now()
 );
