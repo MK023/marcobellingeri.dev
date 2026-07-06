@@ -20,19 +20,25 @@ export function chunk(text, max = 1000) {
 }
 
 // Embedda un batch di testi. Restituisce array di vettori (array di float).
+// ponytail: batch fisso 100 input/request — sta largo nei limiti Voyage
+// (1000 input/req + cap token); alza solo se un giorno serve throughput.
 export async function embed(texts, inputType = "document") {
   if (!EMBEDDING_API_KEY) throw new Error("missing env: EMBEDDING_API_KEY (usa `doppler run`)");
   if (!texts.length) return [];
-  const r = await fetch(ENDPOINT, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${EMBEDDING_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, input: texts, input_type: inputType }),
-  });
-  if (!r.ok) throw new Error(`voyage ${r.status}: ${await r.text()}`);
-  const j = await r.json();
-  const vecs = j.data.map((d) => d.embedding);
-  if (vecs[0]?.length !== DIM) throw new Error(`voyage dim ${vecs[0]?.length}, atteso ${DIM}`);
-  return vecs;
+  const out = [];
+  for (let i = 0; i < texts.length; i += 100) {
+    const r = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${EMBEDDING_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: MODEL, input: texts.slice(i, i + 100), input_type: inputType }),
+    });
+    if (!r.ok) throw new Error(`voyage ${r.status}: ${await r.text()}`);
+    const j = await r.json();
+    out.push(...j.data.map((d) => d.embedding));
+  }
+  if (out[0]?.length !== DIM) throw new Error(`voyage dim ${out[0]?.length}, atteso ${DIM}`);
+  if (out.length !== texts.length) throw new Error(`voyage: ${out.length} vettori per ${texts.length} testi`);
+  return out;
 }
 
 // Formatta un vettore per la colonna pgvector: "[f1,f2,...]".
