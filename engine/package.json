@@ -9,6 +9,6 @@
     "ingest": "node ingest.mjs",
     "embed": "node embed.mjs",
     "competitors": "node competitors.mjs",
-    "test": "node --test test/"
+    "test": "node --test test/*.test.mjs"
   }
 }
