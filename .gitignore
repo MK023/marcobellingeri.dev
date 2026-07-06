@@ -25,5 +25,5 @@ __pycache__/
 *.log
 npm-debug.log*
 
-# local claude settings
-.claude/settings.local.json
+# local claude settings (tutta la dir: copre anche duplicati tipo "settings.local 2.json")
+.claude/
