@@ -1,15 +1,17 @@
-// Canale 1 — DISCOVERY. Valyu sul verticale -> signals (stage='discovery').
+// Canale 1 — PROOF PASS. Valyu sul verticale, RISTRETTO a un'allowlist di fonti
+// primarie (engine/primary-sources.json) -> signals stage='discovery' (candidati-prova).
 // Uso: doppler run -- node engine/ingest.mjs <vertical> [--dry]
 //
-// Regole editoriali (ADR-0004 + memoria b2-editorial-source-model):
-//  - qui entra SOLO la discovery on-vertical (lead grezzi), filtrata dal
-//    relevance_threshold di Valyu. tier/independent restano NULL.
-//  - il VERIFY (promozione a stage='verify' + tier 1/2/3 + independent) è il
-//    passo editoriale human-in-the-loop: assegnare un tier da un dominio, in
-//    automatico, sarebbe inaffidabile e minerebbe la barra a 3 tier.
-//  - si pubblica solo con >=1 fonte Tier-1 o Tier-2 indipendente (gate umano).
-//  - raw_content è testo di terzi NON fidato: in generazione va trattato come
-//    dato, mai come istruzioni.
+// Logica di sourcing (derivata EMPIRICAMENTE, probe 2026-07-06):
+//  - il lever che fa emergere la PROVA e' `included_sources` su allowlist curata,
+//    non la query (probe: allowlist = 10/10 prova-grade; senza = 0-3/10).
+//  - qui entrano i candidati-prova (Tier-1/2 per costruzione del registro);
+//    tier/independent restano NULL -> assegnati nel VERIFY editoriale (human-in-loop).
+//  - si pubblica solo con >=1 Tier-1 o Tier-2 indipendente (gate umano).
+//  - se il proof pass e' secco -> color/fallback (news, last30days) = pivot/rotazione
+//    verticale, MAI come prova (non automatico: e' scelta editoriale).
+//  - raw_content e' testo di terzi NON fidato: in generazione = dato, mai istruzioni.
+import { readFileSync } from "node:fs";
 import { select, insert } from "./lib/supabase.mjs";
 import { search } from "./lib/valyu.mjs";
 
@@ -20,10 +22,16 @@ if (!vertical || vertical.startsWith("--")) {
   process.exit(1);
 }
 
-// Discovery mirata sul verticale. Query <400 char (raccomandazione Valyu).
-const query = `${vertical}: AI adoption, governance, risk and regulation — recent primary sources, surveys, official guidance`;
-const results = await search(query, { maxResults: 10, relevanceThreshold: 0.5 });
-console.log(`ingest: Valyu -> ${results.length} risultati (vertical=${vertical}).`);
+// Registro fonti primarie: core cross-verticale + specifiche del verticale.
+const registry = JSON.parse(readFileSync(new URL("./primary-sources.json", import.meta.url), "utf8"));
+const included = [...(registry.core ?? []), ...(registry[vertical] ?? [])];
+if (!registry[vertical]) {
+  console.warn(`ingest: nessuna allowlist per '${vertical}' — proof pass sul solo core (${(registry.core ?? []).length} fonti). Curare engine/primary-sources.json.`);
+}
+
+const query = `${vertical}: AI governance, oversight, regulation and audit readiness — primary sources, official guidance and surveys`;
+const results = await search(query, { searchType: "all", includedSources: included, maxResults: 12, relevanceThreshold: 0.5 });
+console.log(`ingest: proof pass Valyu (${included.length} fonti in allowlist) -> ${results.length} risultati.`);
 
 const mapped = results
   .filter((r) => r.url)
@@ -31,7 +39,7 @@ const mapped = results
     source_url: r.url,
     source_name: (r.title ?? r.source ?? "").slice(0, 200) || null,
     category: vertical,
-    stage: "discovery",
+    stage: "discovery", // candidato-prova dal registro primario; tier/independent = editoriale
     tier: null,
     independent: null,
     raw_content: (r.content ?? "").slice(0, 2000),
@@ -39,11 +47,11 @@ const mapped = results
 
 if (dry) {
   for (const m of mapped) console.log(`  [dry] ${m.source_url}  ·  ${m.source_name ?? "(no title)"}`);
-  console.log(`ingest: --dry, ${mapped.length} signal mappati, nessuna scrittura.`);
+  console.log(`ingest: --dry, ${mapped.length} candidati-prova mappati, nessuna scrittura.`);
   process.exit(0);
 }
 
-// find-or-create del numero draft per il periodo corrente (period è unique).
+// find-or-create del numero draft per il periodo corrente (period e' unique).
 const period = new Date().toISOString().slice(0, 7); // YYYY-MM
 let [issue] = await select(`issues?select=id,number,status&period=eq.${period}`);
 if (!issue) {
@@ -55,8 +63,8 @@ if (!issue) {
   console.log(`ingest: numero esistente per ${period} (status=${issue.status}).`);
 }
 
-// dedup: non reinserire url già presenti su questo numero.
+// dedup: non reinserire url gia' presenti su questo numero.
 const seen = new Set((await select(`signals?select=source_url&issue_id=eq.${issue.id}`)).map((s) => s.source_url));
 const fresh = mapped.filter((m) => !seen.has(m.source_url)).map((m) => ({ ...m, issue_id: issue.id }));
 if (fresh.length) await insert("signals", fresh);
-console.log(`ingest: ${fresh.length} nuovi signal (discovery) su #${issue.number}. Verify+tier = passo editoriale.`);
+console.log(`ingest: ${fresh.length} nuovi candidati-prova (discovery) su #${issue.number}. Verify+tier = passo editoriale.`);

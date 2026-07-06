@@ -1,0 +1,20 @@
+{
+  "_doc": "Registro fonti primarie per il PROOF PASS di ingest.mjs (Valyu included_sources). 'core' = fonti valide in ogni verticale; '<vertical>' = regolatori/analisti specifici. Derivato empiricamente (probe 2026-07-06: included_sources = 10/10 prova-grade, contro 0-3/10 senza). Curare a mano: aggiungere SOLO fonti primarie o analisti indipendenti (Tier-1/2), MAI blog vendor o content-marketing. E' l'equivalente editoriale del roster competitor.",
+  "core": [
+    "deloitte.com",
+    "grantthornton.com",
+    "mckinsey.com",
+    "pwc.com",
+    "kpmg.com",
+    "oecd.org",
+    "gao.gov"
+  ],
+  "insurance": [
+    "naic.org",
+    "content.naic.org",
+    "eiopa.europa.eu",
+    "ambest.com",
+    "evidentinsights.com",
+    "datos-insights.com"
+  ]
+}
