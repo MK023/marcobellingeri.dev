@@ -9,6 +9,7 @@
     "ingest": "node ingest.mjs",
     "embed": "node embed.mjs",
     "competitors": "node competitors.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "test:e2e": "RUN_E2E=1 node --test test/e2e.test.mjs"
   }
 }
