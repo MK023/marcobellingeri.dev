@@ -60,5 +60,6 @@ Si tagga a milestone (blocco chiuso), non a ogni commit. Le [GitHub Releases](ht
 
 ## Note legacy
 `astro-project/firecrawl_issue.py` e `public/data/issues/` sono il vecchio
-meccanismo dell'Archivio (ritirato, [ADR-0004](docs/adr/0004-sourcing-due-canali.md)):
-verranno rimossi col rewrite DB-backed di `ArchiveSection`.
+meccanismo dell'Archivio (superato, [ADR-0004](docs/adr/0004-sourcing-due-canali.md)):
+verranno rimossi col rewrite DB-backed di `ArchiveSection`. Il servizio
+Firecrawl resta invece nello stack (scraping/changeTracking Canale 2).

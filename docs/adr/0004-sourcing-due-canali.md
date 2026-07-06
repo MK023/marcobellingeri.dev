@@ -37,10 +37,13 @@ Testato empiricamente (search web/news/paper + deepresearch sul caso reale):
 - **last30days** = solo **colore/voce dei praticanti** (aneddoto Reddit per il
   gancio narrativo — l'unica cosa che Valyu strutturalmente non dà). Config
   stretta: Reddit-praticanti puro, model-planned. Dà lead Tier-3, mai prova.
-- **Firecrawl** = **ritirato dalla pipeline** (era il collector in ADR-0002).
-  Lo scrape del Canale 2 usa Valyu Contents. `firecrawl_issue.py` +
-  `public/data/issues/` = legacy da rimuovere col rewrite dell'Archivio.
-  La chiave resta in Doppler come riserva.
+- **Firecrawl** = **resta nello stack** come scraper attivo (decisione Marco,
+  2026-07-06): crawling multi-pagina e `changeTracking` ("riassumi solo se
+  cambiato") che Valyu Contents non offre — ruolo naturale: monitoraggio
+  continuo del Canale 2. Il primo scrape (8 fonti) è stato fatto con Valyu
+  Contents; i due convivono. NB: `firecrawl_issue.py` + `public/data/issues/`
+  restano comunque legacy da rimuovere (è il vecchio *modello editoriale*,
+  non il servizio).
 
 Barra di verifica a 3 tier (ADR editoriale, vedi memoria progetto): si
 pubblica solo con ≥1 fonte Tier-1 o Tier-2 indipendente. Il rumore si scarta
