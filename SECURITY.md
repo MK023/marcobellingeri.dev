@@ -10,7 +10,7 @@
 
 Se scopri una vulnerabilità di sicurezza, **non aprire una issue pubblica**.
 
-Invia una segnalazione privata a: **marco.bellingeri@gmail.com**
+Invia una segnalazione privata a: **mkdevpy@proton.me**
 
 Includi:
 
@@ -24,7 +24,7 @@ Risponderò entro **72 ore** e lavoreremo insieme per risolverla prima di qualsi
 
 If you discover a security vulnerability, **do not open a public issue**.
 
-Send a private report to: **marco.bellingeri@gmail.com**
+Send a private report to: **mkdevpy@proton.me**
 
 Include:
 

@@ -8,7 +8,7 @@ const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
   <div class="colophon">
     <div>
       <h3>Contatti</h3>
-      <a href="mailto:marco.bellingeri@gmail.com">marco.bellingeri@gmail.com</a>
+      <a href="mailto:mkdevpy@proton.me">mkdevpy@proton.me</a>
       <button class="util-btn" id="copy-email-btn" style="margin-left:8px;">COPIA</button><br />
       Casale Monferrato, Alessandria, IT
     </div>
@@ -43,7 +43,7 @@ const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
   if (copyBtn) {
     copyBtn.addEventListener('click', async () => {
       try {
-        await navigator.clipboard.writeText('marco.bellingeri@gmail.com');
+        await navigator.clipboard.writeText('mkdevpy@proton.me');
         const original = copyBtn.textContent;
         copyBtn.textContent = 'COPIATO ✓';
         copyBtn.classList.add('copied');

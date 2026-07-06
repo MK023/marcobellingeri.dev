@@ -1,10 +1,7 @@
 ---
-import { getRelativeLocaleUrl } from 'astro:i18n';
-
-// Cambia qui quando aggiorni il link Calendly — un solo posto da toccare.
-const CALENDLY_URL = 'https://calendly.com/marco-bellingeri/30min';
-const lang = Astro.currentLocale ?? 'en';
-const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
+// Scheduler staccato (era il Calendly personale). Qui andrà il tool di
+// prenotazione professionale: per ricollegarlo, ripristina un embed/facade
+// in questa sezione e riapri la CSP in public/_headers per quel dominio.
 ---
 
 <section id="booking" class="reveal">
@@ -14,57 +11,20 @@ const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
   </div>
   <p class="booking-note">
     Slot liberi, fuso orario gestito in automatico, conferma via email —
-    niente scambi di messaggi per trovare un orario. Ogni prenotazione
-    confermata finisce anche in un log privato, così non si perde nulla.
+    niente scambi di messaggi per trovare un orario.
   </p>
   <div class="booking-frame">
-    <!--
-      Facade GDPR: Calendly è un servizio terzo che imposta cookie. Non lo
-      carichiamo in automatico — solo al click esplicito dell'utente. Prima del
-      click nessuna richiesta parte verso Calendly (nessun cookie pre-consenso).
-    -->
-    <div class="calendly-facade" id="calendly-facade" data-url={CALENDLY_URL}>
-      <p class="facade-label mono">CALENDLY · SERVIZIO ESTERNO</p>
+    <div class="booking-placeholder">
+      <p class="facade-label mono">SCHEDULER IN ARRIVO</p>
       <p class="facade-copy">
-        Il calendario è fornito da Calendly. Per tutelare la tua privacy non si
-        carica in automatico: si attiva al tuo click, e con esso i cookie di
-        Calendly. Dettagli nella <a href={privacyUrl}>privacy</a>.
+        Il calendario prenotazioni professionale sarà collegato qui a breve.
       </p>
-      <button class="util-btn" id="calendly-load" type="button">Carica il calendario →</button>
     </div>
-    <div id="calendly-mount"></div>
   </div>
 </section>
 
 <style>
-  .calendly-facade{
-    border:2px dashed var(--ink); padding:32px 24px; text-align:center;
-    display:flex; flex-direction:column; gap:12px; align-items:center;
-  }
+  /* .booking-placeholder è in global.css; qui solo i figli specifici. */
   .facade-label{ font-size:11px; letter-spacing:0.12em; opacity:0.6; }
   .facade-copy{ max-width:46ch; font-size:14px; line-height:1.5; }
 </style>
-
-<script>
-  // ---- Calendly click-to-load facade (GDPR: nessun caricamento terzo pre-consenso) ----
-  (function calendlyFacade() {
-    const facade = document.getElementById('calendly-facade');
-    const btn = document.getElementById('calendly-load');
-    const mount = document.getElementById('calendly-mount');
-    const url = facade?.dataset.url;
-    if (!facade || !btn || !mount || !url) return;
-    btn.addEventListener('click', () => {
-      const s = document.createElement('script');
-      s.src = 'https://assets.calendly.com/assets/external/widget.js';
-      s.async = true;
-      s.addEventListener('load', () => {
-        (window as unknown as {
-          Calendly?: { initInlineWidget: (o: { url: string; parentElement: HTMLElement }) => void };
-        }).Calendly?.initInlineWidget({ url, parentElement: mount });
-      });
-      document.head.appendChild(s);
-      facade.style.display = 'none';
-      mount.style.minHeight = '630px';
-    }, { once: true });
-  })();
-</script>

@@ -17,5 +17,5 @@
 
 ## Contatti
 
-- Email: marco.bellingeri@gmail.com
+- Email: mkdevpy@proton.me
 - GitHub: https://github.com/MK023
