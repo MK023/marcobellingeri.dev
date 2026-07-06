@@ -1,6 +1,11 @@
 // Canale 1 — PROOF PASS. Valyu sul verticale, RISTRETTO a un'allowlist di fonti
 // primarie (engine/primary-sources.json) -> signals stage='discovery' (candidati-prova).
-// Uso: doppler run -- node engine/ingest.mjs <vertical> [--dry]
+// Uso: doppler run -- node engine/ingest.mjs <vertical> [--angle "<focus>"] [--dry]
+//
+// Regola "una passata = un angolo" (derivata dall'uso): un proof pass rende UN
+// layer. Angolo default = regolatorio/governance; passa --angle per pescare un
+// layer diverso (es. survey/quantitativo) sulla STESSA allowlist. Le passate si
+// sommano sul numero (dedup per url).
 //
 // Logica di sourcing (derivata EMPIRICAMENTE, probe 2026-07-06):
 //  - il lever che fa emergere la PROVA e' `included_sources` su allowlist curata,
@@ -29,7 +34,10 @@ if (!registry[vertical]) {
   console.warn(`ingest: nessuna allowlist per '${vertical}' — proof pass sul solo core (${(registry.core ?? []).length} fonti). Curare engine/primary-sources.json.`);
 }
 
-const query = `${vertical}: AI governance, oversight, regulation and audit readiness — primary sources, official guidance and surveys`;
+const angleIdx = process.argv.indexOf("--angle");
+const angle = angleIdx > -1 ? process.argv[angleIdx + 1] : "AI governance, oversight, regulation and audit readiness";
+const query = `${vertical}: ${angle} — primary sources, official guidance and surveys`;
+console.log(`ingest: angolo = "${angle}".`);
 const results = await search(query, { searchType: "all", includedSources: included, maxResults: 12, relevanceThreshold: 0.5 });
 console.log(`ingest: proof pass Valyu (${included.length} fonti in allowlist) -> ${results.length} risultati.`);
 
