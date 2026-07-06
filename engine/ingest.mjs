@@ -36,6 +36,11 @@ if (!registry[vertical]) {
 
 const angleIdx = process.argv.indexOf("--angle");
 const angle = angleIdx > -1 ? process.argv[angleIdx + 1] : "AI governance, oversight, regulation and audit readiness";
+if (angleIdx > -1 && (!angle || angle.startsWith("--"))) {
+  // guardia: "--angle" senza valore produrrebbe una query malformata ("insurance: --dry ...")
+  console.error('--angle richiede un testo (es. --angle "adoption rate survey findings")');
+  process.exit(1);
+}
 const query = `${vertical}: ${angle} — primary sources, official guidance and surveys`;
 console.log(`ingest: angolo = "${angle}".`);
 const results = await search(query, { searchType: "all", includedSources: included, maxResults: 12, relevanceThreshold: 0.5 });

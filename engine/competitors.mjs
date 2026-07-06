@@ -25,6 +25,11 @@ async function scrape(url) {
 // --limit N: scrape solo le prime N fonti attive (test/ops, controllo costo).
 const limIdx = process.argv.indexOf("--limit");
 const limit = limIdx > -1 ? Number(process.argv[limIdx + 1]) : null;
+if (limIdx > -1 && (!Number.isInteger(limit) || limit < 1)) {
+  // guardia anti-footgun: "--limit" senza valore scraperebbe TUTTO in silenzio (costo)
+  console.error("--limit richiede un intero >= 1 (es. --limit 1)");
+  process.exit(1);
+}
 const sources = await select(`competitor_sources?select=id,name,url&active=eq.true&order=name${limit ? `&limit=${limit}` : ""}`);
 console.log(`competitors: ${sources.length} fonti attive${limit ? ` (--limit ${limit})` : ""}.`);
 
