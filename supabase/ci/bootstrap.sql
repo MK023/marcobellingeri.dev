@@ -3,6 +3,11 @@
 -- Supabase fornisce questi oggetti out-of-the-box; un container nudo no.
 create schema if not exists extensions;
 
+-- Supabase configura il search_path del database con `extensions` incluso:
+-- senza, la create function di 0001 non risolve l'operatore pgvector <=>.
+-- (Le sessioni successive — le psql delle migration — lo ereditano.)
+alter database postgres set search_path to public, extensions;
+
 do $$
 begin
   if not exists (select 1 from pg_roles where rolname = 'anon') then
