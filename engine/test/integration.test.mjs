@@ -74,6 +74,21 @@ test("mapping: invarianti editoriali della discovery", () => {
   assert.equal(rows[1].source_name, "eiopa", "fallback su source");
 });
 
+test("filtri anti-rumore: stesso doc via URL diversi dedupato, titolo-spazzatura -> slug, url malformato scartato, score persistito", () => {
+  const rows = mapResults([
+    { url: "https://naic.org/files/a.pdf", title: "Model Bulletin", relevance_score: 0.82 },
+    { url: "https://naic.org/files/b.pdf", title: "Model  Bulletin " }, // stesso titolo+dominio (spazi diversi) -> dedup
+    { url: "https://naic.org/files/ai-testimony.pdf", title: "1" },      // metadata rotto -> slug
+    { url: "not-a-url", title: "garbage url" },                          // malformato -> scartato
+    { url: "https://other.org/files/a.pdf", title: "Model Bulletin" },   // stesso titolo ma ALTRO dominio -> resta
+  ], "insurance");
+  assert.equal(rows.length, 3);
+  assert.equal(rows[0].relevance, 0.82, "score Valyu persistito");
+  assert.equal(rows[1].relevance, null, "senza score -> null");
+  assert.equal(rows[1].source_name, "ai-testimony.pdf", "titolo-spazzatura sostituito dallo slug");
+  assert.equal(rows[2].source_url, "https://other.org/files/a.pdf", "dominio diverso non e' un duplicato");
+});
+
 test("dedup: url gia' sul numero scartati, issue_id agganciato ai nuovi", () => {
   const mapped = [{ source_url: "u1" }, { source_url: "u2" }];
   const fresh = dedupFresh(mapped, ["u1"], "ISSUE1");
