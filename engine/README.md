@@ -40,6 +40,22 @@ node engine/lib/voyage.mjs                                             # self-ch
 - `primary-sources.json` — registro allowlist fonti primarie (proof pass); curato a mano.
 - `retrieve.mjs` — read-end del RAG (query→match_article_chunks). NON è l'endpoint pubblico C1 (rate-limit/guardrail/AI-Act = roadmap).
 
+## Test
+
+```bash
+npm test                              # unit + integration (zero rete, e2e skippa)
+doppler run -- npm run test:e2e       # e2e live: dati sintetici 9999-01 + teardown
+```
+
+- **Unit**: chunker, registro fonti, guardie CLI. **Integration** (fetch mockato):
+  invarianti editoriali della discovery, allowlist, batching Voyage, client.
+- **E2E (gated)**: prova che il **publish gate a DB** (migration 0006) morde a ogni
+  anello mancante — niente prova Tier-1/2-indip, niente articolo it+en, niente
+  embedding → publish rifiutato; catena completa → passa, draft mai retrievabile.
+- NB: dev e prd Doppler puntano oggi allo **stesso** progetto Supabase; lo split
+  vero (progetto prod dedicato) avverra' al go-live — migrations+seed lo rendono
+  un'operazione da minuti.
+
 ## Sicurezza
 
 - Il testo scrapato di terzi (`signals.raw_content`, summary competitor) è **dato non
