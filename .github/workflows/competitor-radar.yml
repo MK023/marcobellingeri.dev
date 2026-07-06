@@ -1,0 +1,32 @@
+name: Radar competitor (Canale 2)
+
+# Refresh del radar competitor INTERNO: scrape delle fonti attive via Firecrawl,
+# snapshot + embedding nel RAG interno (mai pubblicato). Gira il 1 di ogni mese
+# alle 06:00 UTC o a mano ("Run workflow"). I secret sono sincronizzati nei
+# GitHub Actions secrets da Doppler (config prd).
+#
+# NB: la generazione del numero pubblico (Canale 1) NON e qui: e human-in-the-loop
+# (ingest Valyu + scrittura + gate umano), si lancia a mano, mai schedulata.
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read # l'engine scrive sul DB (Supabase), non sul repo
+
+jobs:
+  competitor-radar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Refresh radar competitor
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+        run: node engine/competitors.mjs # zero dipendenze npm: nessun install
