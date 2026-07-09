@@ -1,17 +1,33 @@
 ---
 import { getCollection } from 'astro:content';
+import { defaultLang, type Lang } from '../i18n/ui';
 
-const cases = (await getCollection('cases')).sort(
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+
+const cases = (await getCollection('cases', (c) => c.data.lang === lang)).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
 );
+
+const copy = {
+  it: {
+    intro: 'Un caso reale al mese: problema, approccio, risultato, lezione appresa. Niente teoria — solo cose successe davvero.',
+    cred: 'CASO STUDIO',
+    problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA',
+  },
+  en: {
+    intro: 'One real case a month: problem, approach, result, lesson learned. No theory — only things that actually happened.',
+    cred: 'CASE STUDY',
+    problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED',
+  },
+}[lang];
 ---
 
 <section id="field-notes" class="reveal">
   <div class="section-head">
-    <span class="num mono">04</span>
+    <span class="num mono">03</span>
     <h2 class="display">Field Notes</h2>
   </div>
-  <p class="case-archive-note">Un caso reale al mese: problema, approccio, risultato, lezione appresa. Niente teoria — solo cose successe davvero.</p>
+  <p class="case-archive-note">{copy.intro}</p>
   <div class="case-archive">
     {cases.map((c, i) => (
       <div class="case-card">
@@ -26,14 +42,14 @@ const cases = (await getCollection('cases')).sort(
               0{c.data.statSuffix ?? ''}
             </div>
           )}
-          <span class="cred mono">CASO STUDIO — {c.data.month.toUpperCase()}</span>
+          <span class="cred mono">{copy.cred} — {c.data.month.toUpperCase()}</span>
         </div>
         <div>
           <h3 class="case-title">{c.data.title}</h3>
-          <div class="case-block"><span class="label mono">PROBLEMA</span><p>{c.data.problem}</p></div>
-          <div class="case-block"><span class="label mono">APPROCCIO</span><p>{c.data.approach}</p></div>
-          <div class="case-block"><span class="label mono">RISULTATO</span><p>{c.data.result}</p></div>
-          <div class="case-block"><span class="label mono">LEZIONE APPRESA</span><p>{c.data.lesson}</p></div>
+          <div class="case-block"><span class="label mono">{copy.problem}</span><p>{c.data.problem}</p></div>
+          <div class="case-block"><span class="label mono">{copy.approach}</span><p>{c.data.approach}</p></div>
+          <div class="case-block"><span class="label mono">{copy.result}</span><p>{c.data.result}</p></div>
+          <div class="case-block"><span class="label mono">{copy.lesson}</span><p>{c.data.lesson}</p></div>
         </div>
       </div>
     ))}
@@ -42,10 +58,16 @@ const cases = (await getCollection('cases')).sort(
 
 <script>
   // Count-up per ogni statistica in evidenza, appena entra in viewport.
-  // Nuovo caso al mese = aggiungi un file in src/content/cases/, nient'altro.
+  // Nuovo caso al mese = aggiungi la coppia it/ + en/ in src/content/cases/, nient'altro.
   document.querySelectorAll<HTMLElement>('.big-stat[data-target]').forEach((el) => {
     const target = parseInt(el.dataset.target || '0', 10);
     const suffix = el.dataset.suffix || '';
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = target + suffix;
+      return;
+    }
+
     let started = false;
     const io = new IntersectionObserver(
       (entries) => {

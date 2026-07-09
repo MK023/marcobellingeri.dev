@@ -1,26 +1,45 @@
+---
+import { useTranslations, dateLocale, defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+const t = useTranslations(lang);
+
+const copy = {
+  it: {
+    title: 'Archivio',
+    note: "Un numero nuovo ogni mese, generato in automatico: segnali dal mercato, mosse della concorrenza, novità normative. Nessuno lo scrive a mano — gira da solo, di notte, come dovrebbe fare l'infrastruttura buona.",
+  },
+  en: {
+    title: 'Archive',
+    note: 'A new issue every month, generated automatically: market signals, competitor moves, regulatory news. Nobody writes it by hand — it runs on its own, at night, the way good infrastructure should.',
+  },
+}[lang];
+
+const strings = {
+  loadingIndex: t('archive.loadingIndex'),
+  loadingIssue: t('archive.loadingIssue'),
+  openIssue: t('archive.openIssue'),
+  source: t('archive.source'),
+  locale: dateLocale[lang],
+};
+---
+
 <section id="archive" class="reveal">
   <div class="section-head">
-    <span class="num mono">06</span>
-    <h2 class="display">Archivio</h2>
+    <span class="num mono">08</span>
+    <h2 class="display">{copy.title}</h2>
   </div>
   <div class="archive-head">
-    <p class="archive-note">
-      Un numero nuovo ogni mese, generato in automatico: segnali dal mercato,
-      mosse della concorrenza, novità normative. Nessuno lo scrive a mano —
-      gira da solo, di notte, come dovrebbe fare l'infrastruttura buona.
-    </p>
-    <button class="util-btn" id="archive-reload">RICARICA ARCHIVIO</button>
+    <p class="archive-note">{copy.note}</p>
   </div>
-  <div class="archive-shelf" id="archive-shelf">
-    <p class="archive-status">caricamento numeri arretrati…</p>
+  <div class="archive-shelf" id="archive-shelf" data-strings={JSON.stringify(strings)}>
+    <p class="archive-status">{strings.loadingIndex}</p>
   </div>
-  <div class="issue-reader" id="issue-reader">
-    <p class="archive-status">seleziona un numero dallo scaffale.</p>
-  </div>
+  <div class="issue-reader" id="issue-reader"></div>
 </section>
 
 <script>
-  // ---- issue archive (alimentato da /data/issues/, generato ogni mese via Firecrawl + GitHub Actions) ----
+  // ---- issue archive (alimentato da /data/issues/, generato ogni mese dalla pipeline engine/) ----
   type Signal = {
     category: 'competitor' | 'market' | 'security';
     label: string;
@@ -35,11 +54,12 @@
   (function issueArchive() {
     const shelf = document.getElementById('archive-shelf');
     const reader = document.getElementById('issue-reader');
-    const reloadBtn = document.getElementById('archive-reload');
-    if (!shelf || !reader || !reloadBtn) return;
+    if (!shelf || !reader) return;
+
+    const S = JSON.parse(shelf.dataset.strings || '{}');
 
     // Mostrato solo se /data/issues/index.json non è raggiungibile (es. prima
-    // che la GitHub Action abbia prodotto un primo numero reale).
+    // che la pipeline abbia prodotto un primo numero reale).
     const FALLBACK_INDEX: { issues: IndexEntry[] } = {
       issues: [{ id: 'demo-01', number: 1, title: 'Cloud & Security Watch — Numero Zero', date: '2026-07-01' }],
     };
@@ -52,18 +72,14 @@
         {
           category: 'competitor',
           label: 'Concorrenza',
-          headline: 'Questo è un numero dimostrativo',
-          summary: 'Collega /data/issues/ a una GitHub Action con Firecrawl per popolare questo archivio con segnali reali ogni mese — vedi lo script firecrawl_issue.py.',
-          source_name: 'Setup locale',
-          source_url: '',
+          headline: 'Numero dimostrativo',
+          summary: 'Questo archivio si popola da solo ogni mese: la pipeline engine/ (sourcing Valyu → verifica → bozza Claude → embed) genera i segnali reali e li committa nel repo.',
         },
         {
           category: 'market',
           label: 'Mercato del lavoro',
           headline: 'I numeri reali arriveranno da qui',
-          summary: 'Ogni voce diventerà una card con titolo, sintesi e fonte, generata automaticamente e committata nel repo.',
-          source_name: 'Setup locale',
-          source_url: '',
+          summary: 'Ogni voce diventerà una card con titolo, sintesi e fonte, generata automaticamente — segnali dal mercato, mosse della concorrenza, novità normative.',
         },
       ],
     };
@@ -71,25 +87,40 @@
     let index: { issues: IndexEntry[] } | null = null;
     let activeId: string | null = null;
 
+    const CATEGORIES = ['competitor', 'market', 'security'] as const;
     function tagClass(cat: Signal['category']) {
-      if (cat === 'competitor') return 'signal-tag competitor';
-      if (cat === 'market') return 'signal-tag market';
-      return 'signal-tag security';
+      // La categoria arriva da JSON generato: non la si concatena mai in una
+      // classe senza averla prima ristretta ai valori attesi.
+      const safe = CATEGORIES.includes(cat) ? cat : 'security';
+      return 'signal-tag ' + safe;
+    }
+
+    function status(el: HTMLElement, text: string) {
+      const p = document.createElement('p');
+      p.className = 'archive-status';
+      p.textContent = text;
+      el.replaceChildren(p);
     }
 
     function renderShelf() {
       if (!shelf || !index) return;
-      shelf.innerHTML = '';
+      shelf.replaceChildren();
       index.issues.slice().reverse().forEach((issue) => {
         const spine = document.createElement('div');
         spine.className = 'issue-spine' + (issue.id === activeId ? ' active' : '');
         spine.setAttribute('role', 'button');
         spine.setAttribute('tabindex', '0');
-        const month = new Date(issue.date).toLocaleDateString('it-IT', { month: 'short', year: 'numeric' });
-        spine.setAttribute('aria-label', 'Apri numero ' + issue.number + ', ' + month);
-        spine.innerHTML =
-          '<div class="n">N.' + String(issue.number).padStart(2, '0') + '</div>' +
-          '<div class="m">' + month.toUpperCase() + '</div>';
+        const month = new Date(issue.date).toLocaleDateString(S.locale, { month: 'short', year: 'numeric' });
+        spine.setAttribute('aria-label', S.openIssue + ' ' + issue.number + ', ' + month);
+
+        const n = document.createElement('div');
+        n.className = 'n';
+        n.textContent = 'N.' + String(issue.number).padStart(2, '0');
+        const m = document.createElement('div');
+        m.className = 'm';
+        m.textContent = month.toUpperCase();
+        spine.append(n, m);
+
         spine.addEventListener('click', () => openIssue(issue.id));
         spine.addEventListener('keydown', (e: KeyboardEvent) => {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openIssue(issue.id); }
@@ -100,38 +131,73 @@
 
     function renderReader(issue: Issue) {
       if (!reader) return;
-      const dateStr = new Date(issue.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
-      let html = '<div class="issue-reader-head"><h3 class="display">' + issue.title + '</h3>' +
-        '<span class="date mono">' + dateStr + '</span></div>';
+      // Tutto il contenuto del numero è testo non fidato (generato da un LLM,
+      // committato come JSON): costruito nodo per nodo, mai via innerHTML.
+      reader.replaceChildren();
+
+      const head = document.createElement('div');
+      head.className = 'issue-reader-head';
+      const h3 = document.createElement('h3');
+      h3.className = 'display';
+      h3.textContent = issue.title;
+      const date = document.createElement('span');
+      date.className = 'date mono';
+      date.textContent = new Date(issue.date).toLocaleDateString(S.locale, { day: 'numeric', month: 'long', year: 'numeric' });
+      head.append(h3, date);
+      reader.appendChild(head);
+
       issue.signals.forEach((s) => {
-        html += '<div class="signal-card">' +
-          '<span class="' + tagClass(s.category) + '">' + s.label + '</span>' +
-          '<h4>' + s.headline + '</h4>' +
-          '<p>' + s.summary + '</p>' +
-          (s.source_url ? '<a href="' + s.source_url + '" target="_blank" rel="noopener">' + (s.source_name || 'Fonte') + ' ↗</a>' : '') +
-          '</div>';
+        const card = document.createElement('div');
+        card.className = 'signal-card';
+
+        const tag = document.createElement('span');
+        tag.className = tagClass(s.category);
+        tag.textContent = s.label;
+
+        const headline = document.createElement('h4');
+        headline.textContent = s.headline;
+
+        const summary = document.createElement('p');
+        summary.textContent = s.summary;
+
+        card.append(tag, headline, summary);
+
+        // Solo http(s): un source_url malevolo non deve poter diventare javascript:
+        if (s.source_url) {
+          try {
+            const url = new URL(s.source_url, window.location.origin);
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+              const link = document.createElement('a');
+              link.href = url.href;
+              link.target = '_blank';
+              link.rel = 'noopener';
+              link.textContent = (s.source_name || S.source) + ' ↗';
+              card.appendChild(link);
+            }
+          } catch (e) {}
+        }
+
+        reader.appendChild(card);
       });
-      reader.innerHTML = html;
     }
 
     async function openIssue(id: string) {
       activeId = id;
       renderShelf();
-      if (reader) reader.innerHTML = '<p class="archive-status">caricamento numero ' + id + '…</p>';
+      if (reader) status(reader, S.loadingIssue + ' ' + id + '…');
       try {
-        const res = await fetch('/data/issues/' + id + '.json', { cache: 'no-store' });
+        const res = await fetch('/data/issues/' + encodeURIComponent(id) + '.json', { cache: 'no-store' });
         if (!res.ok) throw new Error('not found');
-        const issue: Issue = await res.json();
-        renderReader(issue);
+        renderReader((await res.json()) as Issue);
       } catch (e) {
         renderReader(FALLBACK_ISSUE);
       }
     }
 
-    async function loadIndex(forceReload: boolean) {
-      if (shelf) shelf.innerHTML = '<p class="archive-status">' + (forceReload ? 'ricarico…' : 'caricamento numeri arretrati…') + '</p>';
+    async function loadIndex() {
+      if (shelf) status(shelf, S.loadingIndex);
       try {
-        const res = await fetch('/data/issues/index.json', { cache: forceReload ? 'no-store' : 'default' });
+        const res = await fetch('/data/issues/index.json');
         if (!res.ok) throw new Error('not found');
         index = await res.json();
         if (!index || !index.issues || index.issues.length === 0) throw new Error('empty');
@@ -143,7 +209,6 @@
       openIssue(activeId);
     }
 
-    reloadBtn.addEventListener('click', () => loadIndex(true));
-    loadIndex(false);
+    loadIndex();
   })();
 </script>

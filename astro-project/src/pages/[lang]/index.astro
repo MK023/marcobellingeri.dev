@@ -10,6 +10,7 @@ import StackSection from '../../components/StackSection.astro';
 import SecurityCard from '../../components/SecurityCard.astro';
 import FieldNotes from '../../components/FieldNotes.astro';
 import Projects from '../../components/Projects.astro';
+import Servizi from '../../components/Servizi.astro';
 import ArchiveSection from '../../components/ArchiveSection.astro';
 import Booking from '../../components/Booking.astro';
 import NeonTerminal from '../../components/NeonTerminal.astro';
@@ -30,11 +31,12 @@ const { lang } = Astro.params as { lang: Lang };
 
   <main id="main-content">
     <Dossier />
+    <Servizi />
+    <FieldNotes />
+    <Projects />
     <Percorso />
     <StackSection />
     <SecurityCard />
-    <FieldNotes />
-    <Projects />
     <ArchiveSection />
     <Booking />
   </main>

@@ -1,9 +1,35 @@
+---
+import { defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+
+const copy = {
+  it: {
+    kicker: '"Infrastruttura che regge il peso — e la fiducia — di chi la usa."',
+  },
+  en: {
+    kicker: '"Infrastructure that carries the weight — and the trust — of the people who rely on it."',
+  },
+}[lang];
+---
+
 <header class="hero">
   <div class="halftone-frame" aria-hidden="true"></div>
   <div class="masthead-wrap">
     <span class="issue-tag mono">CLOUD &amp; SECURITY EDITION</span>
-    <h1 class="name display">Bellingeri</h1>
+    <h1 class="name display"><span class="given">Marco</span>Bellingeri</h1>
     <span class="role-chip mono">CLOUD PLATFORM &amp; SECURITY ENGINEER</span>
-    <p class="kicker">"Infrastruttura che regge il peso — e la fiducia — di chi la usa."</p>
+    <p class="kicker">{copy.kicker}</p>
   </div>
 </header>
+
+<style>
+  /* Il nome di battesimo fa da sopratitolo alla testata, un terzo del cognome. */
+  h1.name .given{
+    display:block;
+    font-size:0.3em;
+    letter-spacing:0.05em;
+    line-height:1;
+    margin-bottom:0.05em;
+  }
+</style>

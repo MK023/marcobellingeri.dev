@@ -1,14 +1,31 @@
+---
+import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+const t = useTranslations(lang);
+
+// L'ordine è quello che serve a chi deve comprare: prima l'offerta, poi la
+// prova, e solo dopo il curriculum. I numeri seguono la pagina, non il contrario.
+const entries = [
+  { id: 'dossier', num: '01', label: t('nav.dossier') },
+  { id: 'servizi', num: '02', label: t('nav.servizi') },
+  { id: 'field-notes', num: '03', label: t('nav.fieldNotes') },
+  { id: 'projects', num: '04', label: t('nav.projects') },
+  { id: 'percorso', num: '05', label: t('nav.percorso') },
+  { id: 'stack', num: '06', label: t('nav.stack') },
+  { id: 'security', num: '07', label: t('nav.security') },
+  { id: 'archive', num: '08', label: t('nav.archive') },
+  { id: 'booking', num: '09', label: t('nav.booking') },
+  { id: 'contact', num: '10', label: t('nav.contact') },
+];
+---
+
 <nav class="toc mono" id="toc-nav">
-  <a href="#dossier" data-section="dossier"><span class="num">01</span> DOSSIER</a>
-  <a href="#percorso" data-section="percorso"><span class="num">02</span> PERCORSO</a>
-  <a href="#stack" data-section="stack"><span class="num">03</span> STACK</a>
-  <a href="#field-notes" data-section="field-notes"><span class="num">04</span> FIELD NOTES</a>
-  <a href="#projects" data-section="projects"><span class="num">05</span> PROGETTI</a>
-  <a href="#archive" data-section="archive"><span class="num">06</span> ARCHIVIO</a>
-  <a href="#booking" data-section="booking"><span class="num">07</span> APPUNTAMENTI</a>
-  <a href="#contact" data-section="contact"><span class="num">08</span> CONTATTI</a>
+  {entries.map((e) => (
+    <a href={`#${e.id}`} data-section={e.id}><span class="num">{e.num}</span> {e.label}</a>
+  ))}
 </nav>
-<p class="toc-hint mono">← scorri per vedere tutte le sezioni →</p>
+<p class="toc-hint mono">{t('nav.hint')}</p>
 
 <script>
   // ---- scroll-spy: evidenzia la sezione attiva nel sommario ----

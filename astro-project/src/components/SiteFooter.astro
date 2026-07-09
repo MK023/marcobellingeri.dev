@@ -1,27 +1,47 @@
 ---
 import { getRelativeLocaleUrl } from 'astro:i18n';
-const lang = Astro.currentLocale ?? 'en';
+import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+const t = useTranslations(lang);
 const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
+
+const EMAIL = 'mkdevpy@proton.me';
+
+const links = [
+  'https://github.com/MK023',
+  'https://linkedin.com/in/marco-bellingeri',
+  'https://credly.com/users/marco-bellingeri',
+];
 ---
 
 <footer id="contact" class="reveal">
   <div class="colophon">
     <div>
-      <h3>Contatti</h3>
-      <a href="mailto:mkdevpy@proton.me">mkdevpy@proton.me</a>
-      <button class="util-btn" id="copy-email-btn" style="margin-left:8px;">COPIA</button><br />
+      <h3>{t('foot.contacts')}</h3>
+      <a href={`mailto:${EMAIL}`}>{EMAIL}</a>
+      <button
+        class="util-btn"
+        id="copy-email-btn"
+        style="margin-left:8px;"
+        data-email={EMAIL}
+        data-label={t('foot.copy')}
+        data-copied={t('foot.copied')}
+        data-error={t('foot.copyError')}
+      >{t('foot.copy')}</button><br />
       Casale Monferrato, Alessandria, IT
     </div>
     <div>
-      <h3>Online</h3>
-      <a href="https://github.com/MK023" target="_blank" rel="noopener">github.com/MK023</a><br />
-      <a href="#" target="_blank" rel="noopener">linkedin.com/in/ — da completare</a>
+      <h3>{t('foot.online')}</h3>
+      {links.map((href) => (
+        <><a href={href} target="_blank" rel="noopener">{href.replace('https://', '')}</a><br /></>
+      ))}
     </div>
     <div>
-      <h3>Colophon</h3>
-      Impaginato in Anton, Source Serif 4, JetBrains Mono.<br />
-      Stampato digitalmente, ovunque tu sia.
-      <div class="ai-seal" title="Sviluppato in pair programming con Claude Code">
+      <h3>{t('foot.colophon')}</h3>
+      {t('foot.setIn')}<br />
+      {t('foot.printed')}
+      <div class="ai-seal" title={t('foot.sealTitle')}>
         <svg viewBox="0 0 100 100">
           <path id="badgeCirclePath" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" fill="none"></path>
           <text class="ring-text">
@@ -34,7 +54,7 @@ const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
       </div>
     </div>
   </div>
-  <p class="fine-print">© Marco Bellingeri — Cloud &amp; Security Edition. Tutti i diritti, nessun bug in produzione (si spera). · <a href={privacyUrl}>Privacy</a></p>
+  <p class="fine-print">{t('foot.finePrint')} · <a href={privacyUrl}>Privacy</a></p>
 </footer>
 
 <script>
@@ -42,17 +62,17 @@ const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
   const copyBtn = document.getElementById('copy-email-btn');
   if (copyBtn) {
     copyBtn.addEventListener('click', async () => {
+      const { email = '', label = '', copied = '', error = '' } = (copyBtn as HTMLElement).dataset;
       try {
-        await navigator.clipboard.writeText('mkdevpy@proton.me');
-        const original = copyBtn.textContent;
-        copyBtn.textContent = 'COPIATO ✓';
+        await navigator.clipboard.writeText(email);
+        copyBtn.textContent = copied;
         copyBtn.classList.add('copied');
         setTimeout(() => {
-          copyBtn.textContent = original;
+          copyBtn.textContent = label;
           copyBtn.classList.remove('copied');
         }, 1800);
       } catch (e) {
-        copyBtn.textContent = 'ERRORE';
+        copyBtn.textContent = error;
       }
     });
   }

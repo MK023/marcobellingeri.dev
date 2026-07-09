@@ -1,89 +1,43 @@
+---
+import { defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+
+const copy = {
+  it: {
+    title: 'Stack',
+    cards: [
+      ['CORE', 'Python & Backend', 'FastAPI, Flask, Falcon — Clean Architecture e DDD, 100+ endpoint REST in produzione.'],
+      ['INFRA', 'Cloud & IaC', 'AWS (Lambda, SQS, S3, IAM, VPC), Kubernetes / K3s, Terraform, Cloudflare Tunnel.'],
+      ['SEC', 'Security', 'OWASP hardening, crittografia PII (AES-256), security gate in CI: Bandit, CodeQL, Gitleaks.'],
+      ['DATA', 'Database', 'PostgreSQL + PostGIS, Redis, MongoDB, SQLite FTS5 — geospaziale e caching ad alte prestazioni.'],
+      ['AI', 'AI & Agenti', 'Claude API, Model Context Protocol (MCP), Groq, HuggingFace Transformers.'],
+    ],
+  },
+  en: {
+    title: 'Stack',
+    cards: [
+      ['CORE', 'Python & Backend', 'FastAPI, Flask, Falcon — Clean Architecture and DDD, 100+ REST endpoints in production.'],
+      ['INFRA', 'Cloud & IaC', 'AWS (Lambda, SQS, S3, IAM, VPC), Kubernetes / K3s, Terraform, Cloudflare Tunnel.'],
+      ['SEC', 'Security', 'OWASP hardening, PII encryption (AES-256), CI security gates: Bandit, CodeQL, Gitleaks.'],
+      ['DATA', 'Database', 'PostgreSQL + PostGIS, Redis, MongoDB, SQLite FTS5 — geospatial and high-performance caching.'],
+      ['AI', 'AI & Agents', 'Claude API, Model Context Protocol (MCP), Groq, HuggingFace Transformers.'],
+    ],
+  },
+}[lang];
+---
+
 <section id="stack" class="reveal">
   <div class="section-head">
-    <span class="num mono">03</span>
-    <h2 class="display">Stack</h2>
+    <span class="num mono">06</span>
+    <h2 class="display">{copy.title}</h2>
   </div>
   <div class="stack-grid reveal-stagger">
-    <div class="stack-card" data-tag="CORE">
-      <h3>Python</h3>
-      <p>Typer, Rich, httpx, pytest — automazione e tooling da riga di comando.</p>
-    </div>
-    <div class="stack-card" data-tag="INFRA">
-      <h3>Cloud &amp; DevOps</h3>
-      <p>Provisioning, pipeline, containerizzazione, gestione ambienti multi-cloud.</p>
-    </div>
-    <div class="stack-card" data-tag="SEC">
-      <h3>Security</h3>
-      <p>Audit di configurazioni, gestione segreti, hardening dello stack AI-to-OS.</p>
-    </div>
-    <div class="stack-card" data-tag="DATA">
-      <h3>SQLite / Redis</h3>
-      <p>Persistenza leggera e caching ad alte prestazioni.</p>
-    </div>
-    <div class="stack-card" data-tag="AI">
-      <h3>Anthropic SDK</h3>
-      <p>Integrazione di agenti e RAG in prodotti reali per clienti.</p>
-    </div>
-    <div class="stack-card" data-tag="QA">
-      <h3>SonarQube</h3>
-      <p>Qualità del codice come pratica continua, non come rifinitura finale.</p>
-    </div>
-  </div>
-
-  <div class="live-stack">
-    <div class="live-stack-head">
-      <h3 class="mono">$ derivato da github.com/MK023 — tutti i repo pubblici</h3>
-      <span class="src mono">FONTE: GITHUB API, LIVE</span>
-    </div>
-    <div id="lang-bars">
-      <p class="live-stack-status mono" id="lang-status">caricamento dati in corso…</p>
-    </div>
+    {copy.cards.map(([tag, title, body]) => (
+      <div class="stack-card" data-tag={tag}>
+        <h3>{title}</h3>
+        <p>{body}</p>
+      </div>
+    ))}
   </div>
 </section>
-
-<script>
-  // ---- live GitHub language stats ----
-  (function loadGithubStack() {
-    const statusEl = document.getElementById('lang-status');
-    const container = document.getElementById('lang-bars');
-    const colors = ['#FF5A1F', '#6B4FFF', '#181410', '#A8875B', '#3B7A57', '#B23A48'];
-
-    fetch('https://api.github.com/users/MK023/repos?per_page=100&sort=updated')
-      .then((res) => {
-        if (!res.ok) throw new Error('github api error');
-        return res.json();
-      })
-      .then((repos) => {
-        const counts: Record<string, number> = {};
-        repos.forEach((r: any) => {
-          if (r.fork) return;
-          if (!r.language) return;
-          counts[r.language] = (counts[r.language] || 0) + 1;
-        });
-        const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-        if (entries.length === 0 || !statusEl || !container) {
-          if (statusEl) statusEl.textContent = 'nessun linguaggio pubblico rilevato al momento.';
-          return;
-        }
-        const total = entries.reduce((s, [, c]) => s + c, 0);
-        container.innerHTML = '';
-        entries.forEach(([lang, count], i) => {
-          const pct = Math.round((count / total) * 100);
-          const row = document.createElement('div');
-          row.className = 'lang-bar-row';
-          row.innerHTML =
-            '<span>' + lang + '</span>' +
-            '<span class="lang-bar-track"><span class="lang-bar-fill" style="background:' + colors[i % colors.length] + '"></span></span>' +
-            '<span class="lang-bar-pct">' + pct + '%</span>';
-          container.appendChild(row);
-          requestAnimationFrame(() => {
-            const fill = row.querySelector<HTMLElement>('.lang-bar-fill');
-            if (fill) fill.style.width = pct + '%';
-          });
-        });
-      })
-      .catch(() => {
-        if (statusEl) statusEl.textContent = 'dati live non disponibili in questo momento — vedi le card qui sopra per lo stack dichiarato.';
-      });
-  })();
-</script>

@@ -1,30 +1,53 @@
+---
+import { defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+
+const copy = {
+  it: {
+    title: 'Dossier',
+    p1: "Freelance Cloud Platform & Security Engineer, base a Casale Monferrato. Aiuto team e aziende a rendere la loro infrastruttura cloud affidabile e sicura: automazione, pipeline, hardening, tooling interno. Lavoro fianco a fianco con il team del cliente — pair programming, non consegne a scatola chiusa — così alla fine resta autonomo. Python è lo strumento principale per automazione, tooling interno e sicurezza applicativa.",
+    p2: "La sicurezza non è una rifinitura finale: gestione dei segreti, gate automatici in CI e threat model scritto fanno parte della consegna, non di un intervento successivo. Alla fine di un lavoro restano test che girano, documentazione che si legge e un team in grado di rimetterci mano senza di me.",
+    facts: [
+      ['FOCUS', 'DevOps · Cloud · Security'],
+      ['METODO', 'Pair programming, il team resta autonomo'],
+      ['RISULTATO', 'Cache Redis rifattorizzata: throughput ×41 in produzione, zero downtime'],
+      ['MODALITÀ', 'Da remoto; in sede o ibrido su richiesta'],
+      ['LINGUE', 'Italiano, inglese'],
+      ['PRIMO CONFRONTO', 'Gratuito, senza impegno'],
+    ],
+  },
+  en: {
+    title: 'Dossier',
+    p1: "Freelance Cloud Platform & Security Engineer, based in Casale Monferrato, Italy. I help teams and companies make their cloud infrastructure reliable and secure: automation, pipelines, hardening, internal tooling. I work alongside the client's team — pair programming, not black-box handovers — so they stay autonomous. Python is the main tool for automation, internal tooling and application security.",
+    p2: "Security is not a final polish: secrets management, automated CI gates and a written threat model are part of the delivery, not of a later engagement. What's left at the end of a job is tests that run, documentation that reads, and a team able to work on it without me.",
+    facts: [
+      ['FOCUS', 'DevOps · Cloud · Security'],
+      ['METHOD', 'Pair programming, your team stays autonomous'],
+      ['RESULT', 'Redis cache refactored: throughput ×41 in production, zero downtime'],
+      ['ENGAGEMENT', 'Remote; on-site or hybrid on request'],
+      ['LANGUAGES', 'Italian, English'],
+      ['FIRST CALL', 'Free, no commitment'],
+    ],
+  },
+}[lang];
+---
+
 <section id="dossier" class="reveal">
   <div class="section-head">
     <span class="num mono">01</span>
-    <h2 class="display">Dossier</h2>
+    <h2 class="display">{copy.title}</h2>
   </div>
   <div class="dossier">
-    <p>
-      Freelance Cloud Platform &amp; Security Engineer con base a Casale Monferrato,
-      al lavoro sotto regime forfettario. Il profilo è deliberatamente orientato a
-      DevOps + Cloud + Security, con un approccio hands-on: pair programming come
-      metodo di lavoro principale, non prompt-e-vai. Python è lo strumento di
-      elezione per automazione, tooling interno e sicurezza applicativa.
-    </p>
-    <p>
-      Fuori dal terminale, la stessa attenzione al dettaglio si ritrova nella
-      passione per l'artigianato giapponese — penne stilografiche, inchiostri,
-      orologeria meccanica — un promemoria che le cose fatte bene richiedono
-      pazienza, sia che si tratti di un pennino a 18kt sia di un refactor Redis.
-    </p>
+    <p>{copy.p1}</p>
+    <p>{copy.p2}</p>
     <aside class="fact-box">
       <dl>
-        <dt>SEDE</dt><dd>Casale Monferrato (AL)</dd>
-        <dt>REGIME</dt><dd>Forfettario — gestione Fiscozen</dd>
-        <dt>FOCUS</dt><dd>DevOps · Cloud · Security</dd>
-        <dt>LINGUAGGIO</dt><dd>Python</dd>
-        <dt>METODO</dt><dd>Pair programming, non one-shot</dd>
-        <dt>GITHUB</dt><dd>MK023</dd>
+        {copy.facts.map(([term, def]) => (
+          <>
+            <dt>{term}</dt><dd>{def}</dd>
+          </>
+        ))}
       </dl>
     </aside>
   </div>

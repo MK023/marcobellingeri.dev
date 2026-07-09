@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!--
+    Il pennino: lo stesso segno del cursore custom (global.css). Colori dalle
+    variabili del sito — paper/ink/orange di giorno, ink/paper/magenta di notte,
+    così la tab segue il tema del browser come fa la pagina.
+  -->
+  <style>
+    .bg { fill: #FAFAF7; }
+    .nib { fill: #181410; }
+    .slit { stroke: #FAFAF7; }
+    .dot { fill: #FF5A1F; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0B0710; }
+      .nib { fill: #F2EDFB; }
+      .slit { stroke: #0B0710; }
+      .dot { fill: #FF2FD6; }
+    }
+  </style>
+  <rect class="bg" width="32" height="32" rx="4"/>
+  <path class="nib" d="M16 3 L27 16 L16 29 L5 16 Z"/>
+  <line class="slit" x1="16" y1="10" x2="16" y2="24" stroke-width="2"/>
+  <circle class="dot" cx="16" cy="19" r="2.6"/>
+</svg>

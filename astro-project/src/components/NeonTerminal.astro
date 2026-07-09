@@ -36,7 +36,7 @@
     }
 
     const REDIS_LOG = [
-      '# contesto: sistema di debt collection, layer di cache sotto carico',
+      '# contesto: sistema in produzione, layer di cache sotto carico',
       '- throughput query critica: baseline',
       '+ throughput query critica: <span class="yellow">41×</span> baseline',
       '# intervento: refactor completo del layer Redis',
@@ -53,6 +53,7 @@
             ['cat redis.log', 'il log del refactor 41×'],
             ['cat classified.txt', 'dossier riservato — declassificato'],
             ['projects', 'i progetti attivi'],
+            ['servizi', 'come lavoriamo insieme'],
             ['contact', 'come contattarmi'],
             ['neon', 'più neon. sempre più neon.'],
             ['matrix', 'per i nostalgici'],
@@ -66,7 +67,7 @@
         printLine('<span class="dim">freelance · casale monferrato, it · github.com/MK023</span>');
       },
       ls() {
-        printLine('dossier/  percorso/  stack/  field-notes/  projects/  archive/  contact/');
+        printLine('dossier/  percorso/  stack/  field-notes/  projects/  servizi/  archive/  contact/');
       },
       'cat redis.log'() {
         REDIS_LOG.forEach((l) => printLine(l));
@@ -74,18 +75,24 @@
       'cat classified.txt'() {
         printLine('DECLASSIFICATO — accesso concesso.', 'magenta');
         printLine('&gt; calibro principale: Pilot Custom 845 Urushi rosso, pennino 18kt medio, Iroshizuku Kon-peki.');
-        printLine('&gt; Valorant: Sentinel main, Killjoy/Cypher — difendi il perimetro, sempre.');
         printLine('&gt; il refactor 41× è nato scoprendo una cache invalidata troppo spesso. il bug più costoso è spesso il più noioso.');
-        printLine('&gt; ascolto: Sennheiser Momentum 4, lossless, modalità emotiva anche in debug.');
       },
       projects() {
-        printLine('<span class="yellow">jobsearch</span>      — scraping LinkedIn + cross-check onesto delle skill');
-        printLine('<span class="yellow">vital-signs</span>    — audit di sicurezza stack AI-to-OS');
-        printLine('<span class="yellow">atlas</span>          — knowledge graph personale su Obsidian');
+        printLine('<span class="yellow">torinoparking</span> — API parcheggi Torino → in arrivo su App Store');
+        printLine('<span class="yellow">jobsearch</span>     — matching CV-offerta con Claude + server MCP');
+        printLine('<span class="yellow">atlas</span>         — knowledge graph personale su Obsidian');
+      },
+      servizi() {
+        printLine('<span class="yellow">security audit</span>  — a progetto');
+        printLine('<span class="yellow">cloud &amp; devops</span>  — retainer / giorno');
+        printLine('<span class="yellow">pair &amp; advisory</span> — a giornata');
+        printLine('<span class="dim">primo confronto sempre gratuito.</span>');
       },
       contact() {
-        printLine('email:   <a href="mailto:mkdevpy@proton.me" style="color:#0ff;">mkdevpy@proton.me</a>');
-        printLine('github:  <a href="https://github.com/MK023" target="_blank" rel="noopener" style="color:#0ff;">github.com/MK023</a>');
+        printLine('email:    <a href="mailto:mkdevpy@proton.me" style="color:#0ff;">mkdevpy@proton.me</a>');
+        printLine('github:   <a href="https://github.com/MK023" target="_blank" rel="noopener" style="color:#0ff;">github.com/MK023</a>');
+        printLine('linkedin: <a href="https://linkedin.com/in/marco-bellingeri" target="_blank" rel="noopener" style="color:#0ff;">linkedin.com/in/marco-bellingeri</a>');
+        printLine('credly:   <a href="https://credly.com/users/marco-bellingeri" target="_blank" rel="noopener" style="color:#0ff;">credly.com/users/marco-bellingeri</a>');
       },
       neon() {
         document.documentElement.style.setProperty('filter', 'saturate(1.6)');
