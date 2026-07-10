@@ -1,15 +1,18 @@
 {
-  // Sito statico su Workers static assets (ADR-0001). Nessun `main`: non c'è
-  // codice Worker, solo asset. Gli header di sicurezza e cache stanno in
-  // public/_headers, che Cloudflare applica agli asset statici.
+  // Sito statico su Workers static assets (ADR-0001). Gli header di sicurezza e
+  // cache stanno in public/_headers, che Cloudflare applica agli asset statici.
   //
-  // Nota: ADR-0001 §4 prevede un Worker per il geo-redirect su `/`. Quello
-  // richiede `main` e non è in questo blocco: oggi `/` è un redirect statico.
+  // Il Worker esiste per una sola rotta: `/`, dove sceglie la lingua dal paese
+  // (ADR-0001 §4). Senza `run_worker_first` la root verrebbe risolta da index.html
+  // prima che il Worker giri, e il redirect non avverrebbe mai.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "marcobellingeri-dev",
+  "main": "worker/index.js",
   "compatibility_date": "2026-07-09",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/"]
   },
   // Il dominio è già una zona su questo account (nameserver lara/frank.ns.cloudflare.com).
   "routes": [{ "pattern": "marcobellingeri.dev", "custom_domain": true }],
