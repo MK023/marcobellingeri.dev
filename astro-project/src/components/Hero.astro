@@ -3,12 +3,16 @@ import { defaultLang, type Lang } from '../i18n/ui';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 
+// Chiusura di «Computing Machinery and Intelligence» (Mind, 1950, p. 460).
+// Citazione verificata alla fonte: non parafrasarla.
 const copy = {
   it: {
-    kicker: '"Infrastruttura che regge il peso — e la fiducia — di chi la usa."',
+    quote: '«Riusciamo a vedere solo poco lontano, ma quanto basta per scorgere tutto ciò che resta da fare.»',
+    source: 'Computing Machinery and Intelligence, 1950',
   },
   en: {
-    kicker: '"Infrastructure that carries the weight — and the trust — of the people who rely on it."',
+    quote: '“We can only see a short distance ahead, but we can see plenty there that needs to be done.”',
+    source: 'Computing Machinery and Intelligence, 1950',
   },
 }[lang];
 ---
@@ -19,7 +23,10 @@ const copy = {
     <span class="issue-tag mono">CLOUD &amp; SECURITY EDITION</span>
     <h1 class="name display"><span class="given">Marco</span>Bellingeri</h1>
     <span class="role-chip mono">CLOUD PLATFORM &amp; SECURITY ENGINEER</span>
-    <p class="kicker">{copy.kicker}</p>
+    <figure class="kicker">
+      <blockquote>{copy.quote}</blockquote>
+      <figcaption class="mono">Alan Turing — <cite>{copy.source}</cite></figcaption>
+    </figure>
   </div>
 </header>
 
@@ -32,4 +39,15 @@ const copy = {
     line-height:1;
     margin-bottom:0.05em;
   }
+  /* .kicker vive in global.css: qui solo la struttura figure/blockquote/cite. */
+  .kicker blockquote{ margin:0; }
+  .kicker figcaption{
+    font-style:normal;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    opacity:0.7;
+    margin-top:10px;
+  }
+  .kicker cite{ font-style:normal; }
 </style>

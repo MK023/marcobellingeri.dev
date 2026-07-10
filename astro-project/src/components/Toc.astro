@@ -36,30 +36,71 @@ const entries = [
       .map((a) => document.getElementById(a.dataset.section || ''))
       .filter((el): el is HTMLElement => Boolean(el));
 
+    // porta la voce indicata in vista dentro la striscia scorrevole, senza scrollare la pagina
+    function revealInNav(link: HTMLAnchorElement) {
+      const nav = document.getElementById('toc-nav');
+      if (!nav) return;
+      const linkLeft = link.offsetLeft;
+      const linkRight = linkLeft + link.offsetWidth;
+      if (linkLeft < nav.scrollLeft || linkRight > nav.scrollLeft + nav.clientWidth) {
+        nav.scrollTo({ left: linkLeft - 20, behavior: 'smooth' });
+      }
+    }
+
+    function activate(link: HTMLAnchorElement) {
+      links.forEach((l) => l.classList.remove('active'));
+      link.classList.add('active');
+      revealInNav(link);
+    }
+
+    // L'ultima sezione (#contact) è il footer in fondo alla pagina: il suo bordo
+    // superiore non entra mai nella fascia centrale del rootMargin, quindi
+    // l'observer da solo non la attiva. `atBottom` fa fede quando si tocca il
+    // fondo pagina e ha la precedenza sull'observer (vedi guardia sotto).
+    let atBottom = false;
+    const lastLink = links[links.length - 1];
+
     const spyIo = new IntersectionObserver(
       (entries) => {
+        // A fondo pagina comanda lo scroll listener: ignora l'observer, altrimenti
+        // ri-attiverebbe la penultima sezione subito dopo l'attivazione dell'ultima.
+        if (atBottom) return;
         entries.forEach((entry) => {
           const link = document.querySelector<HTMLAnchorElement>(
             '#toc-nav a[data-section="' + entry.target.id + '"]'
           );
           if (!link) return;
-          if (entry.isIntersecting) {
-            links.forEach((l) => l.classList.remove('active'));
-            link.classList.add('active');
-            // tiene la voce attiva visibile nella striscia scorrevole, senza scrollare la pagina
-            const nav = document.getElementById('toc-nav');
-            if (!nav) return;
-            const linkLeft = link.offsetLeft;
-            const linkRight = linkLeft + link.offsetWidth;
-            if (linkLeft < nav.scrollLeft || linkRight > nav.scrollLeft + nav.clientWidth) {
-              nav.scrollTo({ left: linkLeft - 20, behavior: 'smooth' });
-            }
-          }
+          if (entry.isIntersecting) activate(link);
         });
       },
       { rootMargin: '-45% 0px -50% 0px', threshold: 0 }
     );
 
     sections.forEach((s) => spyIo.observe(s));
+
+    // Rileva il fondo pagina e forza l'ultima voce attiva. N piccolo (3px) tollera
+    // arrotondamenti sub-pixel e zoom. Il lavoro di layout si fa una volta per frame.
+    let queued = false;
+    function onScroll() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        const nowBottom =
+          window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 3;
+        if (nowBottom) {
+          atBottom = true;
+          if (lastLink && !lastLink.classList.contains('active')) activate(lastLink);
+        } else if (atBottom) {
+          // Staccandosi dal fondo si ridà la parola all'observer: al prossimo
+          // aggiornamento riattiverà la sezione che attraversa la fascia centrale.
+          atBottom = false;
+        }
+      });
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    onScroll();
   })();
 </script>

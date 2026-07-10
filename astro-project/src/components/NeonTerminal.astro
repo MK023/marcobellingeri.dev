@@ -46,21 +46,25 @@
     const COMMANDS: Record<string, () => void> = {
       help() {
         printLine('Comandi disponibili:', 'magenta');
-        (
-          [
-            ['whoami', 'chi sono'],
-            ['ls', 'elenca le sezioni nascoste'],
-            ['cat redis.log', 'il log del refactor 41×'],
-            ['cat classified.txt', 'dossier riservato — declassificato'],
-            ['projects', 'i progetti attivi'],
-            ['servizi', 'come lavoriamo insieme'],
-            ['contact', 'come contattarmi'],
-            ['neon', 'più neon. sempre più neon.'],
-            ['matrix', 'per i nostalgici'],
-            ['clear', 'pulisci lo schermo'],
-            ['exit', "chiudi il terminale (o ESC)"],
-          ] as [string, string][]
-        ).forEach(([c, d]) => printLine('  <span class="yellow">' + c.padEnd(18) + '</span>' + d));
+        const rows: [string, string][] = [
+          ['whoami', 'chi sono'],
+          ['ls', 'elenca le sezioni nascoste'],
+          ['cat redis.log', 'il log del refactor 41×'],
+          ['cat classified.txt', 'dossier riservato — declassificato'],
+          ['projects', 'i progetti attivi'],
+          ['servizi', 'come lavoriamo insieme'],
+          ['contact', 'come contattarmi'],
+          ['neon', 'più neon. sempre più neon.'],
+          ['matrix', 'per i nostalgici'],
+          ['clear', 'pulisci lo schermo'],
+          ['exit', "chiudi il terminale (o ESC)"],
+        ];
+        // larghezza colonna = comando più lungo + margine di 2 spazi (niente numero magico)
+        const width = Math.max(...rows.map(([c]) => c.length)) + 2;
+        // padding con &nbsp;: innerHTML + white-space non garantiscono la resa degli spazi ripetuti
+        rows.forEach(([c, d]) =>
+          printLine('  <span class="yellow">' + c + '</span>' + '&nbsp;'.repeat(width - c.length) + d)
+        );
       },
       whoami() {
         printLine('marco bellingeri — cloud platform &amp; security engineer');
@@ -104,6 +108,8 @@
       },
       clear() {
         output!.innerHTML = '';
+        // schermo vuoto senza appigli: stessa formula di chiusura di bootSequence()
+        printLine("digita 'help' per i comandi disponibili.", 'dim');
       },
       exit() {
         close();

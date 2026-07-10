@@ -539,7 +539,10 @@
   .svc-track{
     display:flex; gap:20px;
     overflow-x:auto; scrollbar-width:none;
-    padding:6px 2px 10px;
+    /* overflow-x:auto forza overflow-y ad auto (spec CSS): l'asse verticale ritaglia.
+       Padding ampio così l'etichetta ::before (top:-13px) e l'hover (translateY(-6px)
+       + box-shadow 6px 8px) non vengano mai tagliati. */
+    padding:24px 2px 18px;
   }
   .svc-track::-webkit-scrollbar{ display:none; }
   .svc-track .svc-card{ flex:0 0 300px; }
