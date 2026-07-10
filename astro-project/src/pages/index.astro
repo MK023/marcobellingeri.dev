@@ -1,8 +1,8 @@
 ---
-// ponytail: placeholder di root. Il redirect geo-aware vero
-// (request.cf.country + Accept-Language, crawler esenti, override via cookie)
-// sarà di competenza di un Worker Cloudflare al go-live — vedi ADR-0001 §4.
-// Nel frattempo un meta-refresh statico evita che `/` dia 404 in dev/preview.
+// In produzione `/` non arriva mai qui: worker/index.js la intercetta
+// (run_worker_first) e sceglie la lingua da paese + cookie pref-lang (ADR-0001 §4).
+// Questo meta-refresh serve solo dove il Worker non gira — `astro dev`/`preview` —
+// per evitare che `/` dia 404.
 const fallback = '/en/';
 ---
 

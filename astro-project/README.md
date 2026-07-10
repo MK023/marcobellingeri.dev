@@ -1,66 +1,64 @@
 # Bellingeri — sito personale (Astro)
 
-Migrazione del sito da singolo file HTML a progetto Astro componentizzato.
-Stessa identità visiva, stessa funzionalità (terminale, command palette,
-Archivio, giorno/notte automatico, ecc.), ma ora organizzata in componenti
-e con le Content Collections per Field Notes.
+Il frontend di [marcobellingeri.dev](https://marcobellingeri.dev): Astro statico,
+bilingue IT/EN, servito da Cloudflare Workers static assets. Il sito fa l'audit di
+sé stesso — la sezione Security legge gli header dalla risposta HTTP che il browser
+ha appena ricevuto.
 
 ## Setup
 
 ```bash
 npm install
-npm run dev       # sviluppo locale, http://localhost:4321
-npm run build     # build di produzione in ./dist
-npm run preview   # anteprima della build di produzione
+npm run dev        # sviluppo locale, http://localhost:4321
+npm run build      # build di produzione in ./dist
+npm run test:csp   # i test girano su dist/, non sul sorgente: prima serve build
+npx wrangler dev   # serve dist/ CON gli header veri di public/_headers
 ```
 
-Se `nvm install lts/*` ti dà errore in zsh, usa le virgolette:
-`nvm install "lts/*"` oppure `nvm install --lts`.
+`astro preview` **non applica `public/_headers`**: la CSP e gli header di sicurezza
+si vedono solo con `wrangler dev` o in produzione. È il motivo per cui i test girano
+sulla build e la verifica si fa sul sito servito.
 
 ## Struttura
 
 ```
 src/
-  layouts/BaseLayout.astro      — head, meta, font, script anti-flash, loader
-  components/                   — un file per sezione (Hero, Dossier, Stack, ...)
-  content/
-    config.ts                   — schema tipizzato per Field Notes
-    cases/*.md                  — un file = un caso studio mensile
-  pages/index.astro             — assembla tutti i componenti
+  layouts/BaseLayout.astro   — head, meta social, hreflang, script anti-FOUC
+  components/                — un file per sezione (Hero, Dossier, Stack, …)
+  lib/sections.ts            — fonte unica di sezioni e numerazione (sommario,
+                               palette comandi, `ls` del terminale)
+  lib/issues.ts              — l'Archivio esiste solo se index.json ha un numero
+  i18n/ui.ts                 — tutte le stringhe, IT ed EN
+  pages/[lang]/index.astro   — assembla i componenti
+  pages/404.astro            — servita da Cloudflare per ogni percorso inesistente
+worker/index.js              — sceglie la lingua su `/` (paese + cookie pref-lang)
 public/
-  data/issues/                  — numeri legacy dell'Archivio (JSON statico, in dismissione)
-vercel.json                     — header di sicurezza (CSP, HSTS, ecc.) + caching
+  _headers                   — header di sicurezza; in CSP SOLO frame-ancestors
+  data/issues/index.json     — l'indice dei numeri; vuoto = Archivio nascosto
+  cv-{it,en}.pdf             — generati da scripts/genera-cv.py (root del repo)
+test/                        — CSP, sezioni, worker, compatibilità CSS
+wrangler.jsonc               — Workers static assets + custom domain
 ```
 
-## Come aggiungere un caso studio mensile a Field Notes
+## La CSP, in breve
 
-Copia un file in `src/content/cases/`, rinominalo `YYYY-MM-titolo.md`,
-cambia i campi nel frontmatter. Non serve toccare altro — la sezione si
-aggiorna da sola al prossimo build.
+La policy vive nel `<meta>` generato da Astro in build (`security.csp` in
+`astro.config.mjs`), con gli hash di ogni script. In `public/_headers` resta **solo**
+`frame-ancestors`, che dentro un `<meta>` verrebbe ignorata. Rimettere una CSP negli
+header annullerebbe gli hash e manderebbe il sito offline: `npm run test:csp` lo
+impedisce. Lo script anti-FOUC del tema è `is:inline` e il suo hash sta a mano nella
+config — se lo modifichi, il test fallisce e ti dice quale hash mettere.
 
-## Come funziona l'Archivio
+## Deploy
 
-**In migrazione al DB.** Il vecchio meccanismo (JSON generato da `firecrawl_issue.py`
-e letto via `fetch`) è superato: il numero mensile vive ora su Supabase (pipeline
-`engine/`, vedi [ADR-0004](../docs/adr/0004-sourcing-due-canali.md)). Il componente
-`ArchiveSection.astro` legge ancora il JSON statico in `public/data/issues/` finché
-non viene riscritto DB-backed (con escaping/validazione `source_url`, ADR-0004 §4).
+Ogni push su `main` pubblica in produzione (`.github/workflows/deploy.yml`):
+build → test su `dist/` → `wrangler deploy` → verifica del sito servito.
+Il deploy manuale (`npx wrangler deploy`) resta possibile con `wrangler login`.
 
-## Da personalizzare prima del deploy
+## Sicurezza — stato
 
-- `src/components/Booking.astro` — verifica il link Calendly (`CALENDLY_URL`)
-- `src/components/SiteFooter.astro` — link LinkedIn (attualmente placeholder)
-- `astro.config.mjs` — campo `site` con il dominio reale
-
-## Deploy su Vercel
-
-1. Collega il repo GitHub a Vercel (import progetto, riconosce Astro automaticamente)
-2. `vercel.json` è già pronto con header di sicurezza OWASP-aligned e regole di cache
-3. Dopo il primo deploy, in Vercel → Firewall: attiva **Managed Rulesets** (copertura OWASP Top 10) e **Bot Protection**
-
-## Sicurezza — checklist rapida
-
-- [ ] CSP in `vercel.json` aggiornata se aggiungi nuovi domini esterni
-- [ ] WAF managed rulesets attivi su Vercel
-- [ ] `FIRECRAWL_API_KEY` solo nei GitHub Secrets, mai nel codice
-- [ ] Lighthouse (Performance / Accessibilità / Best Practices / SEO) verificato dopo ogni deploy importante
+- CSP con hash, niente `unsafe-inline` ([Mozilla Observatory: A+](https://developer.mozilla.org/en-US/observatory/analyze?host=marcobellingeri.dev))
+- HSTS con preload, `nosniff`, Referrer-Policy, Permissions-Policy da `_headers`
+- TLS minimo 1.2 (impostato nella zona Cloudflare)
+- Font self-hosted (Fontsource): nessun transfer di IP a Google
+- Il calendario Cal.eu si carica solo dopo un clic esplicito

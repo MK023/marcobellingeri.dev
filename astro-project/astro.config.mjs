@@ -5,7 +5,7 @@ import sitemap from '@astrojs/sitemap';
 // Se in futuro serviranno funzioni server-side (es. proxy verso FastAPI),
 // si aggiunge qui l'adapter Vercel: https://docs.astro.build/en/guides/integrations-guide/vercel/
 export default defineConfig({
-  site: 'https://marcobellingeri.dev', // sostituisci col dominio reale quando lo hai
+  site: 'https://marcobellingeri.dev',
   output: 'static',
   // CSP: Astro calcola gli hash dei propri script/style bundled e li scrive in un
   // <meta http-equiv>. Lo script anti-FOUC del tema è `is:inline`, quindi Astro NON
@@ -37,7 +37,7 @@ export default defineConfig({
   },
   // i18n IT/EN — EN primario (target anglosassone). Entrambe le lingue prefissate
   // (/en/ e /it/) → hreflang espliciti, nessun default ambiguo, SEO/AEO internazionali.
-  // Il geo-redirect su `/` è demandato a un Worker Cloudflare al go-live (ADR-0001 §4).
+  // Il geo-redirect su `/` lo fa worker/index.js (paese + cookie, ADR-0001 §4).
   i18n: {
     locales: ['en', 'it'],
     defaultLocale: 'en',

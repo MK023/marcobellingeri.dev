@@ -1,5 +1,5 @@
 # Security & cache headers per Cloudflare (Workers static assets / Pages).
-# Hosting = Cloudflare (ADR-0001). Migrati da vercel.json, che resta legacy.
+# Hosting = Cloudflare (ADR-0001). Migrati dal vecchio vercel.json, poi rimosso.
 #
 # La CSP non sta qui: la genera Astro (`security.csp` in astro.config.mjs) come
 # <meta http-equiv>, perché solo in build può calcolare gli hash dei propri script.

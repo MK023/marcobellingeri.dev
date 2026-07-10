@@ -28,7 +28,25 @@ SERIF = next(FONTS.glob("source-serif-4-latin-400-normal.*.woff2"))
 SERIF_B = next(FONTS.glob("source-serif-4-latin-600-normal.*.woff2"), SERIF)
 
 # Righe da NON pubblicare. Il sito espone mkdevpy@proton.me ovunque, non la Gmail.
-VIETATO = re.compile(r"348\s*450\s*7859|03/04/1991|marco\.bellingeri@gmail\.com", re.I)
+#
+# Il confronto NON è legato al formato: `348-450-7859`, `(348) 450 7859` e
+# `1991-04-03` devono cadere quanto le grafie di oggi. Si normalizza il testo
+# (via separatori e punteggiatura) e si cerca sulla forma canonica — una regex
+# sul formato esatto lascia passare il primo .docx riscritto diversamente, e
+# l'unica rete sarebbe una riga di log che NON compare.
+CIFRE_TELEFONO = "3484507859"
+CIFRE_DATA = {"03041991", "04031991", "19910403", "19910304"}
+
+
+def contiene_dato_sensibile(testo: str) -> bool:
+    cifre = re.sub(r"\D", "", testo)
+    if CIFRE_TELEFONO in cifre:
+        return True
+    if any(d in cifre for d in CIFRE_DATA):
+        return True
+    # Gmail ignora i punti nella parte locale: si confronta senza.
+    compatto = re.sub(r"[\s.]", "", testo.lower())
+    return "marcobellingeri@gmail" in compatto
 
 CONTATTI = {
     "it": "mkdevpy@proton.me &nbsp;·&nbsp; github.com/MK023 &nbsp;·&nbsp; "
@@ -68,7 +86,7 @@ def sanifica(corpo: str, etichetta: str) -> str:
     tenuti = []
     for riga in re.findall(r"<(?:p|ul|li)[^>]*>[\s\S]*?</(?:p|ul|li)>|<ul>[\s\S]*?</ul>", corpo):
         testo = html_mod.unescape(re.sub(r"<[^>]+>", "", riga)).strip()
-        if VIETATO.search(testo):
+        if contiene_dato_sensibile(testo):
             print(f"  [{etichetta}] rimossa: {testo[:78]}")
             continue
         if testo and set(testo) <= {"─", " "}:  # i righelli del docx
@@ -111,6 +129,15 @@ def costruisci(lingua: str) -> Path:
 <header><h1>MARCO BELLINGERI</h1><div class="contatti">{CONTATTI[lingua]}</div></header>
 {corpo}
 </body></html>"""
+
+    # Guardia finale sull'INTERA pagina, non sui singoli blocchi: se un dato
+    # sensibile è arrivato fin qui per una strada non prevista, lo script muore
+    # ad alta voce. L'assenza di una riga di log non la nota nessuno; un exit 1 sì.
+    if contiene_dato_sensibile(pagina):
+        raise SystemExit(
+            f"ABORT: un dato sensibile è sopravvissuto alla sanificazione ({lingua}). "
+            "Niente è stato scritto su public/. Controlla il .docx sorgente."
+        )
 
     out = Path(sys.argv[1]) / f"cv_{lingua}.html"
     out.write_text(pagina, encoding="utf-8")
