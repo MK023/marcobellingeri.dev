@@ -54,7 +54,11 @@ const suggestTargets = (Object.keys(languages) as Lang[])
 <html lang={lang}>
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- viewport-fit=cover: senza, la safe-area sotto la dynamic island resta scoperta
+       e il contenuto scrolla dietro l'isola senza nulla a mascherarlo. Con cover,
+       env(safe-area-inset-top) diventa reale e la utility-bar sticky ci estende sopra
+       il proprio sfondo opaco (vedi global.css). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>{pageTitle}</title>
   <meta name="description" content={pageDescription} />
   <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow'} />
