@@ -12,7 +12,9 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-const PAGES = ['dist/it/index.html', 'dist/en/index.html'];
+// La 404 è servita da Cloudflare per ogni percorso inesistente: è la pagina che un
+// visitatore sbagliato vede per prima, e vale la stessa CSP delle altre.
+const PAGES = ['dist/it/index.html', 'dist/en/index.html', 'dist/404.html'];
 
 const sha256 = (s) => 'sha256-' + createHash('sha256').update(s).digest('base64');
 const cspOf = (html) =>

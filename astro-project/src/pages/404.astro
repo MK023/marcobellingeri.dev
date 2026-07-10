@@ -1,0 +1,87 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Cloudflare serve questo file per ogni percorso che non corrisponde a un asset
+// (`not_found_handling: "404-page"` in wrangler.jsonc). È l'unica pagina che può
+// capitare a chiunque, in qualsiasi lingua, prima che il Worker sulla root abbia
+// scelto per lui: quindi parla entrambe le lingue e non ne presume nessuna.
+//
+// `noindex`: non ha un URL canonico né una versione alternativa. Dichiararli
+// direbbe ai motori che questa pagina esiste.
+---
+
+<BaseLayout lang="it" title="404 — Bellingeri" noindex>
+  <main class="pagina-404">
+    <p class="mono etichetta">HTTP 404 · NOT FOUND</p>
+    <h1 class="display cifra">404</h1>
+
+    <div class="colonne">
+      <div lang="it">
+        <p class="riga">Questa pagina non esiste.</p>
+        <p class="nota">
+          Forse l'indirizzo è cambiato, forse non c'è mai stato. Il numero di questo mese,
+          i progetti e il resto sono al loro posto.
+        </p>
+        <a class="util-btn ritorno" href="/it/">↩ Torna al sito</a>
+      </div>
+
+      <div lang="en">
+        <p class="riga">This page does not exist.</p>
+        <p class="nota">
+          Maybe the address changed, maybe it never existed. This month's issue, the
+          projects and everything else are where they were.
+        </p>
+        <a class="util-btn ritorno" href="/en/">↩ Back to the site</a>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .pagina-404 {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 14vh 24px 10vh;
+  }
+  .etichetta {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    opacity: 0.6;
+    margin: 0 0 10px;
+  }
+  .cifra {
+    font-size: clamp(96px, 26vw, 280px);
+    line-height: 0.82;
+    margin: 0 0 6px;
+    /* Il taglio arancione della testata, ridotto a un sottolineato spesso. */
+    border-bottom: 10px solid var(--orange);
+    display: inline-block;
+    padding-right: 8px;
+  }
+  .colonne {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 32px 48px;
+    margin-top: 40px;
+    border-top: 3px solid var(--ink);
+    padding-top: 28px;
+  }
+  .riga {
+    font-family: 'Anton', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    font-size: 26px;
+    margin: 0 0 10px;
+  }
+  .nota {
+    max-width: 44ch;
+    line-height: 1.55;
+    opacity: 0.8;
+    margin: 0 0 20px;
+  }
+  .ritorno {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+</style>
