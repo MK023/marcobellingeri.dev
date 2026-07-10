@@ -27,6 +27,12 @@
     let cmdHistory: string[] = [];
     let historyPos = -1;
 
+    // printLine accetta markup: le righe sono costanti scritte qui dentro.
+    // Tutto ciò che digita l'utente passa PRIMA da esc(), altrimenti un
+    // `<img src=x onerror=…>` incollato nel prompt esegue davvero.
+    const esc = (s: string) =>
+      s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
     function printLine(html: string, cls?: string | null) {
       const div = document.createElement('div');
       div.className = 'line' + (cls ? ' ' + cls : '');
@@ -36,7 +42,7 @@
     }
 
     const REDIS_LOG = [
-      '# contesto: sistema di debt collection, layer di cache sotto carico',
+      '# contesto: sistema in produzione, layer di cache sotto carico',
       '- throughput query critica: baseline',
       '+ throughput query critica: <span class="yellow">41×</span> baseline',
       '# intervento: refactor completo del layer Redis',
@@ -46,27 +52,32 @@
     const COMMANDS: Record<string, () => void> = {
       help() {
         printLine('Comandi disponibili:', 'magenta');
-        (
-          [
-            ['whoami', 'chi sono'],
-            ['ls', 'elenca le sezioni nascoste'],
-            ['cat redis.log', 'il log del refactor 41×'],
-            ['cat classified.txt', 'dossier riservato — declassificato'],
-            ['projects', 'i progetti attivi'],
-            ['contact', 'come contattarmi'],
-            ['neon', 'più neon. sempre più neon.'],
-            ['matrix', 'per i nostalgici'],
-            ['clear', 'pulisci lo schermo'],
-            ['exit', "chiudi il terminale (o ESC)"],
-          ] as [string, string][]
-        ).forEach(([c, d]) => printLine('  <span class="yellow">' + c.padEnd(18) + '</span>' + d));
+        const rows: [string, string][] = [
+          ['whoami', 'chi sono'],
+          ['ls', 'elenca le sezioni nascoste'],
+          ['cat redis.log', 'il log del refactor 41×'],
+          ['cat classified.txt', 'dossier riservato — declassificato'],
+          ['projects', 'i progetti attivi'],
+          ['servizi', 'come lavoriamo insieme'],
+          ['contact', 'come contattarmi'],
+          ['neon', 'più neon. sempre più neon.'],
+          ['matrix', 'per i nostalgici'],
+          ['clear', 'pulisci lo schermo'],
+          ['exit', "chiudi il terminale (o ESC)"],
+        ];
+        // larghezza colonna = comando più lungo + margine di 2 spazi (niente numero magico)
+        const width = Math.max(...rows.map(([c]) => c.length)) + 2;
+        // padding con &nbsp;: innerHTML + white-space non garantiscono la resa degli spazi ripetuti
+        rows.forEach(([c, d]) =>
+          printLine('  <span class="yellow">' + c + '</span>' + '&nbsp;'.repeat(width - c.length) + d)
+        );
       },
       whoami() {
         printLine('marco bellingeri — cloud platform &amp; security engineer');
         printLine('<span class="dim">freelance · casale monferrato, it · github.com/MK023</span>');
       },
       ls() {
-        printLine('dossier/  percorso/  stack/  field-notes/  projects/  archive/  contact/');
+        printLine('dossier/  percorso/  stack/  field-notes/  projects/  servizi/  archive/  contact/');
       },
       'cat redis.log'() {
         REDIS_LOG.forEach((l) => printLine(l));
@@ -74,18 +85,24 @@
       'cat classified.txt'() {
         printLine('DECLASSIFICATO — accesso concesso.', 'magenta');
         printLine('&gt; calibro principale: Pilot Custom 845 Urushi rosso, pennino 18kt medio, Iroshizuku Kon-peki.');
-        printLine('&gt; Valorant: Sentinel main, Killjoy/Cypher — difendi il perimetro, sempre.');
         printLine('&gt; il refactor 41× è nato scoprendo una cache invalidata troppo spesso. il bug più costoso è spesso il più noioso.');
-        printLine('&gt; ascolto: Sennheiser Momentum 4, lossless, modalità emotiva anche in debug.');
       },
       projects() {
-        printLine('<span class="yellow">jobsearch</span>      — scraping LinkedIn + cross-check onesto delle skill');
-        printLine('<span class="yellow">vital-signs</span>    — audit di sicurezza stack AI-to-OS');
-        printLine('<span class="yellow">atlas</span>          — knowledge graph personale su Obsidian');
+        printLine('<span class="yellow">torinoparking</span> — API parcheggi Torino → in arrivo su App Store');
+        printLine('<span class="yellow">jobsearch</span>     — matching CV-offerta con Claude + server MCP');
+        printLine('<span class="yellow">atlas</span>         — knowledge graph personale su Obsidian');
+      },
+      servizi() {
+        printLine('<span class="yellow">security audit</span>  — a progetto');
+        printLine('<span class="yellow">cloud &amp; devops</span>  — retainer / giorno');
+        printLine('<span class="yellow">pair &amp; advisory</span> — a giornata');
+        printLine('<span class="dim">primo confronto sempre gratuito.</span>');
       },
       contact() {
-        printLine('email:   <a href="mailto:mkdevpy@proton.me" style="color:#0ff;">mkdevpy@proton.me</a>');
-        printLine('github:  <a href="https://github.com/MK023" target="_blank" rel="noopener" style="color:#0ff;">github.com/MK023</a>');
+        printLine('email:    <a href="mailto:mkdevpy@proton.me" style="color:#0ff;">mkdevpy@proton.me</a>');
+        printLine('github:   <a href="https://github.com/MK023" target="_blank" rel="noopener" style="color:#0ff;">github.com/MK023</a>');
+        printLine('linkedin: <a href="https://linkedin.com/in/marco-bellingeri" target="_blank" rel="noopener" style="color:#0ff;">linkedin.com/in/marco-bellingeri</a>');
+        printLine('credly:   <a href="https://credly.com/users/marco-bellingeri" target="_blank" rel="noopener" style="color:#0ff;">credly.com/users/marco-bellingeri</a>');
       },
       neon() {
         document.documentElement.style.setProperty('filter', 'saturate(1.6)');
@@ -97,6 +114,8 @@
       },
       clear() {
         output!.innerHTML = '';
+        // schermo vuoto senza appigli: stessa formula di chiusura di bootSequence()
+        printLine("digita 'help' per i comandi disponibili.", 'dim');
       },
       exit() {
         close();
@@ -172,14 +191,14 @@
       const raw = input!.value;
       const cmd = raw.trim().toLowerCase();
       if (cmd.length) { cmdHistory.push(raw); historyPos = cmdHistory.length; }
-      printLine('<span class="magenta">guest@bellingeri:~$</span> ' + (raw || ''));
+      printLine('<span class="magenta">guest@bellingeri:~$</span> ' + esc(raw || ''));
       input!.value = '';
 
       if (!cmd) return;
       if (COMMANDS[cmd]) {
         COMMANDS[cmd]();
       } else {
-        printLine("comando non trovato: " + cmd + " <span class=\"dim\">— prova 'help'</span>", 'magenta');
+        printLine('comando non trovato: ' + esc(cmd) + " <span class=\"dim\">— prova 'help'</span>", 'magenta');
       }
     });
 

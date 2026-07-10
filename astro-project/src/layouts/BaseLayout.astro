@@ -56,6 +56,9 @@ const suggestTargets = (Object.keys(languages) as Lang[])
   <meta name="description" content={pageDescription} />
   <meta name="robots" content="index, follow" />
   <meta name="theme-color" content="#FAFAF7" />
+  <!-- .ico per gli user-agent che lo chiedono comunque; .svg (theme-aware) per tutti gli altri -->
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="canonical" href={canonical} />
   {alternates.map((a) => (
     <link rel="alternate" hreflang={a.hreflang} href={a.href} />
@@ -70,9 +73,18 @@ const suggestTargets = (Object.keys(languages) as Lang[])
     Rilevamento giorno/notte eseguito PRIMA del primo paint, per evitare
     qualunque lampo di colore sbagliato al caricamento (vedi commit precedenti:
     questo bug esisteva ed è stato risolto spostando la logica qui).
+    La scelta manuale salvata (localStorage `bellingeri-edition`) vince sempre;
+    solo in sua assenza si calcola l'ora di Europe/Rome.
   -->
   <script is:inline>
     (function () {
+      try {
+        var saved = localStorage.getItem('bellingeri-edition');
+        if (saved === 'night' || saved === 'day') {
+          if (saved === 'night') document.documentElement.setAttribute('data-mode', 'night');
+          return;
+        }
+      } catch (e) {}
       try {
         var h = parseInt(
           new Date().toLocaleString('en-US', { timeZone: 'Europe/Rome', hour: '2-digit', hour12: false }),

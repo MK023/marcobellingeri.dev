@@ -1,24 +1,36 @@
 ---
-// Scheduler staccato (era il Calendly personale). Qui andrà il tool di
-// prenotazione professionale: per ricollegarlo, ripristina un embed/facade
-// in questa sezione e riapri la CSP in public/_headers per quel dominio.
+// Scheduler = Cal.eu (istanza UE di Cal.com), incorniciato in un iframe puro:
+// nessuno script di terze parti, quindi la CSP resta senza 'unsafe-inline'
+// (il widget Calendly lo esigeva — per questo era stato staccato).
+// Caricamento su richiesta: finché non si clicca, il browser non contatta
+// Cal.eu. Il consenso è il clic, e l'informativa lo dichiara.
+import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+const t = useTranslations(lang);
+
+const CAL_URL = 'https://cal.eu/marcobellingeri/booking';
 ---
 
 <section id="booking" class="reveal">
   <div class="section-head">
-    <span class="num mono">07</span>
-    <h2 class="display">Appuntamenti</h2>
+    <span class="num mono">09</span>
+    <h2 class="display">{t('booking.title')}</h2>
   </div>
-  <p class="booking-note">
-    Slot liberi, fuso orario gestito in automatico, conferma via email —
-    niente scambi di messaggi per trovare un orario.
-  </p>
-  <div class="booking-frame">
-    <div class="booking-placeholder">
-      <p class="facade-label mono">SCHEDULER IN ARRIVO</p>
-      <p class="facade-copy">
-        Il calendario prenotazioni professionale sarà collegato qui a breve.
-      </p>
+  <p class="booking-note">{t('booking.note')}</p>
+  <div class="booking-frame" data-label={t('booking.frameLabel')}>
+    <div
+      class="booking-placeholder"
+      id="cal-facade"
+      data-url={CAL_URL}
+      data-title={t('booking.frameTitle')}
+    >
+      <p class="facade-label mono">{t('booking.facadeLabel')}</p>
+      <p class="facade-copy">{t('booking.facadeCopy')}</p>
+      <button type="button" class="util-btn facade-cta" id="cal-load">{t('booking.facadeCta')}</button>
+      <noscript>
+        <a class="util-btn facade-cta" href={CAL_URL} target="_blank" rel="noopener">{t('booking.facadeCta')}</a>
+      </noscript>
     </div>
   </div>
 </section>
@@ -27,4 +39,33 @@
   /* .booking-placeholder è in global.css; qui solo i figli specifici. */
   .facade-label{ font-size:11px; letter-spacing:0.12em; opacity:0.6; }
   .facade-copy{ max-width:46ch; font-size:14px; line-height:1.5; }
+  .facade-cta{ margin-top:6px; text-decoration:none; display:inline-flex; align-items:center; }
+  /* L'iframe nasce da JS: senza :global lo stile scoped di Astro non lo
+     raggiungerebbe e resterebbe ai 300×150 di default. */
+  :global(.cal-frame){
+    width:100%; height:680px;
+    border:2px solid var(--ink);
+    background:var(--paper);
+    display:block;
+  }
 </style>
+
+<script>
+  // Il calendario di terze parti entra in pagina solo dopo un clic esplicito.
+  (function calFacade() {
+    const facade = document.getElementById('cal-facade');
+    const button = document.getElementById('cal-load');
+    if (!facade || !button) return;
+
+    button.addEventListener('click', () => {
+      const frame = document.createElement('iframe');
+      frame.className = 'cal-frame';
+      frame.src = facade.dataset.url || '';
+      frame.title = facade.dataset.title || '';
+      frame.loading = 'lazy';
+      frame.setAttribute('referrerpolicy', 'no-referrer');
+      facade.replaceWith(frame);
+      frame.focus();
+    });
+  })();
+</script>

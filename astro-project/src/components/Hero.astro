@@ -1,9 +1,92 @@
+---
+import { defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+
+// Chiusura di «Computing Machinery and Intelligence» (Mind, 1950, p. 460).
+// Citazione verificata alla fonte: non parafrasarla.
+const copy = {
+  it: {
+    // Prima della citazione: cosa risolvo e per chi. Un visitatore freddo non
+    // sa chi sono, quindi la testata da sola non basta a trattenerlo.
+    pitch:
+      "Rendo affidabile e sicura l'infrastruttura cloud di team che hanno già un sistema in produzione e non possono permettersi di fermarlo.",
+    cta: 'PRENOTA 30 MINUTI — GRATIS, NESSUN IMPEGNO',
+    quote: '«Riusciamo a vedere solo poco lontano, ma quanto basta per scorgere tutto ciò che resta da fare.»',
+    source: 'Computing Machinery and Intelligence, 1950',
+  },
+  en: {
+    pitch:
+      'I make cloud infrastructure reliable and secure for teams that already run a system in production and cannot afford to stop it.',
+    cta: 'BOOK 30 MINUTES — FREE, NO COMMITMENT',
+    quote: '“We can only see a short distance ahead, but we can see plenty there that needs to be done.”',
+    source: 'Computing Machinery and Intelligence, 1950',
+  },
+}[lang];
+---
+
 <header class="hero">
   <div class="halftone-frame" aria-hidden="true"></div>
   <div class="masthead-wrap">
     <span class="issue-tag mono">CLOUD &amp; SECURITY EDITION</span>
-    <h1 class="name display">Bellingeri</h1>
+    <h1 class="name display"><span class="given">Marco</span>Bellingeri</h1>
     <span class="role-chip mono">CLOUD PLATFORM &amp; SECURITY ENGINEER</span>
-    <p class="kicker">"Infrastruttura che regge il peso — e la fiducia — di chi la usa."</p>
+    <p class="pitch">{copy.pitch}</p>
+    <a class="hero-cta mono" href="#booking">{copy.cta}</a>
+    <figure class="kicker">
+      <blockquote>{copy.quote}</blockquote>
+      <figcaption class="mono">Alan Turing — <cite>{copy.source}</cite></figcaption>
+    </figure>
   </div>
 </header>
+
+<style>
+  /* Il nome di battesimo fa da sopratitolo alla testata, un terzo del cognome. */
+  h1.name .given{
+    display:block;
+    font-size:0.3em;
+    letter-spacing:0.05em;
+    line-height:1;
+    margin-bottom:0.05em;
+  }
+
+  /* riseIn e i ritardi vengono da global.css: la sequenza d'entrata prosegue
+     tag → nome → ruolo → pitch → CTA → citazione. */
+  .pitch{
+    max-width:620px;
+    font-size:19px;
+    line-height:1.5;
+    margin:0 0 20px;
+    opacity:0;
+    animation:riseIn 0.6s ease 1.1s forwards;
+  }
+  .hero-cta{
+    display:inline-block;
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-decoration:none;
+    background:var(--ink);
+    color:var(--paper);
+    border:2px solid var(--ink);
+    padding:14px 20px;
+    margin-bottom:28px;
+    box-shadow:5px 5px 0 var(--orange);
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+    opacity:0;
+    animation:riseIn 0.6s ease 1.25s forwards;
+  }
+  .hero-cta:hover{ transform:translate(2px,2px); box-shadow:3px 3px 0 var(--orange); }
+
+  /* .kicker vive in global.css: qui solo la struttura figure/blockquote/cite. */
+  .kicker{ animation-delay:1.4s; }
+  .kicker blockquote{ margin:0; }
+  .kicker figcaption{
+    font-style:normal;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    opacity:0.7;
+    margin-top:10px;
+  }
+  .kicker cite{ font-style:normal; }
+</style>

@@ -1,0 +1,427 @@
+---
+import { defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+
+// Indirizzo pubblico di contatto. Le prenotazioni passano invece da Cal.eu
+// (vedi Booking.astro), il cui slug non espone alcuna casella.
+const EMAIL = 'mkdevpy@proton.me';
+
+type Service = { tag: string; title: string; body: string; deliverables: string[]; basis: string };
+
+const copy: Record<Lang, {
+  title: string; intro: string; note: string; cta: string;
+  guaranteeTag: string; guarantee: string; guaranteeNote: string;
+  services: Service[];
+  order: {
+    tag: string; note: string;
+    steps: [string, string, string, string];
+    modes: string[]; durations: string[];
+    notePlaceholder: string;
+    briefHead: string; copyBtn: string; sendBtn: string;
+  };
+  prev: string; next: string;
+}> = {
+  it: {
+    title: 'Servizi',
+    intro: 'Cinque modi di lavorare insieme. Qui sotto trovi cosa comprende ciascuno; se il tuo problema non rientra in nessuno, scrivimi lo stesso.',
+    note: 'Nessuna tariffa pubblicata: ogni intervento è dimensionato sul problema reale, non su un listino a taglia unica. Il primo confronto è sempre gratuito e senza impegno — pair programming, non prompt-e-vai.',
+    cta: '↓ PRENOTA 30 MINUTI — GRATIS, NESSUN IMPEGNO',
+    guaranteeTag: 'GARANZIA',
+    guarantee: 'La prima giornata di lavoro: se non ti convince, non la paghi.',
+    guaranteeNote: 'Non hai referenze da consultare su di me, quindi il rischio del primo passo me lo prendo io. Decidi a fine giornata, senza spiegazioni da darmi.',
+    prev: 'Precedente',
+    next: 'Successivo',
+    services: [
+      {
+        tag: 'SEC', title: 'Security Audit',
+        body: "Ispezione ripetibile dello stack, dall'AI al sistema operativo: trovare i token esposti e le config deboli prima che li trovi qualcun altro.",
+        deliverables: ['Audit configurazioni & gestione segreti', 'Hardening dello stack AI-to-OS', 'Report con rischi prioritizzati e fix'],
+        basis: 'A PROGETTO',
+      },
+      {
+        tag: 'INFRA', title: 'Cloud & DevOps',
+        body: "Infrastruttura che regge il peso — e la fiducia — di chi la usa. Provisioning, pipeline e container, con l'affidabilità come requisito.",
+        deliverables: ['Provisioning & pipeline CI/CD', 'Containerizzazione, ambienti multi-cloud', 'Automazione e tooling interno in Python'],
+        basis: 'RETAINER / GIORNO',
+      },
+      {
+        tag: 'PAIR', title: 'Pair & Advisory',
+        body: 'Il metodo di lavoro principale: hands-on, al tuo fianco. Non consegno una scatola nera — costruiamo insieme e il tuo team resta autonomo.',
+        deliverables: ['Sessioni di pair programming', 'Refactor mirati (una cache Redis: throughput ×41, zero downtime)', 'Advisory su architettura e sicurezza'],
+        basis: 'A GIORNATA',
+      },
+      {
+        tag: 'WEB', title: 'Siti Web',
+        body: 'Siti veloci e curati, come per Vetreria Monferrina: Astro + CMS, Lighthouse 100, sicurezza e accessibilità di serie — con un agente IA per SEO/AEO se serve.',
+        deliverables: ['Sito Astro + CMS, performance 100/100', 'SEO/AEO, accessibilità WCAG, CSP/WAF', 'Agente IA schedulato (opzionale)'],
+        basis: 'A PROGETTO',
+      },
+      {
+        tag: 'AI', title: 'Automazione AI',
+        body: 'Soluzioni AI su misura che tolgono lavoro ripetitivo: agenti, RAG e pipeline che girano da soli — con supervisione umana dove conta.',
+        deliverables: ['Agenti e workflow su misura (MCP)', 'RAG sui tuoi dati, con citazioni', 'Automazioni schedulate, zero server'],
+        basis: 'A PROGETTO',
+      },
+    ],
+    order: {
+      tag: "MODULO D'ORDINE — COMPILA E INVIA",
+      note: 'Non è un carrello: è un punto di partenza. Seleziona cosa ti serve, come e per quanto — genero una bozza di brief che puoi copiare o mandarmi via email in un clic.',
+      steps: ['01 — COSA TI SERVE', '02 — MODALITÀ', '03 — DURATA STIMATA', '04 — NOTE (facoltativo)'],
+      modes: ['Da remoto', 'In sede', 'Ibrido'],
+      durations: ['Intervento spot', 'Qualche settimana', 'Collaborazione continua'],
+      notePlaceholder: 'Contesto, stack attuale, vincoli, scadenze…',
+      briefHead: 'BOZZA DI BRIEF',
+      copyBtn: '⧉ COPIA BRIEF',
+      sendBtn: 'INVIA VIA EMAIL →',
+    },
+  },
+  en: {
+    title: 'Services',
+    intro: 'Five ways to work together. Below, what each one includes; if your problem fits none of them, write to me anyway.',
+    note: 'No published rates: every engagement is sized to the real problem, not to a one-size-fits-all price list. The first conversation is always free and no-strings — pair programming, not prompt-and-go.',
+    cta: '↓ BOOK 30 MINUTES — FREE, NO COMMITMENT',
+    guaranteeTag: 'GUARANTEE',
+    guarantee: "The first day of work: if it doesn't convince you, you don't pay for it.",
+    guaranteeNote: 'You have no references to check on me, so I take the risk of the first step. You decide at the end of the day, with no explanation owed.',
+    prev: 'Previous',
+    next: 'Next',
+    services: [
+      {
+        tag: 'SEC', title: 'Security Audit',
+        body: 'A repeatable inspection of the whole stack, from AI to OS: find the exposed tokens and weak configs before anyone else does.',
+        deliverables: ['Config & secrets-management audit', 'AI-to-OS stack hardening', 'Report with prioritised risks and fixes'],
+        basis: 'PER PROJECT',
+      },
+      {
+        tag: 'INFRA', title: 'Cloud & DevOps',
+        body: 'Infrastructure that carries the weight — and the trust — of the people using it. Provisioning, pipelines and containers, with reliability as a requirement.',
+        deliverables: ['Provisioning & CI/CD pipelines', 'Containerisation, multi-cloud environments', 'Automation and internal tooling in Python'],
+        basis: 'RETAINER / DAY',
+      },
+      {
+        tag: 'PAIR', title: 'Pair & Advisory',
+        body: 'The primary way of working: hands-on, at your side. No black box handed over — we build together and your team stays autonomous.',
+        deliverables: ['Pair-programming sessions', 'Targeted refactors (one Redis cache: ×41 throughput, zero downtime)', 'Architecture & security advisory'],
+        basis: 'DAY RATE',
+      },
+      {
+        tag: 'WEB', title: 'Web Development',
+        body: 'Fast, polished sites, like the one for Vetreria Monferrina: Astro + CMS, Lighthouse 100, security and accessibility by default — with an AI agent for SEO/AEO if needed.',
+        deliverables: ['Astro + CMS site, 100/100 performance', 'SEO/AEO, WCAG accessibility, CSP/WAF', 'Scheduled AI agent (optional)'],
+        basis: 'PER PROJECT',
+      },
+      {
+        tag: 'AI', title: 'AI Automation',
+        body: 'Custom AI solutions that remove repetitive work: agents, RAG and pipelines that run on their own — with human oversight where it matters.',
+        deliverables: ['Custom agents and workflows (MCP)', 'RAG on your data, with citations', 'Scheduled automations, zero servers'],
+        basis: 'PER PROJECT',
+      },
+    ],
+    order: {
+      tag: 'ORDER FORM — FILL IN & SEND',
+      note: 'Not a shopping cart: a starting point. Select what you need, how and for how long — I generate a draft brief you can copy or email me in one click.',
+      steps: ['01 — WHAT YOU NEED', '02 — MODE', '03 — ESTIMATED DURATION', '04 — NOTES (optional)'],
+      modes: ['Remote', 'On-site', 'Hybrid'],
+      durations: ['One-off', 'A few weeks', 'Ongoing'],
+      notePlaceholder: 'Context, current stack, constraints, deadlines…',
+      briefHead: 'DRAFT BRIEF',
+      copyBtn: '⧉ COPY BRIEF',
+      sendBtn: 'SEND BY EMAIL →',
+    },
+  },
+};
+
+const c = copy[lang];
+
+// Etichette del brief generato lato client: passate via data-* per non
+// duplicare il dizionario dentro lo <script>.
+const briefLabels = {
+  it: { greet: 'Ciao Marco,', want: 'Mi servirebbe:', none: '(seleziona un servizio qui a fianco)', mode: 'Modalità:', dur: 'Durata:', notes: 'Note:', sign: '— inviato dal listino del sito', unset: 'da definire', copied: 'COPIATO ✓', subject: 'Richiesta di preventivo' },
+  en: { greet: 'Hi Marco,', want: "I'd need:", none: '(select a service on the left)', mode: 'Mode:', dur: 'Duration:', notes: 'Notes:', sign: '— sent from the site rate card', unset: 'to be defined', copied: 'COPIED ✓', subject: 'Quote request' },
+}[lang];
+---
+
+<section id="servizi" class="reveal">
+  <div class="section-head">
+    <span class="num mono">02</span>
+    <h2 class="display">{c.title}</h2>
+  </div>
+  <p class="case-archive-note">{c.intro}</p>
+
+  <div class="svc-carousel reveal" id="svc-carousel">
+    <button class="svc-nav prev" id="svc-prev" aria-label={c.prev}>‹</button>
+    <div class="svc-track" id="svc-track">
+      {c.services.map((s) => (
+        <div class="svc-card" data-tag={s.tag}>
+          <h3>{s.title}</h3>
+          <p>{s.body}</p>
+          <div class="svc-deliv">
+            {s.deliverables.map((d) => (
+              <div><span class="ar" aria-hidden="true">→</span><span>{d}</span></div>
+            ))}
+          </div>
+          <div class="svc-basis">
+            <span class="l">{lang === 'en' ? 'BASIS' : 'BASE'}</span>
+            <span class="v">{s.basis}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+    <button class="svc-nav next" id="svc-next" aria-label={c.next}>›</button>
+  </div>
+
+  <div
+    class="svc-order"
+    id="svc-order"
+    data-email={EMAIL}
+    data-labels={JSON.stringify(briefLabels)}
+  >
+    <span class="svc-order-tag">{c.order.tag}</span>
+    <p class="svc-order-note">{c.order.note}</p>
+    <div class="svc-order-grid">
+      <div>
+        <div class="svc-step">{c.order.steps[0]}</div>
+        <div class="svc-chips" id="svc-services">
+          {c.services.map((s) => (
+            <button type="button" class="svc-chip" aria-pressed="false" data-value={s.title}>{s.title}</button>
+          ))}
+        </div>
+
+        <div class="svc-step">{c.order.steps[1]}</div>
+        <div class="svc-chips" id="svc-modes">
+          {c.order.modes.map((m) => (
+            <button type="button" class="svc-chip" aria-pressed="false" data-value={m}>{m}</button>
+          ))}
+        </div>
+
+        <div class="svc-step">{c.order.steps[2]}</div>
+        <div class="svc-chips" id="svc-durations">
+          {c.order.durations.map((d) => (
+            <button type="button" class="svc-chip" aria-pressed="false" data-value={d}>{d}</button>
+          ))}
+        </div>
+
+        <div class="svc-step"><label for="svc-note">{c.order.steps[3]}</label></div>
+        <textarea id="svc-note" class="svc-note-input" rows="3" placeholder={c.order.notePlaceholder}></textarea>
+      </div>
+
+      <div class="svc-brief">
+        <div class="svc-brief-head"><span>{c.order.briefHead}</span><span id="svc-ref"></span></div>
+        <div class="svc-brief-body" id="svc-brief-body" aria-live="polite"></div>
+        <div class="svc-brief-actions">
+          <button type="button" class="svc-brief-copy" id="svc-copy" data-label={c.order.copyBtn}>{c.order.copyBtn}</button>
+          <a class="svc-brief-send" id="svc-send" href={`mailto:${EMAIL}`}>{c.order.sendBtn}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="svc-guarantee">
+    <span class="svc-guarantee-tag mono">{c.guaranteeTag}</span>
+    <p class="svc-guarantee-claim">{c.guarantee}</p>
+    <p class="svc-guarantee-note">{c.guaranteeNote}</p>
+  </aside>
+
+  <div class="svc-cta"><a href="#booking"><button type="button" class="util-btn">{c.cta}</button></a></div>
+  <p class="svc-note">{c.note}</p>
+</section>
+
+<style>
+  /* La garanzia è l'unica cosa in pagina che sposta il rischio sul venditore:
+     ha il peso tipografico dell'inchiostro pieno, non di una nota a piè di pagina. */
+  .svc-guarantee{
+    max-width:1100px;
+    margin:36px auto 0;
+    border:3px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    padding:26px 24px 22px;
+    position:relative;
+  }
+  .svc-guarantee-tag{
+    position:absolute; top:-13px; left:22px;
+    background:var(--orange); color:var(--ink);
+    font-size:10px; letter-spacing:0.08em;
+    padding:3px 10px; border:2px solid var(--ink);
+  }
+  .svc-guarantee-claim{
+    margin:0 0 10px;
+    font-family:'Anton', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.01em;
+    font-size:clamp(22px, 3.2vw, 34px);
+    line-height:1.1;
+  }
+  .svc-guarantee-note{
+    margin:0; max-width:640px;
+    font-size:15px; line-height:1.6; opacity:0.82;
+  }
+</style>
+
+<script>
+  // ---- carosello servizi: scorrimento continuo, in pausa quando lo guardi ----
+  (function svcCarousel() {
+    const carousel = document.getElementById('svc-carousel');
+    const track = document.getElementById('svc-track');
+    if (!carousel || !track) return;
+
+    const originals = Array.from(track.children) as HTMLElement[];
+    const cardWidth = () => {
+      const card = track.querySelector('.svc-card');
+      return card ? card.getBoundingClientRect().width + 20 : 320;
+    };
+
+    let baseWidth = 0;
+    const measure = () => {
+      baseWidth = originals.reduce((sum, c) => sum + c.getBoundingClientRect().width + 20, 0);
+    };
+
+    // Si misura PRIMA di inserire i cloni: leggere la geometria dopo aver
+    // mutato il DOM costringe il browser a rifare il layout in sincrono
+    // (forced reflow), una volta per card.
+    measure();
+
+    // I cloni servono solo a chiudere l'anello visivo: per una tecnologia
+    // assistiva sono contenuto duplicato, quindi restano invisibili.
+    originals.forEach((card) => {
+      const clone = card.cloneNode(true) as HTMLElement;
+      clone.setAttribute('aria-hidden', 'true');
+      clone.querySelectorAll('a, button').forEach((el) => el.setAttribute('tabindex', '-1'));
+      track.appendChild(clone);
+    });
+
+    window.addEventListener('resize', measure);
+
+    let offset = 0;
+    // Tre cause indipendenti di pausa. Con un solo booleano, uscire col mouse
+    // azzerava anche la pausa dovuta al focus da tastiera (il contenuto si
+    // muoveva sotto il focus) o al ritorno su una scheda con il cursore fermo
+    // sopra il carosello.
+    const cause = { hover: false, focus: false, nascosto: false };
+    const inPausa = () => cause.hover || cause.focus || cause.nascosto;
+
+    // Lo scorrimento automatico è movimento non richiesto: chi lo ha disattivato
+    // a livello di sistema tiene solo le frecce e lo scroll manuale.
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduced) {
+      let running = false;
+      const loop = () => {
+        if (!running) return; // fuori schermo: il loop muore, non gira a vuoto
+        if (!inPausa() && baseWidth > 0) {
+          offset += 0.5;
+          if (offset >= baseWidth) offset -= baseWidth;
+          track.scrollLeft = offset;
+        }
+        requestAnimationFrame(loop);
+      };
+
+      // Il carosello si anima solo mentre è davvero sullo schermo: fuori dal
+      // viewport (cioè quasi sempre) non consuma un frame.
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !running) {
+            running = true;
+            requestAnimationFrame(loop);
+          } else if (!entry.isIntersecting) {
+            running = false;
+          }
+        });
+      }, { threshold: 0 });
+      io.observe(carousel);
+
+      // Anche in una scheda di sfondo non ha senso animare.
+      document.addEventListener('visibilitychange', () => { cause.nascosto = document.hidden; });
+
+      carousel.addEventListener('pointerenter', () => { cause.hover = true; });
+      carousel.addEventListener('pointerleave', () => { cause.hover = false; });
+      carousel.addEventListener('focusin', () => { cause.focus = true; });
+      carousel.addEventListener('focusout', () => { cause.focus = false; });
+    }
+
+    const step = (delta: number) => {
+      offset += delta;
+      if (offset >= baseWidth) offset -= baseWidth;
+      if (offset < 0) offset += baseWidth;
+      track.scrollLeft = offset;
+    };
+    document.getElementById('svc-next')?.addEventListener('click', () => step(cardWidth()));
+    document.getElementById('svc-prev')?.addEventListener('click', () => step(-cardWidth()));
+  })();
+
+  // ---- modulo d'ordine: compone la bozza di brief ----
+  (function svcOrder() {
+    const wrap = document.getElementById('svc-order');
+    const body = document.getElementById('svc-brief-body');
+    const noteEl = document.getElementById('svc-note') as HTMLTextAreaElement | null;
+    const refEl = document.getElementById('svc-ref');
+    const copyEl = document.getElementById('svc-copy') as HTMLButtonElement | null;
+    const sendEl = document.getElementById('svc-send') as HTMLAnchorElement | null;
+    if (!wrap || !body || !noteEl || !refEl || !copyEl || !sendEl) return;
+
+    const email = wrap.dataset.email || '';
+    const L = JSON.parse(wrap.dataset.labels || '{}');
+    const copyLabel = copyEl.dataset.label || '';
+
+    refEl.textContent = 'REF/' + new Date().toISOString().slice(0, 10).replace(/-/g, '');
+
+    const services = new Set<string>();
+    let mode: string | null = null;
+    let duration: string | null = null;
+
+    function build() {
+      const lines = [L.greet, '', L.want];
+      if (services.size) services.forEach((s) => lines.push('  • ' + s));
+      else lines.push('  ' + L.none);
+      lines.push('', L.mode + ' ' + (mode || L.unset), L.dur + '  ' + (duration || L.unset));
+      const note = noteEl!.value.trim();
+      if (note) lines.push('', L.notes, '  ' + note);
+      lines.push('', L.sign);
+
+      const text = lines.join('\n');
+      body!.textContent = text;
+      // mailto: il brief precompila il corpo, così "in un clic" è vero davvero.
+      sendEl!.href =
+        'mailto:' + email +
+        '?subject=' + encodeURIComponent(L.subject) +
+        '&body=' + encodeURIComponent(text);
+
+      copyEl!.classList.remove('copied');
+      copyEl!.textContent = copyLabel;
+    }
+
+    function bindToggle(containerId: string, onPick: (value: string, btn: HTMLButtonElement) => void) {
+      document.querySelectorAll<HTMLButtonElement>('#' + containerId + ' .svc-chip').forEach((btn) => {
+        btn.addEventListener('click', () => { onPick(btn.dataset.value || '', btn); build(); });
+      });
+    }
+
+    // servizi = selezione multipla, modalità e durata = scelta singola
+    bindToggle('svc-services', (value, btn) => {
+      const on = services.has(value);
+      if (on) services.delete(value); else services.add(value);
+      btn.setAttribute('aria-pressed', String(!on));
+    });
+    bindToggle('svc-modes', (value, btn) => {
+      mode = value;
+      document.querySelectorAll('#svc-modes .svc-chip').forEach((x) => x.setAttribute('aria-pressed', String(x === btn)));
+    });
+    bindToggle('svc-durations', (value, btn) => {
+      duration = value;
+      document.querySelectorAll('#svc-durations .svc-chip').forEach((x) => x.setAttribute('aria-pressed', String(x === btn)));
+    });
+
+    noteEl.addEventListener('input', build);
+
+    copyEl.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(body!.textContent || '');
+        copyEl!.textContent = L.copied;
+        copyEl!.classList.add('copied');
+        setTimeout(() => { copyEl!.textContent = copyLabel; copyEl!.classList.remove('copied'); }, 1800);
+      } catch (e) {}
+    });
+
+    build();
+  })();
+</script>

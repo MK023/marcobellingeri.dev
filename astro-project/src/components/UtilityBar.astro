@@ -1,8 +1,10 @@
 ---
 import { getRelativeLocaleUrl } from 'astro:i18n';
-import { languages, defaultLang, type Lang } from '../i18n/ui';
+import { languages, defaultLang, useTranslations, type Lang } from '../i18n/ui';
 
 const current = (Astro.currentLocale ?? defaultLang) as Lang;
+const t = useTranslations(current);
+
 // Sotto-path senza prefisso lingua → lo switcher punta alla STESSA pagina
 // nell'altra lingua (per ora solo la home, ma resta corretto per rotte future).
 const sub = Astro.url.pathname.replace(new RegExp(`^/${current}(?=/|$)`), '') || '/';
@@ -14,8 +16,8 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
 ---
 
 <div class="utility-bar mono">
-  <span>VOL. 01 — NO. 07</span>
-  <span>CASALE MONFERRATO, IT · <span id="live-clock">--:--:--</span></span>
+  <span>{t('ub.issue')}</span>
+  <span>{t('ub.place')} · <span id="live-clock">--:--:--</span></span>
   <div class="utility-actions">
     <div class="lang-switcher" role="group" aria-label="Language / Lingua">
       {langOptions.map((o) =>
@@ -26,9 +28,23 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
         )
       )}
     </div>
-    <span class="util-btn" id="edition-indicator" style="cursor:default;">☀ DAY EDITION</span>
-    <button class="util-btn" id="cmdk-trigger" title="Apri comandi">⌘K COMANDI</button>
-    <button class="util-btn" id="print-btn" title="Stampa o salva PDF">STAMPA / PDF</button>
+    <button
+      class="util-btn"
+      id="edition-indicator"
+      type="button"
+      aria-pressed="false"
+      title={t('ub.editionTitle')}
+      data-day={t('ub.editionDay')}
+      data-night={t('ub.editionNight')}
+    >{t('ub.editionDay')}</button>
+    <button class="util-btn" id="cmdk-trigger">⌘K {t('ub.commands')}</button>
+    {/*
+      ↓ CV non punta a un PDF: il foglio @media print di questo sito impagina la
+      pagina come un dossier stampabile, quindi il CV *è* il sito. Un clic apre
+      la stampa, da cui "Salva come PDF". Se un giorno esisterà un
+      public/cv.pdf, basta trasformarlo in <a href="/cv.pdf" download>.
+    */}
+    <button class="util-btn" id="cv-btn" title={t('ub.cvTitle')}>{t('ub.cv')}</button>
   </div>
 </div>
 
@@ -42,46 +58,88 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
 </style>
 
 <script>
+  import { dateLocale, type Lang } from '../i18n/ui';
+
+  const lang = (document.documentElement.lang || 'en') as Lang;
+
   // ---- live clock (Europe/Rome) ----
   const clockEl = document.getElementById('live-clock');
   function tickClock() {
     if (!clockEl) return;
-    clockEl.textContent = new Date().toLocaleTimeString('it-IT', {
+    clockEl.textContent = new Date().toLocaleTimeString(dateLocale[lang], {
       timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', second: '2-digit',
     });
   }
   tickClock();
   setInterval(tickClock, 1000);
 
-  // ---- print / save as PDF ----
-  document.getElementById('print-btn')?.addEventListener('click', () => window.print());
+  // ---- CV = questa pagina, impaginata dal foglio di stampa ----
+  document.getElementById('cv-btn')?.addEventListener('click', () => window.print());
 
   // ---- override lingua: la scelta manuale vince sul geo/IP ----
   // Memorizza la lingua scelta in un cookie che il Worker geo (al go-live)
   // rispetterà prima di qualunque redirect per IP/Accept-Language.
   document.querySelectorAll('.lang-opt[data-lang]').forEach((el) => {
     el.addEventListener('click', () => {
-      const lang = (el as HTMLElement).dataset.lang;
-      document.cookie = `pref-lang=${lang}; path=/; max-age=31536000; SameSite=Lax`;
+      const chosen = (el as HTMLElement).dataset.lang;
+      document.cookie = `pref-lang=${chosen}; path=/; max-age=31536000; SameSite=Lax`;
     });
   });
 
-  // ---- day / night edition — automatica, in base all'ora reale del visitatore ----
+  // ---- day / night edition — automatica di default, ma con override manuale ----
+  // La scelta manuale è persistita in localStorage (chiave `bellingeri-edition`)
+  // e VINCE sempre sull'automatismo. Senza scelta salvata resta automatica in
+  // base all'ora di Europe/Rome, riallineata ogni 60s.
+  const EDITION_KEY = 'bellingeri-edition';
   const editionIndicator = document.getElementById('edition-indicator');
+  const labels = {
+    day: editionIndicator?.dataset.day || (lang === 'en' ? '☀ DAY EDITION' : '☀ EDIZIONE GIORNO'),
+    night: editionIndicator?.dataset.night || (lang === 'en' ? '☾ NIGHT EDITION' : '☾ EDIZIONE NOTTE'),
+  };
   function setMode(mode: 'day' | 'night') {
     if (mode === 'night') {
       document.documentElement.setAttribute('data-mode', 'night');
-      if (editionIndicator) editionIndicator.textContent = '☾ NIGHT EDITION';
+      if (editionIndicator) editionIndicator.textContent = labels.night;
     } else {
       document.documentElement.removeAttribute('data-mode');
-      if (editionIndicator) editionIndicator.textContent = '☀ DAY EDITION';
+      if (editionIndicator) editionIndicator.textContent = labels.day;
     }
+    // aria-pressed riflette se la notte è attiva
+    editionIndicator?.setAttribute('aria-pressed', String(mode === 'night'));
   }
   function autoMode(): 'day' | 'night' {
     const hourStr = new Date().toLocaleString('en-US', { timeZone: 'Europe/Rome', hour: '2-digit', hour12: false });
     const h = parseInt(hourStr, 10);
     return h >= 7 && h < 20 ? 'day' : 'night';
   }
-  setMode(autoMode());
-  setInterval(() => setMode(autoMode()), 60000);
+  function storedMode(): 'day' | 'night' | null {
+    try {
+      const v = localStorage.getItem(EDITION_KEY);
+      return v === 'day' || v === 'night' ? v : null;
+    } catch (e) { return null; }
+  }
+
+  let autoTimer: ReturnType<typeof setInterval> | undefined;
+  function startAuto() {
+    setMode(autoMode());
+    if (autoTimer === undefined) autoTimer = setInterval(() => setMode(autoMode()), 60000);
+  }
+  function stopAuto() {
+    if (autoTimer !== undefined) { clearInterval(autoTimer); autoTimer = undefined; }
+  }
+
+  // Stato iniziale: la scelta salvata vince, altrimenti automatico.
+  const saved = storedMode();
+  if (saved) setMode(saved);
+  else startAuto();
+
+  // Clic → alterna, persiste, e disattiva l'automatismo (che non deve più
+  // sovrascrivere la scelta dell'utente).
+  editionIndicator?.addEventListener('click', () => {
+    const next: 'day' | 'night' =
+      document.documentElement.getAttribute('data-mode') === 'night' ? 'day' : 'night';
+    stopAuto();
+    setMode(next);
+    try { localStorage.setItem(EDITION_KEY, next); } catch (e) {}
+  });
 </script>

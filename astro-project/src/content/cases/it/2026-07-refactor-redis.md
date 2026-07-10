@@ -1,7 +1,8 @@
 ---
+lang: "it"
 month: "Luglio 2026"
 date: 2026-07-01
-title: "Refactor Redis — Fairfield (debt collection)"
+title: "Refactor Redis — sistema in produzione"
 stat: 41
 statSuffix: "×"
 problem: >

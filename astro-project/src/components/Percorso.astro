@@ -1,29 +1,137 @@
+---
+import { defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+
+type Role = {
+  when: string;
+  co: string;
+  role: string;
+  desc: string;
+  // `hl` = tag in evidenza (fondo arancio): il risultato che vale la pena leggere per primo.
+  tags: { label: string; hl?: boolean }[];
+};
+
+const copy: Record<Lang, { title: string; roles: Role[] }> = {
+  it: {
+    title: 'Percorso',
+    roles: [
+      {
+        when: '2026 — oggi',
+        co: 'VETRERIA MONFERRINA · REMOTO',
+        role: 'Full Stack Engineer & Agente IA',
+        desc: 'Sito di produzione (Astro + Sanity, Lighthouse 100) e agente IA per SEO/AEO con RAG su Supabase e governance AI Act.',
+        tags: [{ label: 'Astro' }, { label: 'Supabase + pgvector' }, { label: 'AI Act' }],
+      },
+      {
+        when: '2025 — 2026',
+        co: 'PIATTAFORMA ENTERPRISE · REMOTO',
+        role: 'Full Stack Engineer',
+        desc: 'Piattaforma enterprise: 100+ endpoint REST (Falcon/Python), Lambda asincrone e SPA React/TypeScript multi-ruolo.',
+        tags: [{ label: 'REFACTOR REDIS', hl: true }, { label: 'AWS' }, { label: 'React / TS' }],
+      },
+      {
+        when: '2025',
+        co: 'GECO S.R.L. · GALLIATE (NO)',
+        role: 'Software Engineer',
+        desc: 'Infrastrutture critiche: supervisione 24/7 di 400+ endpoint video (Metro C, Roma) e diagnostica di rete con Scapy.',
+        tags: [{ label: 'Python' }, { label: 'Scapy' }],
+      },
+    ],
+  },
+  en: {
+    title: 'Career',
+    roles: [
+      {
+        when: '2026 — present',
+        co: 'VETRERIA MONFERRINA · REMOTE',
+        role: 'Full Stack Engineer & AI Agent',
+        desc: 'Production site (Astro + Sanity, Lighthouse 100) and an AI agent for SEO/AEO with RAG on Supabase and real AI Act governance.',
+        tags: [{ label: 'Astro' }, { label: 'Supabase + pgvector' }, { label: 'AI Act' }],
+      },
+      {
+        when: '2025 — 2026',
+        co: 'ENTERPRISE PLATFORM · REMOTE',
+        role: 'Full Stack Engineer',
+        desc: 'Enterprise platform: 100+ REST endpoints (Falcon/Python), async Lambdas and a multi-role React/TypeScript SPA.',
+        tags: [{ label: 'REDIS REFACTOR', hl: true }, { label: 'AWS' }, { label: 'React / TS' }],
+      },
+      {
+        when: '2025',
+        co: 'GECO S.R.L. · GALLIATE (NO)',
+        role: 'Software Engineer',
+        desc: 'Critical infrastructure: 24/7 supervision of 400+ video endpoints (Metro C, Rome) and network diagnostics with Scapy.',
+        tags: [{ label: 'Python' }, { label: 'Scapy' }],
+      },
+    ],
+  },
+};
+
+const { title, roles } = copy[lang];
+---
+
 <section id="percorso" class="reveal">
   <div class="section-head">
-    <span class="num mono">02</span>
-    <h2 class="display">Percorso</h2>
+    <span class="num mono">05</span>
+    <h2 class="display">{title}</h2>
   </div>
-  <div class="timeline reveal-stagger">
-    <div class="tl-item">
-      <div class="tl-year mono">ESIS</div>
-      <div class="tl-body">
-        <h3>Sviluppo &amp; primi passi infra</h3>
-        <p>Prime esperienze strutturate su sistemi in produzione, dove nasce l'attenzione per l'affidabilità come requisito, non come optional.</p>
+  <div class="tl2">
+    <div class="tl2-fill" aria-hidden="true"></div>
+    {roles.map((r) => (
+      <div class="tl2-item">
+        <div class="tl2-when mono">{r.when}<span class="co">{r.co}</span></div>
+        <div>
+          <h3 class="tl2-role">{r.role}</h3>
+          <p class="tl2-desc">{r.desc}</p>
+          <div class="tl2-tags">
+            {r.tags.map((tag) => (
+              <span class={tag.hl ? 'tl2-tag hl' : 'tl2-tag'}>{tag.label}</span>
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="tl-item">
-      <div class="tl-year mono">FAIRFIELD</div>
-      <div class="tl-body">
-        <h3>Debt collection company <span class="tl-tag">41× REDIS</span></h3>
-        <p>Un breve incarico (circa un mese e mezzo) che ha comunque prodotto un refactor completo del layer di caching Redis — proposto ed eseguito in autonomia, con impatto misurabile sulla query critica del sistema.</p>
-      </div>
-    </div>
-    <div class="tl-item">
-      <div class="tl-year mono">OGGI</div>
-      <div class="tl-body">
-        <h3>Freelance — Cloud &amp; Security</h3>
-        <p>Regime forfettario, focus deliberato su DevOps + Cloud + Security. In parallelo: sviluppo di prodotti propri (JobSearch, vital-signs) e formazione continua.</p>
-      </div>
-    </div>
+    ))}
   </div>
 </section>
+
+<script>
+  // ---- la spina della timeline si disegna mentre scorri ----
+  (function timelineSpine() {
+    const tl = document.querySelector<HTMLElement>('.tl2');
+    if (!tl) return;
+    const fill = tl.querySelector<HTMLElement>('.tl2-fill');
+    const items = Array.from(tl.querySelectorAll<HTMLElement>('.tl2-item'));
+
+    // Con reduced-motion la spina resta piena e i pallini accesi: nessun effetto
+    // legato allo scroll, ma la timeline si legge comunque come "percorsa".
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (fill) fill.style.height = '100%';
+      items.forEach((it) => it.classList.add('reached'));
+      return;
+    }
+
+    function update() {
+      const rect = tl!.getBoundingClientRect();
+      const mid = (window.innerHeight || 800) * 0.62;
+      const height = Math.max(0, tl!.offsetHeight - 20);
+      const passed = Math.min(Math.max(mid - (rect.top + 10), 0), height);
+      if (fill) fill.style.height = passed + 'px';
+      items.forEach((it) => {
+        it.classList.toggle('reached', it.getBoundingClientRect().top + 14 <= mid);
+      });
+    }
+
+    // Lo scroll può emettere decine di eventi per frame: il lavoro di layout si
+    // fa una volta sola, nel frame successivo.
+    let queued = false;
+    function onScroll() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; update(); });
+    }
+
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+  })();
+</script>

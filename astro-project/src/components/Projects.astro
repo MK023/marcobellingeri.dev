@@ -1,4 +1,9 @@
 ---
+import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+const t = useTranslations(lang);
+
 type Project = {
   id: string;
   name: string;
@@ -11,79 +16,132 @@ type Project = {
   result: string;
 };
 
-// Nuovo progetto? Aggiungi un oggetto qui — il markup si genera da solo.
-const projects: Project[] = [
-  {
-    id: 'case-jobsearch',
-    name: 'JobSearch',
-    status: 'shipped',
-    statusLabel: 'VALIDATO',
-    swatchClass: 'p-orange',
-    summary:
-      "Estrae annunci LinkedIn reali, li scompone per competenze richieste per macro-categoria e li confronta onestamente con le skill effettive del candidato. Validato su se stesso: più colloqui in quattro mesi che in tutta la carriera precedente.",
-    problem:
-      'Le candidature andavano a caso: stesso CV per annunci molto diversi, nessun modo onesto di sapere quali competenze mancassero davvero rispetto a un ruolo specifico.',
-    approach:
-      'Scraping di annunci LinkedIn reali, estrazione delle competenze richieste per macro-categoria, confronto diretto e onesto con le skill effettive — nessun abbellimento, nemmeno su se stesso.',
-    result:
-      'Più colloqui in quattro mesi che in tutta la carriera precedente. Il metodo si è generalizzato: funziona su qualunque CV, non solo sul mio.',
-  },
-  {
-    id: 'case-vitalsigns',
-    name: 'vital-signs',
-    status: 'active',
-    statusLabel: 'ATTIVO',
-    swatchClass: 'p-violet',
-    summary:
-      "Tool di audit di sicurezza per l'intero stack, dall'AI al sistema operativo. Nato da una scoperta concreta: un token esposto in un file JSON leggibile da chiunque.",
-    problem:
-      'Un token trovato per caso in un file JSON world-readable — nessuno lo aveva notato perché nessuno lo stava cercando sistematicamente.',
-    approach:
-      "Costruito un tool che ispeziona l'intero stack AI-to-OS in modo ripetibile, non un controllo una tantum fatto a occhio.",
-    result:
-      'Uso attivo e continuo, non un esperimento archiviato — cresce ogni volta che trovo una nuova categoria di rischio da controllare.',
-  },
-  {
-    id: 'case-atlas',
-    name: 'Atlas',
-    status: 'rnd',
-    statusLabel: 'R&D',
-    swatchClass: 'p-dark',
-    summary:
-      "Knowledge graph personale costruito su Obsidian, con un'ambizione più filosofica che tecnica: mappare memoria e identità. Esplorato anche come possibile SaaS verticale con RAG.",
-    problem:
-      'Le note sparse non si parlavano tra loro: idee, letture, progetti finivano isolati invece di connettersi.',
-    approach:
-      'Un grafo di conoscenza personale su Obsidian, pensato non solo come archivio ma come domanda aperta su come memoria e identità si costruiscono nel tempo.',
-    result:
-      "Deprioritizzato come prodotto rispetto a JobSearch, ma resta lo strumento di pensiero più usato — e l'idea di una versione SaaS con RAG resta sul tavolo.",
-  },
-];
+// Nuovo progetto? Aggiungi un oggetto in entrambe le lingue — il markup si genera da solo.
+const projects: Record<Lang, Project[]> = {
+  it: [
+    {
+      id: 'case-torinoparking',
+      name: 'TorinoParking',
+      status: 'active',
+      statusLabel: '→ APP STORE',
+      swatchClass: 'p-orange',
+      summary:
+        "API real-time sulla disponibilità dei parcheggi di Torino: FastAPI async, PostgreSQL + PostGIS per le query geospaziali, Redis con ETag e caching compresso. Il prossimo passo è diventare un'app nativa sull'Apple App Store.",
+      problem:
+        "Sapere in tempo reale dove c'è posto a Torino significava saltare tra fonti diverse, senza un'unica API pulita e veloce da interrogare.",
+      approach:
+        'API security-first: FastAPI async su Python 3.12, PostgreSQL 16 + PostGIS per il geospaziale, Redis 7 con compressione e richieste condizionali ETag, HMAC-SHA256 sulle API key (zero plaintext), rate limiting sliding-window multi-tier.',
+      result:
+        '51 test tra unit, integration ed e2e con testcontainer, CI/CD e threat model documentato in SECURITY.md. Prossimo traguardo: portarla su Apple App Store come app nativa.',
+    },
+    {
+      id: 'case-jobsearch',
+      name: 'JobSearch',
+      status: 'shipped',
+      statusLabel: 'VALIDATO',
+      swatchClass: 'p-violet',
+      summary:
+        'Command center AI per la ricerca di lavoro: estrae le offerte, calcola la compatibilità CV-offerta (0–100) con Claude, fa gap analysis e genera lettere, follow-up e domande da colloquio.',
+      problem:
+        'Le candidature andavano a caso: stesso CV per annunci molto diversi, nessun modo onesto di misurare quali competenze mancassero davvero rispetto a un ruolo.',
+      approach:
+        "Architettura a microservizi (FastAPI + Nginx + PostgreSQL + Redis, con server MCP per l'agente AI). Punteggio di compatibilità, gap analysis con severity e piani d'azione, CRM recruiter — nessun abbellimento, nemmeno su se stesso.",
+      result:
+        'OWASP Top 10 audit completo, 342 test, mypy strict a zero errori, deploy su Fly.io con CI/CD a 8 stage. Il metodo si generalizza: funziona su qualunque CV.',
+    },
+    {
+      id: 'case-atlas',
+      name: 'Atlas',
+      status: 'rnd',
+      statusLabel: 'R&D',
+      swatchClass: 'p-dark',
+      summary:
+        "Knowledge graph personale costruito su Obsidian, con un'ambizione più filosofica che tecnica: mappare memoria e identità. Esplorato anche come possibile SaaS verticale con RAG.",
+      problem:
+        'Le note sparse non si parlavano tra loro: idee, letture, progetti finivano isolati invece di connettersi.',
+      approach:
+        'Un grafo di conoscenza personale su Obsidian, pensato non solo come archivio ma come domanda aperta su come memoria e identità si costruiscono nel tempo.',
+      result:
+        "Deprioritizzato come prodotto rispetto a JobSearch, ma resta lo strumento di pensiero più usato — e l'idea di una versione SaaS con RAG resta sul tavolo.",
+    },
+  ],
+  en: [
+    {
+      id: 'case-torinoparking',
+      name: 'TorinoParking',
+      status: 'active',
+      statusLabel: '→ APP STORE',
+      swatchClass: 'p-orange',
+      summary:
+        'Real-time API for parking availability in Turin: async FastAPI, PostgreSQL + PostGIS for geospatial queries, Redis with ETag and compressed caching. The next step is to become a native app on the Apple App Store.',
+      problem:
+        "Knowing in real time where there's a free spot in Turin meant jumping between different sources, with no single clean, fast API to query.",
+      approach:
+        'Security-first API: async FastAPI on Python 3.12, PostgreSQL 16 + PostGIS for geospatial, Redis 7 with compression and conditional ETag requests, HMAC-SHA256 on API keys (zero plaintext), multi-tier sliding-window rate limiting.',
+      result:
+        '51 tests across unit, integration and e2e with testcontainers, CI/CD and a threat model documented in SECURITY.md. Next milestone: bringing it to the Apple App Store as a native app.',
+    },
+    {
+      id: 'case-jobsearch',
+      name: 'JobSearch',
+      status: 'shipped',
+      statusLabel: 'VALIDATED',
+      swatchClass: 'p-violet',
+      summary:
+        'AI command center for the job hunt: it pulls in listings, scores CV-to-offer fit (0–100) with Claude, does gap analysis and generates cover letters, follow-ups and interview questions.',
+      problem:
+        'Applications went out at random: the same CV for very different roles, with no honest way to measure which skills were actually missing for a given role.',
+      approach:
+        'Microservice architecture (FastAPI + Nginx + PostgreSQL + Redis, with an MCP server for the AI agent). Compatibility score, gap analysis with severity and action plans, recruiter CRM — no embellishment, not even on myself.',
+      result:
+        'Full OWASP Top 10 audit, 342 tests, mypy strict at zero errors, deployed on Fly.io with an 8-stage CI/CD. The method generalises: it works on any CV.',
+    },
+    {
+      id: 'case-atlas',
+      name: 'Atlas',
+      status: 'rnd',
+      statusLabel: 'R&D',
+      swatchClass: 'p-dark',
+      summary:
+        'A personal knowledge graph built on Obsidian, with an ambition more philosophical than technical: mapping memory and identity. Also explored as a possible vertical SaaS with RAG.',
+      problem:
+        "Scattered notes didn't talk to each other: ideas, readings and projects ended up isolated instead of connected.",
+      approach:
+        'A personal knowledge graph on Obsidian, meant not just as an archive but as an open question about how memory and identity are built over time.',
+      result:
+        'Deprioritised as a product against JobSearch, but it remains the thinking tool I use most — and the idea of a SaaS version with RAG is still on the table.',
+    },
+  ],
+};
+
+const list = projects[lang];
+const title = lang === 'en' ? 'Projects' : 'Progetti';
+const labels = { problem: lang === 'en' ? 'PROBLEM' : 'PROBLEMA', approach: lang === 'en' ? 'APPROACH' : 'APPROCCIO', result: lang === 'en' ? 'RESULT' : 'RISULTATO' };
 ---
 
 <section id="projects" class="reveal">
   <div class="section-head">
-    <span class="num mono">05</span>
-    <h2 class="display">Progetti</h2>
+    <span class="num mono">04</span>
+    <h2 class="display">{title}</h2>
   </div>
-  <div class="reviews reveal-stagger">
-    {projects.map((p) => (
+  <div class="reviews reveal-stagger" data-details={t('proj.details')} data-close={t('proj.close')}>
+    {list.map((p) => (
       <div class="review">
         <div class={`review-preview ${p.swatchClass}`} aria-hidden="true">
           <span class="swatch-label mono">{p.name.toUpperCase()}</span>
         </div>
-        <button class="review-toggle" data-target={p.id}>
+        <button class="review-toggle" data-target={p.id} aria-expanded="false" aria-controls={p.id}>
           <div>
             <h3>{p.name}</h3>
             <span class={`status ${p.status} mono`}>{p.statusLabel}</span>
           </div>
-          <span class="review-chevron mono">DETTAGLI ＋</span>
+          <span class="review-chevron mono">{t('proj.details')}</span>
         </button>
         <p>{p.summary}</p>
         <div class="review-detail" id={p.id}>
-          <div class="case-block"><span class="label mono">PROBLEMA</span><p>{p.problem}</p></div>
-          <div class="case-block"><span class="label mono">APPROCCIO</span><p>{p.approach}</p></div>
-          <div class="case-block"><span class="label mono">RISULTATO</span><p>{p.result}</p></div>
+          <div class="case-block"><span class="label mono">{labels.problem}</span><p>{p.problem}</p></div>
+          <div class="case-block"><span class="label mono">{labels.approach}</span><p>{p.approach}</p></div>
+          <div class="case-block"><span class="label mono">{labels.result}</span><p>{p.result}</p></div>
         </div>
       </div>
     ))}
@@ -92,17 +150,23 @@ const projects: Project[] = [
 
 <script>
   // ---- project case-study accordions ----
-  document.querySelectorAll<HTMLButtonElement>('.review-toggle').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const targetId = btn.dataset.target;
-      if (!targetId) return;
-      const detail = document.getElementById(targetId);
-      if (!detail) return;
-      const isOpen = detail.classList.contains('open');
-      detail.classList.toggle('open', !isOpen);
-      btn.classList.toggle('open', !isOpen);
-      const chevron = btn.querySelector('.review-chevron');
-      if (chevron) chevron.textContent = isOpen ? 'DETTAGLI ＋' : 'CHIUDI －';
+  (function projectAccordions() {
+    const reviews = document.querySelector<HTMLElement>('.reviews');
+    if (!reviews) return;
+    const detailsLabel = reviews.dataset.details || '';
+    const closeLabel = reviews.dataset.close || '';
+
+    reviews.querySelectorAll<HTMLButtonElement>('.review-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const detail = document.getElementById(btn.dataset.target || '');
+        if (!detail) return;
+        const isOpen = detail.classList.contains('open');
+        detail.classList.toggle('open', !isOpen);
+        btn.classList.toggle('open', !isOpen);
+        btn.setAttribute('aria-expanded', String(!isOpen));
+        const chevron = btn.querySelector('.review-chevron');
+        if (chevron) chevron.textContent = isOpen ? detailsLabel : closeLabel;
+      });
     });
-  });
+  })();
 </script>

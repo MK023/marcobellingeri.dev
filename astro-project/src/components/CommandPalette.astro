@@ -1,21 +1,58 @@
-<div class="cmdk-overlay" id="cmdk-overlay">
+---
+import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+const t = useTranslations(lang);
+
+// Le voci "vai a" riusano le etichette del sommario: una sola fonte per i nomi
+// delle sezioni.
+const sections = [
+  ['dossier', '01', t('nav.dossier')],
+  ['servizi', '02', t('nav.servizi')],
+  ['field-notes', '03', t('nav.fieldNotes')],
+  ['projects', '04', t('nav.projects')],
+  ['percorso', '05', t('nav.percorso')],
+  ['stack', '06', t('nav.stack')],
+  ['security', '07', t('nav.security')],
+  ['archive', '08', t('nav.archive')],
+  ['booking', '09', t('nav.booking')],
+  ['contact', '10', t('nav.contact')],
+];
+
+const strings = {
+  goTo: t('cmdk.goTo'),
+  openGithub: t('cmdk.openGithub'),
+  copyEmail: t('cmdk.copyEmail'),
+  printCv: t('cmdk.printCv'),
+  openTerminal: t('cmdk.openTerminal'),
+  empty: t('cmdk.empty'),
+  commands: t('ub.commands'),
+  commandsTitle: t('ub.commandsTitle'),
+};
+---
+
+<div
+  class="cmdk-overlay"
+  id="cmdk-overlay"
+  data-sections={JSON.stringify(sections)}
+  data-strings={JSON.stringify(strings)}
+>
   <div class="cmdk-box">
     <input
       class="cmdk-input mono"
       id="cmdk-input"
       type="text"
-      placeholder="Digita un comando o una sezione…"
+      placeholder={t('cmdk.placeholder')}
       autocomplete="off"
       role="combobox"
       aria-expanded="true"
       aria-controls="cmdk-list"
-      aria-autocomplete="list"
-      aria-label="Cerca un comando"
+      aria-label={t('cmdk.placeholder')}
     />
     <div class="cmdk-list mono" id="cmdk-list" role="listbox"></div>
     <div class="cmdk-hint">
-      <span>↑↓ NAVIGA · ENTER APRI</span>
-      <span>ESC CHIUDI</span>
+      <span>{t('cmdk.navHint')}</span>
+      <span>{t('cmdk.escHint')}</span>
     </div>
   </div>
 </div>
@@ -34,46 +71,77 @@
     const trigger = document.getElementById('cmdk-trigger');
     if (!overlay || !input || !list || !trigger) return;
 
+    const sections: [string, string, string][] = JSON.parse(overlay.dataset.sections || '[]');
+    const S = JSON.parse(overlay.dataset.strings || '{}');
+
     function scrollToId(id: string) {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
       close();
     }
 
     const commands: Command[] = [
-      { label: 'Vai a — Dossier', hint: '01', action: () => scrollToId('dossier') },
-      { label: 'Vai a — Percorso', hint: '02', action: () => scrollToId('percorso') },
-      { label: 'Vai a — Stack', hint: '03', action: () => scrollToId('stack') },
-      { label: 'Vai a — Field Notes', hint: '04', action: () => scrollToId('field-notes') },
-      { label: 'Vai a — Progetti', hint: '05', action: () => scrollToId('projects') },
-      { label: 'Vai a — Archivio', hint: '06', action: () => scrollToId('archive') },
-      { label: 'Vai a — Appuntamenti', hint: '07', action: () => scrollToId('booking') },
-      { label: 'Vai a — Contatti', hint: '08', action: () => scrollToId('contact') },
-      { label: 'Apri GitHub — MK023', hint: '↗', action: () => window.open('https://github.com/MK023', '_blank') },
-      { label: 'Copia indirizzo email', hint: '⧉', action: () => (document.getElementById('copy-email-btn') as HTMLButtonElement | null)?.click() },
-      { label: 'Stampa / Salva PDF', hint: '⎙', action: () => window.print() },
-      { label: 'Apri terminale segreto', hint: '⌨', action: () => window.openNeonTerminal && window.openNeonTerminal() },
+      ...sections.map(([id, num, label]) => ({
+        label: `${S.goTo} — ${label}`,
+        hint: num,
+        action: () => scrollToId(id),
+      })),
+      { label: `${S.openGithub} — MK023`, hint: '↗', action: () => window.open('https://github.com/MK023', '_blank', 'noopener') },
+      { label: S.copyEmail, hint: '⧉', action: () => (document.getElementById('copy-email-btn') as HTMLButtonElement | null)?.click() },
+      { label: S.printCv, hint: '⎙', action: () => window.print() },
+      { label: S.openTerminal, hint: '⌨', action: () => window.openNeonTerminal && window.openNeonTerminal() },
     ];
+
+    // Su Mac la scorciatoia è ⌘K, altrove Ctrl+K: l'etichetta deve dire il vero.
+    const isMac = (() => {
+      try {
+        const uaPlatform = (navigator as any).userAgentData?.platform;
+        if (uaPlatform) return /mac/i.test(uaPlatform);
+        return /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent);
+      } catch (e) { return false; }
+    })();
+    trigger.textContent = (isMac ? '⌘K ' : 'CTRL K ') + S.commands;
+    trigger.setAttribute('title', (isMac ? '⌘K' : 'Ctrl+K') + S.commandsTitle);
 
     let filtered = commands;
     let activeIndex = 0;
 
     function render() {
       if (!list) return;
-      list.innerHTML = '';
+      list.replaceChildren();
       if (filtered.length === 0) {
-        list.innerHTML = '<div class="cmdk-empty">Nessun comando trovato.</div>';
+        const empty = document.createElement('div');
+        empty.className = 'cmdk-empty';
+        empty.textContent = S.empty;
+        list.appendChild(empty);
         return;
       }
+      let activeEl: HTMLElement | null = null;
       filtered.forEach((cmd, i) => {
         const item = document.createElement('div');
         item.className = 'cmdk-item' + (i === activeIndex ? ' active' : '');
         item.setAttribute('role', 'option');
         item.setAttribute('aria-selected', i === activeIndex ? 'true' : 'false');
-        item.innerHTML = '<span>' + cmd.label + '</span><span class="k">' + cmd.hint + '</span>';
+
+        const label = document.createElement('span');
+        label.textContent = cmd.label;
+        const hint = document.createElement('span');
+        hint.className = 'k';
+        hint.textContent = cmd.hint;
+
+        item.append(label, hint);
         item.addEventListener('mouseenter', () => { activeIndex = i; render(); });
         item.addEventListener('click', () => cmd.action());
-        list.appendChild(item);
+        list!.appendChild(item);
+        if (i === activeIndex) activeEl = item;
       });
+
+      // tiene la voce selezionata dentro la finestra scorrevole della lista
+      if (activeEl) {
+        const listRect = list.getBoundingClientRect();
+        const itemRect = (activeEl as HTMLElement).getBoundingClientRect();
+        if (itemRect.top < listRect.top) list.scrollTop -= listRect.top - itemRect.top;
+        else if (itemRect.bottom > listRect.bottom) list.scrollTop += itemRect.bottom - listRect.bottom;
+      }
     }
 
     function open() {
