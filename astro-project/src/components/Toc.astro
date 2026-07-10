@@ -28,6 +28,31 @@ const entries = [
 <p class="toc-hint mono">{t('nav.hint')}</p>
 
 <script>
+  // ---- altezze reali delle due barre sticky → variabili CSS ----
+  // La utility-bar ha flex-wrap: sotto i ~520px va a capo e passa da 60 a 83px.
+  // Con un `top` fisso il sommario finiva mezzo nascosto dietro di lei, e le
+  // ancore delle sezioni atterravano troppo in alto. Misura il browser, non io.
+  (function stickyHeights() {
+    const bar = document.querySelector<HTMLElement>('.utility-bar');
+    const toc = document.querySelector<HTMLElement>('.toc');
+    if (!bar || !toc) return;
+
+    const apply = () => {
+      const root = document.documentElement;
+      root.style.setProperty('--bar-h', bar.offsetHeight + 'px');
+      root.style.setProperty('--toc-h', toc.offsetHeight + 'px');
+    };
+
+    apply();
+    if ('ResizeObserver' in window) {
+      const ro = new ResizeObserver(apply);
+      ro.observe(bar);
+      ro.observe(toc);
+    } else {
+      window.addEventListener('resize', apply, { passive: true });
+    }
+  })();
+
   // ---- scroll-spy: evidenzia la sezione attiva nel sommario ----
   (function scrollSpy() {
     const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('#toc-nav a'));
@@ -86,7 +111,12 @@ const entries = [
       queued = true;
       requestAnimationFrame(() => {
         queued = false;
+        // Su una pagina non scorrevole (zoom estremo, viewport altissimo) si è
+        // sempre "a fondo pagina": senza questa guardia `atBottom` resterebbe
+        // bloccato e spegnerebbe l'observer per tutte le altre sezioni.
+        const scrollabile = document.documentElement.scrollHeight > window.innerHeight + 4;
         const nowBottom =
+          scrollabile &&
           window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 3;
         if (nowBottom) {
           atBottom = true;

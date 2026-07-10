@@ -162,10 +162,13 @@ const strings = {
 
         card.append(tag, headline, summary);
 
-        // Solo http(s): un source_url malevolo non deve poter diventare javascript:
+        // Una fonte è per definizione esterna e assoluta. Senza base, `new URL`
+        // rifiuta gli URL relativi: "esempio.com/report" diventerebbe altrimenti
+        // un link al nostro stesso dominio. Il filtro sul protocollo blocca
+        // javascript: e mailto:.
         if (s.source_url) {
           try {
-            const url = new URL(s.source_url, window.location.origin);
+            const url = new URL(s.source_url);
             if (url.protocol === 'http:' || url.protocol === 'https:') {
               const link = document.createElement('a');
               link.href = url.href;
@@ -197,7 +200,11 @@ const strings = {
     async function loadIndex() {
       if (shelf) status(shelf, S.loadingIndex);
       try {
-        const res = await fetch('/data/issues/index.json');
+        // L'indice cambia quando la pipeline pubblica un numero. Senza no-store
+        // resterebbe nella cache HTTP (/data/* ha max-age=3600) e un visitatore
+        // di ritorno non vedrebbe il numero nuovo: non c'è più un bottone di
+        // ricarica a rimediare.
+        const res = await fetch('/data/issues/index.json', { cache: 'no-store' });
         if (!res.ok) throw new Error('not found');
         index = await res.json();
         if (!index || !index.issues || index.issues.length === 0) throw new Error('empty');

@@ -91,7 +91,17 @@
 
   @media (prefers-reduced-motion: reduce){
     .reveal, .reveal-stagger > *{ opacity:1 !important; transform:none !important; transition:none !important; }
-    .halftone-frame{ animation:none !important; }
+    .halftone-frame{ animation:none !important; opacity:0.9; }
+    /* La sequenza d'ingresso della testata parte da opacity:0 e la riporta a 1
+       via animation-fill-mode. Spegnere l'animazione e basta lascerebbe la
+       testata invisibile: qui lo stato finale va imposto a mano. */
+    .issue-tag, h1.name, .role-chip, .kicker, .pitch, .hero-cta{
+      animation:none !important;
+      opacity:1 !important;
+      transform:none !important;
+    }
+    .hero::before{ animation:none !important; transform:rotate(-4deg) scaleX(1); }
+    .crt-flicker{ animation:none !important; }
   }
   .mono{font-family:'JetBrains Mono', monospace;}
   .display{font-family:'Anton', sans-serif; text-transform:uppercase; letter-spacing:0.01em;}
@@ -212,8 +222,10 @@
     overflow-x:auto; -webkit-overflow-scrolling:touch;
     scrollbar-width:none;
     border-bottom:3px solid var(--ink);
-    /* si incolla sotto la utility-bar, che è sticky a top:0 */
-    position:sticky; top:57px;
+    /* Si incolla sotto la utility-bar. L'altezza vera la misura Toc.astro e la
+       scrive in --bar-h: la utility-bar va a capo sotto i ~520px e cresce,
+       quindi un valore fisso qui nasconderebbe il sommario dietro la barra. */
+    position:sticky; top:var(--bar-h, 57px);
     background:var(--paper);
     z-index:39;
   }
@@ -256,9 +268,10 @@
 
   section{padding:56px 24px; border-bottom:3px solid var(--ink);}
   section:last-of-type{border-bottom:none;}
-  /* utility-bar (60px) + sommario (53px) sono sticky: senza questo margine, ogni
-     ancora del sommario porterebbe il titolo della sezione sotto le due barre. */
-  section, footer{ scroll-margin-top:120px; }
+  /* Le due barre sono sticky: senza questo margine ogni ancora del sommario
+     porterebbe il titolo della sezione sotto di esse. Le altezze reali arrivano
+     da Toc.astro; i valori di ripiego servono solo prima che lo script giri. */
+  section, footer{ scroll-margin-top:calc(var(--bar-h, 60px) + var(--toc-h, 53px) + 8px); }
   .section-head{
     display:flex; align-items:center; gap:14px;
     margin-bottom:32px;

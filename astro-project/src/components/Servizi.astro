@@ -277,6 +277,11 @@ const briefLabels = {
       baseWidth = originals.reduce((sum, c) => sum + c.getBoundingClientRect().width + 20, 0);
     };
 
+    // Si misura PRIMA di inserire i cloni: leggere la geometria dopo aver
+    // mutato il DOM costringe il browser a rifare il layout in sincrono
+    // (forced reflow), una volta per card.
+    measure();
+
     // I cloni servono solo a chiudere l'anello visivo: per una tecnologia
     // assistiva sono contenuto duplicato, quindi restano invisibili.
     originals.forEach((card) => {
@@ -286,11 +291,15 @@ const briefLabels = {
       track.appendChild(clone);
     });
 
-    measure();
     window.addEventListener('resize', measure);
 
     let offset = 0;
-    let paused = false;
+    // Tre cause indipendenti di pausa. Con un solo booleano, uscire col mouse
+    // azzerava anche la pausa dovuta al focus da tastiera (il contenuto si
+    // muoveva sotto il focus) o al ritorno su una scheda con il cursore fermo
+    // sopra il carosello.
+    const cause = { hover: false, focus: false, nascosto: false };
+    const inPausa = () => cause.hover || cause.focus || cause.nascosto;
 
     // Lo scorrimento automatico è movimento non richiesto: chi lo ha disattivato
     // a livello di sistema tiene solo le frecce e lo scroll manuale.
@@ -299,7 +308,7 @@ const briefLabels = {
       let running = false;
       const loop = () => {
         if (!running) return; // fuori schermo: il loop muore, non gira a vuoto
-        if (!paused && baseWidth > 0) {
+        if (!inPausa() && baseWidth > 0) {
           offset += 0.5;
           if (offset >= baseWidth) offset -= baseWidth;
           track.scrollLeft = offset;
@@ -322,16 +331,12 @@ const briefLabels = {
       io.observe(carousel);
 
       // Anche in una scheda di sfondo non ha senso animare.
-      document.addEventListener('visibilitychange', () => {
-        paused = document.hidden;
-      });
+      document.addEventListener('visibilitychange', () => { cause.nascosto = document.hidden; });
 
-      const pause = () => { paused = true; };
-      const resume = () => { paused = false; };
-      carousel.addEventListener('pointerenter', pause);
-      carousel.addEventListener('pointerleave', resume);
-      carousel.addEventListener('focusin', pause);
-      carousel.addEventListener('focusout', resume);
+      carousel.addEventListener('pointerenter', () => { cause.hover = true; });
+      carousel.addEventListener('pointerleave', () => { cause.hover = false; });
+      carousel.addEventListener('focusin', () => { cause.focus = true; });
+      carousel.addEventListener('focusout', () => { cause.focus = false; });
     }
 
     const step = (delta: number) => {
