@@ -132,6 +132,8 @@
   }
   .util-btn:hover{ background:var(--ink); color:var(--paper); }
   .util-btn.copied{ background:var(--orange); border-color:var(--ink); color:var(--ink); }
+  /* Qui e non come style= inline: un attributo style richiederebbe 'unsafe-hashes' nella CSP. */
+  #copy-email-btn{ margin-left:8px; }
 
   /* ---- hero ---- */
   .hero{

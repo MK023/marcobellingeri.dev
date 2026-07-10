@@ -1,0 +1,14 @@
+{
+  // Sito statico su Workers static assets (ADR-0001). Nessun `main`: non c'è
+  // codice Worker, solo asset. Gli header di sicurezza e cache stanno in
+  // public/_headers, che Cloudflare applica agli asset statici.
+  //
+  // Nota: ADR-0001 §4 prevede un Worker per il geo-redirect su `/`. Quello
+  // richiede `main` e non è in questo blocco: oggi `/` è un redirect statico.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "marcobellingeri-dev",
+  "compatibility_date": "2026-07-09",
+  "assets": {
+    "directory": "./dist"
+  }
+}

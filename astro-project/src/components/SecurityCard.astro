@@ -56,20 +56,38 @@ const expected = [
       return el;
     };
 
+    const row = (name: string, val: string | null) => {
+      const el = document.createElement('div');
+      el.className = 'sec-row' + (val ? '' : ' is-missing');
+      el.append(
+        cell('sec-name', name),
+        cell('sec-flag', val ? okLabel : missLabel),
+        cell('sec-val', val || ''),
+      );
+      return el;
+    };
+
+    // La CSP effettiva ha due sorgenti: l'header (solo `frame-ancestors`, l'unica
+    // direttiva che un <meta> non può esprimere) e il <meta http-equiv> generato
+    // da Astro con gli hash dei suoi script. Mostrare solo l'header direbbe metà
+    // della verità su una pagina che promette di non dirne mezze.
+    // Gli hash sono decine: li conto invece di stamparli, ma il conteggio è letto
+    // dal valore reale, non dichiarato qui.
+    const metaCsp = document
+      .querySelector<HTMLMetaElement>('meta[http-equiv="content-security-policy" i]')
+      ?.content ?? null;
+
+    const foldHashes = (csp: string) =>
+      csp.replace(/(?:'sha\d{3}-[A-Za-z0-9+/=]+'\s*)+/g, (run) => {
+        const n = run.match(/'sha\d{3}-/g)?.length ?? 0;
+        return `${n} hash `;
+      });
+
     fetch(window.location.href, { method: 'HEAD' })
       .then((res) => {
         box.replaceChildren();
-        expected.forEach((name) => {
-          const val = res.headers.get(name);
-          const row = document.createElement('div');
-          row.className = 'sec-row' + (val ? '' : ' is-missing');
-          row.append(
-            cell('sec-name', name),
-            cell('sec-flag', val ? okLabel : missLabel),
-            cell('sec-val', val || ''),
-          );
-          box.appendChild(row);
-        });
+        expected.forEach((name) => box.appendChild(row(name, res.headers.get(name))));
+        box.appendChild(row('Content-Security-Policy (meta)', metaCsp && foldHashes(metaCsp)));
       })
       .catch(() => {
         if (status) status.textContent = missLabel;

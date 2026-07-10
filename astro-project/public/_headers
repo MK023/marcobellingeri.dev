@@ -1,24 +1,23 @@
 # Security & cache headers per Cloudflare (Workers static assets / Pages).
 # Hosting = Cloudflare (ADR-0001). Migrati da vercel.json, che resta legacy.
 #
-# ⛔ BLOCCO PRE-GO-LIVE — NON deployare prima di aver risolto questo.
-# `script-src 'self'` e `style-src 'self'` non ammettono inline, ma la build
-# Astro emette 15 <script> inline. Verificato servendo dist/ con questi header:
-# 26 violazioni CSP, il pre-paint del tema non gira, il press-loader resta a
-# schermo intero e archivio, orologio, sommario e tabella Security restano vuoti.
-# In produzione il sito sarebbe una schermata "SFOGLIANDO…" permanente.
-# Strade: (a) experimental.csp di Astro, che emette gli hash dei suoi script
-# (l'inline is:inline del tema va aggiunto a mano); (b) style-src 'self'
-# 'unsafe-inline' + rimozione dell'ultimo attributo style=. Non allentare
-# script-src: è ciò che rende innocuo un XSS.
+# La CSP non sta qui: la genera Astro (`security.csp` in astro.config.mjs) come
+# <meta http-equiv>, perché solo in build può calcolare gli hash dei propri script.
+# Se una CSP vivesse anche qui, le due policy verrebbero applicate entrambe come
+# intersezione: un `script-src 'self'` in questo file annullerebbe gli hash del meta
+# e rimetterebbe il sito offline. `frame-ancestors` è l'eccezione — dentro un <meta>
+# è ignorato per specifica, quindi è l'unica direttiva CSP che deve restare header.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com; frame-src https://www.cal.eu https://cal.eu; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: frame-ancestors 'none'
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
 
-/assets/*
+# Astro emette i bundle con l'hash nel nome sotto /_astro/, non /assets/.
+# La regola precedente puntava a una directory che non esiste: nessun file
+# ha mai ricevuto il Cache-Control immutable.
+/_astro/*
   Cache-Control: public, max-age=31536000, immutable
 
 /data/*
