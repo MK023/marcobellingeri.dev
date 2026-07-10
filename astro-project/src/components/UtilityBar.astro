@@ -39,12 +39,14 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
     >{t('ub.editionDay')}</button>
     <button class="util-btn" id="cmdk-trigger">⌘K {t('ub.commands')}</button>
     {/*
-      ↓ CV non punta a un PDF: il foglio @media print di questo sito impagina la
-      pagina come un dossier stampabile, quindi il CV *è* il sito. Un clic apre
-      la stampa, da cui "Salva come PDF". Se un giorno esisterà un
-      public/cv.pdf, basta trasformarlo in <a href="/cv.pdf" download>.
+      Un vero PDF, uno per lingua, generato dai .docx e ripulito dei dati che non
+      vanno su una pagina pubblica: niente cellulare, niente data di nascita, e
+      l'indirizzo Proton al posto della Gmail — lo stesso che il sito espone ovunque.
+      Prima questo bottone chiamava window.print() e stampava la pagina.
     */}
-    <button class="util-btn" id="cv-btn" title={t('ub.cvTitle')}>{t('ub.cv')}</button>
+    <a class="util-btn" id="cv-btn" href={`/cv-${current}.pdf`} title={t('ub.cvTitle')} download>
+      {t('ub.cv')}
+    </a>
   </div>
 </div>
 
@@ -72,9 +74,6 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
   }
   tickClock();
   setInterval(tickClock, 1000);
-
-  // ---- CV = questa pagina, impaginata dal foglio di stampa ----
-  document.getElementById('cv-btn')?.addEventListener('click', () => window.print());
 
   // ---- override lingua: la scelta manuale vince sul geo/IP ----
   // Memorizza la lingua scelta in un cookie che il Worker geo (al go-live)

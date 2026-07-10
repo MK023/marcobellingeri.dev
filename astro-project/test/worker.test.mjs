@@ -36,3 +36,25 @@ test('tutto ciò che non è `/` passa agli asset', async () => {
   const r = await worker.fetch(richiesta('https://marcobellingeri.dev/it/', 'US'), asset);
   assert.equal(await r.text(), 'asset');
 });
+
+test('la scelta manuale della lingua vince sul paese', () => {
+  // UtilityBar scrive `pref-lang` quando si clicca EN/IT: chi vive in Italia e
+  // sceglie l'inglese non deve tornare in italiano ogni volta che passa dalla root.
+  assert.equal(scegliLingua('IT', 'pref-lang=en'), 'en');
+  assert.equal(scegliLingua('US', 'pref-lang=it'), 'it');
+  assert.equal(scegliLingua('IT', 'altro=1; pref-lang=en; terzo=2'), 'en');
+  // un cookie con un valore che non conosciamo non deve dirottare nulla
+  assert.equal(scegliLingua('IT', 'pref-lang=de'), 'it');
+  assert.equal(scegliLingua('US', 'pref-lang='), 'en');
+  assert.equal(scegliLingua('IT', null), 'it');
+});
+
+test('il cookie arriva al Worker dalla richiesta, non da un parametro', async () => {
+  const r = await worker.fetch(
+    Object.assign(new Request('https://marcobellingeri.dev/', { headers: { cookie: 'pref-lang=en' } }), {
+      cf: { country: 'IT' },
+    }),
+    { ASSETS: { fetch: async () => new Response('asset') } },
+  );
+  assert.equal(r.headers.get('location'), 'https://marcobellingeri.dev/en/');
+});
