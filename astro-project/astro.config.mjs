@@ -47,6 +47,12 @@ export default defineConfig({
   },
   vite: {
     build: {
+      // Senza questo, il minificatore riscrive `@media (max-width:640px)` come
+      // `@media (width<=640px)` — la sintassi a intervalli di Media Queries Level 4,
+      // che Safari capisce solo dalla 16.4 (marzo 2023). Su un iPhone fermo a iOS 15
+      // quelle media query vengono ignorate e il sito perde TUTTO il layout mobile,
+      // in silenzio. Il target lo decide chi visita, non chi compila.
+      cssTarget: ['safari14', 'chrome87', 'firefox78', 'edge88'],
       // Vite inlinizza gli asset sotto i 4 KB come data: URI. Diversi subset di
       // font (latin-ext, vietnamese, cyrillic) ci finiscono sotto, e `font-src
       // 'self'` li blocca: nove font non caricati e altrettanti errori in console.
