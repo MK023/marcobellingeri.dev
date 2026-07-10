@@ -41,18 +41,20 @@ const copy = {
   <div class="masthead-wrap">
     <span class="issue-tag mono">CLOUD &amp; SECURITY EDITION</span>
     <h1 class="name display"><span class="given">Marco</span>Bellingeri</h1>
-    <span class="role-chip mono">CLOUD PLATFORM &amp; SECURITY ENGINEER</span>
-    <a
-      class="grade-chip mono"
-      href={OBSERVATORY.url}
-      target="_blank"
-      rel="noopener"
-      title={t('hero.gradeTitle')}
-    >
-      <span class="grade-label">{t('hero.grade')}</span>
-      <span class="grade-value">{OBSERVATORY.voto}</span>
-      <span class="grade-verify">{t('hero.gradeVerify')} ↗</span>
-    </a>
+    <div class="chips-row">
+      <span class="role-chip mono">CLOUD PLATFORM &amp; SECURITY ENGINEER</span>
+      <a
+        class="grade-chip mono"
+        href={OBSERVATORY.url}
+        target="_blank"
+        rel="noopener"
+        title={t('hero.gradeTitle')}
+      >
+        <span class="grade-label">{t('hero.grade')}</span>
+        <span class="grade-value">{OBSERVATORY.voto}</span>
+        <span class="grade-verify">{t('hero.gradeVerify')} ↗</span>
+      </a>
+    </div>
     <p class="pitch">{copy.pitch}</p>
     <a class="hero-cta mono" href="#booking">{copy.cta}</a>
     <figure class="kicker">
@@ -72,6 +74,22 @@ const copy = {
     margin-bottom:0.05em;
   }
 
+  /* Ruolo e voto sono UNA riga flex: due elementi inline indipendenti (inline-block
+     su baseline contro inline-flex su middle, 34px contro 37) non si allineano mai.
+     Qui si stirano alla stessa altezza qualunque cosa contengano, e a schermo
+     stretto il voto va a capo con lo stesso gap invece di sbordare. */
+  .chips-row{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:stretch;
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .chips-row .role-chip{
+    margin-bottom:0;
+    display:inline-flex;
+    align-items:center;
+  }
   /* Il voto entra fra il ruolo (0.95s) e il pitch (1.1s), senza spostare gli altri.
      Parte da opacity:0 con `forwards`, come tutta la testata: il reset generico di
      prefers-reduced-motion in global.css lo porta comunque allo stato finale. */
@@ -79,14 +97,13 @@ const copy = {
     display:inline-flex;
     align-items:baseline;
     gap:10px;
-    margin:0 0 22px 10px;
+    margin:0;
     padding:6px 12px;
     border:2px solid var(--ink);
     background:var(--paper);
     text-decoration:none;
     font-size:11px;
     letter-spacing:0.09em;
-    vertical-align:middle;
     transition:background 0.15s ease, transform 0.15s ease;
     opacity:0;
     animation:riseIn 0.6s ease 1.02s forwards;
@@ -106,12 +123,6 @@ const copy = {
     border-left:1px solid var(--ink);
     padding-left:10px;
   }
-  /* Sotto i 520px la testata è già stretta: il voto va a capo da solo invece di
-     spingere il ruolo fuori dallo schermo. */
-  @media (max-width:520px){
-    .grade-chip{ margin-left:0; }
-  }
-
   /* riseIn e i ritardi vengono da global.css: la sequenza d'entrata prosegue
      tag → nome → ruolo → voto → pitch → CTA → citazione. */
   .pitch{
