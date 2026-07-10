@@ -5,7 +5,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { scegliLingua } from '../worker/index.js';
+import worker, { scegliLingua, gestisciContatto } from '../worker/index.js';
 
 const asset = { ASSETS: { fetch: async () => new Response('asset') } };
 const richiesta = (url, paese) => Object.assign(new Request(url), { cf: { country: paese } });
@@ -57,4 +57,90 @@ test('il cookie arriva al Worker dalla richiesta, non da un parametro', async ()
     { ASSETS: { fetch: async () => new Response('asset') } },
   );
   assert.equal(r.headers.get('location'), 'https://marcobellingeri.dev/en/');
+});
+
+// ---- form di contatto (/api/contact) ----
+const postContatto = (body, env = { RESEND_API_KEY: 'test' }) =>
+  gestisciContatto(
+    new Request('https://marcobellingeri.dev/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+    env,
+  );
+
+test('contatto: honeypot pieno = finto successo, nessun invio', async () => {
+  const originale = globalThis.fetch;
+  let chiamato = false;
+  globalThis.fetch = async () => { chiamato = true; return new Response('', { status: 200 }); };
+  try {
+    const r = await postContatto({ email: 'bot@x.com', brief: 'messaggio abbastanza lungo', azienda: 'ACME' });
+    assert.equal(r.status, 200);
+    assert.equal(chiamato, false, 'un honeypot pieno non deve mandare nulla');
+  } finally { globalThis.fetch = originale; }
+});
+
+test('contatto: email invalida o brief troppo corto = 422', async () => {
+  assert.equal((await postContatto({ email: 'non-una-email', brief: 'abbastanza lungo qui' })).status, 422);
+  assert.equal((await postContatto({ email: 'ok@x.com', brief: 'corto' })).status, 422);
+});
+
+test('contatto: valido = inoltra a Resend con reply_to del visitatore', async () => {
+  const originale = globalThis.fetch;
+  let inviato;
+  globalThis.fetch = async (u, opt) => {
+    inviato = { u, body: JSON.parse(opt.body) };
+    return new Response('{}', { status: 200 });
+  };
+  try {
+    const r = await postContatto({ nome: 'Mario', email: 'mario@x.com', brief: 'un messaggio vero e lungo' });
+    assert.equal(r.status, 200);
+    assert.equal(inviato.u, 'https://api.resend.com/emails');
+    assert.equal(inviato.body.reply_to, 'mario@x.com');
+    assert.equal(inviato.body.to[0], 'mkdevpy@proton.me');
+  } finally { globalThis.fetch = originale; }
+});
+
+test('contatto: senza API key configurata = 503, non un 500 opaco', async () => {
+  const r = await postContatto({ email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' }, {});
+  assert.equal(r.status, 503);
+});
+
+test('contatto: solo POST', async () => {
+  const r = await gestisciContatto(new Request('https://marcobellingeri.dev/api/contact'), {});
+  assert.equal(r.status, 405);
+});
+
+test('contatto: Turnstile configurato + token valido = inoltra', async () => {
+  const originale = globalThis.fetch;
+  globalThis.fetch = async (u) =>
+    String(u).includes('siteverify')
+      ? new Response(JSON.stringify({ success: true }), { status: 200 })
+      : new Response('{}', { status: 200 });
+  try {
+    const r = await postContatto(
+      { email: 'ok@x.com', brief: 'un messaggio abbastanza lungo', turnstile: 'tok' },
+      { RESEND_API_KEY: 'test', TURNSTILE_SECRET_KEY: 'sec' },
+    );
+    assert.equal(r.status, 200);
+  } finally { globalThis.fetch = originale; }
+});
+
+test('contatto: Turnstile configurato + token invalido = 403, niente invio', async () => {
+  const originale = globalThis.fetch;
+  let resendChiamato = false;
+  globalThis.fetch = async (u) => {
+    if (String(u).includes('siteverify')) return new Response(JSON.stringify({ success: false }), { status: 200 });
+    resendChiamato = true;
+    return new Response('{}', { status: 200 });
+  };
+  try {
+    const r = await postContatto(
+      { email: 'ok@x.com', brief: 'un messaggio abbastanza lungo', turnstile: 'cattivo' },
+      { RESEND_API_KEY: 'test', TURNSTILE_SECRET_KEY: 'sec' },
+    );
+    assert.equal(r.status, 403);
+    assert.equal(resendChiamato, false, 'un token invalido non deve arrivare a Resend');
+  } finally { globalThis.fetch = originale; }
 });

@@ -20,14 +20,17 @@ export default defineConfig({
         "default-src 'self'",
         "font-src 'self'",
         "img-src 'self' data:",
-        "connect-src 'self' https://api.github.com",
-        'frame-src https://www.cal.eu https://cal.eu',
+        // challenges.cloudflare.com: il widget Turnstile del form di contatto —
+        // script + iframe + XHR verso Cloudflare. Unica concessione a un host esterno,
+        // e di Cloudflare stessa; la CSP resta a hash, senza unsafe-inline.
+        "connect-src 'self' https://api.github.com https://challenges.cloudflare.com",
+        'frame-src https://www.cal.eu https://cal.eu https://challenges.cloudflare.com',
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
       ],
       scriptDirective: {
-        resources: ["'self'"],
+        resources: ["'self'", 'https://challenges.cloudflare.com'],
         hashes: ['sha256-9NdyE0/QP+rTIpE4DN6oRo2gQFa4pcIWT/PwHZBV09k='],
       },
       styleDirective: {
