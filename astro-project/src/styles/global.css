@@ -89,19 +89,26 @@
   .reveal-stagger > *:nth-child(5){transition-delay:0.41s;}
   .reveal-stagger > *:nth-child(6){transition-delay:0.5s;}
 
+  /* Chi chiede meno movimento non deve ricevere meno contenuto.
+     Le animazioni non si spengono, si fanno finire subito: mezza pagina parte da
+     `opacity:0` e arriva a 1 con `animation-fill-mode:forwards`, quindi un
+     `animation:none` lascerebbe quegli elementi invisibili per sempre. Con durata
+     quasi nulla lo stato finale viene applicato lo stesso.
+     Qui prima c'era l'elenco a mano dei sei selettori della testata: una seconda
+     fonte di verità che il prossimo elemento animato avrebbe disatteso in
+     silenzio, restando invisibile solo per chi ha reduced-motion attivo. */
   @media (prefers-reduced-motion: reduce){
-    .reveal, .reveal-stagger > *{ opacity:1 !important; transform:none !important; transition:none !important; }
-    .halftone-frame{ animation:none !important; opacity:0.9; }
-    /* La sequenza d'ingresso della testata parte da opacity:0 e la riporta a 1
-       via animation-fill-mode. Spegnere l'animazione e basta lascerebbe la
-       testata invisibile: qui lo stato finale va imposto a mano. */
-    .issue-tag, h1.name, .role-chip, .kicker, .pitch, .hero-cta{
-      animation:none !important;
-      opacity:1 !important;
-      transform:none !important;
+    *, *::before, *::after{
+      animation-duration:1ms !important;
+      animation-delay:0ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:1ms !important;
+      transition-delay:0ms !important;
+      scroll-behavior:auto !important;
     }
-    .hero::before{ animation:none !important; transform:rotate(-4deg) scaleX(1); }
-    .crt-flicker{ animation:none !important; }
+    /* .reveal attende un IntersectionObserver: senza JS resta a opacity:0 comunque. */
+    .reveal, .reveal-stagger > *{ opacity:1 !important; transform:none !important; }
+    .halftone-frame{ opacity:0.9; }
   }
   .mono{font-family:'JetBrains Mono', monospace;}
   .display{font-family:'Anton', sans-serif; text-transform:uppercase; letter-spacing:0.01em;}
@@ -132,6 +139,8 @@
   }
   .util-btn:hover{ background:var(--ink); color:var(--paper); }
   .util-btn.copied{ background:var(--orange); border-color:var(--ink); color:var(--ink); }
+  /* Qui e non come style= inline: un attributo style richiederebbe 'unsafe-hashes' nella CSP. */
+  #copy-email-btn{ margin-left:8px; }
 
   /* ---- hero ---- */
   .hero{
@@ -751,9 +760,6 @@
     font-family:'Anton', sans-serif;
     font-size:15px;
     color:var(--ink);
-  }
-  @media (prefers-reduced-motion: reduce){
-    .ai-seal svg{ animation:none; }
   }
   .fine-print{
     max-width:1100px; margin:32px auto 0;

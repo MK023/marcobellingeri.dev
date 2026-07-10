@@ -21,7 +21,30 @@ async function rest(path, init = {}) {
   return r;
 }
 
-// GET con querystring PostgREST già formata, es. select("articles?select=id&limit=1").
+// encodeURIComponent lascia passare ! ' ( ) * — che in PostgREST non sono innocui:
+// `(` e `)` delimitano `in.(…)` e `or=(…)`, la virgola separa i valori. Un valore
+// che li contiene cambierebbe il filtro invece di essere confrontato.
+const encodeValue = (v) => {
+  if (v === null || v === undefined) throw new TypeError("valore nullo in un filtro PostgREST");
+  return encodeURIComponent(String(v)).replace(
+    /[!'()*]/g,
+    (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase(),
+  );
+};
+
+// Template tag per le query PostgREST: i pezzi letterali (nomi di colonna,
+// operatori, `select=`) passano intatti, TUTTI i valori interpolati vengono
+// codificati. Serve perché select/update/remove ricevono la querystring già
+// assemblata: a quel punto nessuna barriera può più sapere cosa era un valore.
+//
+//   pg`signals?select=source_url&issue_id=eq.${issue.id}`
+//
+// Oggi i valori arrivano dal DB o dall'ambiente e sono innocui. Diventano input
+// utente con l'endpoint pubblico C1 dell'ADR-0003: la barriera va messa prima.
+export const pg = (strings, ...values) =>
+  strings.reduce((acc, s, i) => acc + s + (i < values.length ? encodeValue(values[i]) : ""), "");
+
+// GET con querystring PostgREST. Costruiscila con pg`` quando interpoli valori.
 export const select = async (pathWithQuery) => (await rest(pathWithQuery)).json();
 
 // INSERT righe; returning=true per riavere le righe (con id).

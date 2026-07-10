@@ -5,6 +5,7 @@ import { strict as assert } from "node:assert";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { chunk, toVector, DIM } from "../lib/voyage.mjs";
+import { pg } from "../lib/supabase.mjs";
 
 const ROOT = new URL("../..", import.meta.url).pathname;
 
@@ -100,4 +101,33 @@ test("retrieve: senza query -> exit 1 con uso", () => {
   const r = run(["engine/retrieve.mjs"]);
   assert.equal(r.code, 1);
   assert.match(r.stderr, /uso:/);
+});
+
+// ---- pg`` : barriera sull'encoding dei filtri PostgREST -----------------
+// select/update/remove ricevono la querystring già assemblata: se un valore vi
+// entra senza codifica, smette di essere confrontato e diventa parte del filtro.
+// Oggi i valori vengono dal DB o da argv; con l'endpoint pubblico C1 (ADR-0003)
+// verranno da fuori.
+
+test("pg: i pezzi letterali passano intatti", () => {
+  assert.equal(pg`issues?select=id,number&status=eq.draft`, "issues?select=id,number&status=eq.draft");
+});
+
+test("pg: un valore normale è codificato senza sorprese", () => {
+  assert.equal(pg`issues?period=eq.${"2026-07"}`, "issues?period=eq.2026-07");
+});
+
+test("pg: la virgola in un valore non diventa un separatore", () => {
+  assert.equal(pg`t?col=eq.${"a,b"}`, "t?col=eq.a%2Cb");
+});
+
+test("pg: parentesi e apici non possono aprire un in.(…) o un or=(…)", () => {
+  // encodeURIComponent da solo lascerebbe passare ! ' ( ) *
+  assert.equal(pg`t?col=eq.${"x)&or=(id.gt.0"}`, "t?col=eq.x%29%26or%3D%28id.gt.0");
+  assert.equal(pg`t?col=eq.${"a'b!c(d)e*f"}`, "t?col=eq.a%27b%21c%28d%29e%2Af");
+});
+
+test("pg: un valore nullo è un errore, non la stringa 'null'", () => {
+  assert.throws(() => pg`t?col=eq.${null}`, TypeError);
+  assert.throws(() => pg`t?col=eq.${undefined}`, TypeError);
 });

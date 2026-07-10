@@ -1,5 +1,6 @@
 ---
 import type { Lang } from '../../i18n/ui';
+import { hasIssues } from '../../lib/issues';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import UtilityBar from '../../components/UtilityBar.astro';
 import Hero from '../../components/Hero.astro';
@@ -37,7 +38,7 @@ const { lang } = Astro.params as { lang: Lang };
     <Percorso />
     <StackSection />
     <SecurityCard />
-    <ArchiveSection />
+    {hasIssues && <ArchiveSection />}
     <Booking />
   </main>
 

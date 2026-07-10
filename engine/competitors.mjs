@@ -5,7 +5,7 @@
 // ponytail: MVP scrape-and-store. changeTracking di Firecrawl ("riassumi solo se
 // cambiato", ADR-0004) è l'upgrade per tagliare costo/rumore e deduplicare gli
 // snapshot — si aggiunge quando la cadenza di run lo richiede.
-import { select, insert } from "./lib/supabase.mjs";
+import { select, insert, pg } from "./lib/supabase.mjs";
 import { chunk, embed, toVector } from "./lib/voyage.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
 
@@ -31,7 +31,9 @@ if (limIdx > -1 && (!Number.isInteger(limit) || limit < 1)) {
   console.error("--limit richiede un intero >= 1 (es. --limit 1)");
   process.exit(1);
 }
-const sources = await select(`competitor_sources?select=id,name,url&active=eq.true&order=name${limit ? `&limit=${limit}` : ""}`);
+const sources = await select(
+  pg`competitor_sources?select=id,name,url&active=eq.true&order=name` + (limit ? pg`&limit=${limit}` : ""),
+);
 console.log(`competitors: ${sources.length} fonti attive${limit ? ` (--limit ${limit})` : ""}.`);
 const trace = startTrace("competitor-radar", { metadata: { sources: sources.length } });
 

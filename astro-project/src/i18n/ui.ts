@@ -77,6 +77,7 @@ export const ui = {
     'archive.loadingIssue': 'loading issue',
     'archive.openIssue': 'Open issue',
     'archive.source': 'Source',
+    'archive.unavailable': 'archive temporarily unavailable',
 
     // ---- appuntamenti ----
     'booking.title': 'Booking',
@@ -160,6 +161,7 @@ export const ui = {
     'archive.loadingIssue': 'caricamento numero',
     'archive.openIssue': 'Apri numero',
     'archive.source': 'Fonte',
+    'archive.unavailable': 'archivio momentaneamente non disponibile',
 
     // ---- appuntamenti ----
     'booking.title': 'Appuntamenti',
