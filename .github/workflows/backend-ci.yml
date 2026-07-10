@@ -15,6 +15,13 @@ on:
 
 permissions:
   contents: read
+  # gitleaks-action, sugli eventi pull_request, chiama
+  # GET /repos/{owner}/{repo}/pulls/{n}/commits per sapere cosa scansionare.
+  # Con `contents: read` da solo quella chiamata torna 403 "Resource not
+  # accessible by integration" e il job muore su OGNI PR, non solo su quelle di
+  # Dependabot: era questa la vera causa dello skip qui sotto, non il token
+  # ristretto di Dependabot.
+  pull-requests: read
 
 # un solo run alla volta per ref: l'e2e usa un namespace sintetico fisso
 # (9999-01) sul DB live — run concorrenti si pesterebbero i piedi
@@ -35,9 +42,11 @@ jobs:
         run: npm test
 
   gitleaks:
-    # sui PR di dependabot il GITHUB_TOKEN e' ristretto (policy GitHub) e
-    # l'action fallisce chiamando l'API; il full-history scan gira comunque
-    # su ogni push main, quindi ogni merge resta coperto
+    # Lo skip resta finché non è verificato su una PR reale di Dependabot: lì il
+    # GITHUB_TOKEN e' comunque piu' ristretto per policy GitHub. Ma la causa del
+    # fallimento storico era il permesso `pull-requests: read` mancante (vedi
+    # sopra), non l'attore: senza quello l'action moriva su OGNI PR.
+    # Il full-history scan gira su ogni push main, quindi ogni merge resta coperto.
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
