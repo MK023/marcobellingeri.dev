@@ -141,6 +141,9 @@
   .util-btn.copied{ background:var(--orange); border-color:var(--ink); color:var(--ink); }
   /* Qui e non come style= inline: un attributo style richiederebbe 'unsafe-hashes' nella CSP. */
   #copy-email-btn{ margin-left:8px; }
+  /* ↓ CV è un <a> che scarica il PDF, non un <button>: senza questo eredita la
+     sottolineatura dei link e non si allinea agli altri pulsanti della barra. */
+  #cv-btn{ text-decoration:none; display:inline-flex; align-items:center; }
 
   /* ---- hero ---- */
   .hero{

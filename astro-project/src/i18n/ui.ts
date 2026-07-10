@@ -40,7 +40,7 @@ export const ui = {
     'ub.editionNight': '☾ NIGHT EDITION',
     'ub.editionTitle': 'Switch between day and night edition',
     'ub.cv': '↓ CV',
-    'ub.cvTitle': 'Print this page as a CV (save as PDF)',
+    'ub.cvTitle': 'Download the CV as PDF',
     'ub.commands': 'COMMANDS',
     'ub.commandsTitle': ' — open/close commands',
 
@@ -65,7 +65,7 @@ export const ui = {
     'cmdk.goTo': 'Go to',
     'cmdk.openGithub': 'Open GitHub',
     'cmdk.copyEmail': 'Copy email address',
-    'cmdk.printCv': 'Print / Save as PDF',
+    'cmdk.printCv': 'Download CV (PDF)',
     'cmdk.openTerminal': 'Open secret terminal',
 
     // ---- progetti ----
@@ -125,7 +125,7 @@ export const ui = {
     'ub.editionNight': '☾ EDIZIONE NOTTE',
     'ub.editionTitle': 'Passa da edizione giorno a notte',
     'ub.cv': '↓ CV',
-    'ub.cvTitle': 'Stampa questa pagina come CV (salva in PDF)',
+    'ub.cvTitle': 'Scarica il CV in PDF',
     'ub.commands': 'COMANDI',
     'ub.commandsTitle': ' — apri/chiudi comandi',
 
@@ -150,7 +150,7 @@ export const ui = {
     'cmdk.goTo': 'Vai a',
     'cmdk.openGithub': 'Apri GitHub',
     'cmdk.copyEmail': 'Copia indirizzo email',
-    'cmdk.printCv': 'Stampa / Salva PDF',
+    'cmdk.printCv': 'Scarica il CV (PDF)',
     'cmdk.openTerminal': 'Apri terminale segreto',
 
     // ---- progetti ----

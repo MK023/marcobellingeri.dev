@@ -76,7 +76,15 @@ const strings = {
       })),
       { label: `${S.openGithub} — MK023`, hint: '↗', action: () => window.open('https://github.com/MK023', '_blank', 'noopener') },
       { label: S.copyEmail, hint: '⧉', action: () => (document.getElementById('copy-email-btn') as HTMLButtonElement | null)?.click() },
-      { label: S.printCv, hint: '⎙', action: () => window.print() },
+      // Lo stesso PDF del bottone ↓ CV nella barra: una sola fonte, non due esiti diversi.
+      {
+        label: S.printCv,
+        hint: '↓',
+        action: () => {
+          const lang = document.documentElement.lang === 'it' ? 'it' : 'en';
+          window.location.assign(`/cv-${lang}.pdf`);
+        },
+      },
       { label: S.openTerminal, hint: '⌨', action: () => window.openNeonTerminal && window.openNeonTerminal() },
     ];
 
