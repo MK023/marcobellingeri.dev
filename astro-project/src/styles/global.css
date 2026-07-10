@@ -8,6 +8,10 @@
     --violet:#6B4FFF;
     --halftone:#A8A296;
     --rule:#181410;
+    /* Il ✳ del sigillo. Su iOS il glifo U+2733 viene promosso a emoji e colorato dal
+       sistema; su desktop resta nero. Il verde va dichiarato, non ereditato da un
+       font: così è lo stesso su ogni dispositivo e segue la modalità notte. */
+    --seal:#1E8F5A;
   }
   html[data-mode="night"]{
     --paper:#0B0710;
@@ -17,6 +21,7 @@
     --orange-text:#FF2FD6;
     --violet:#29E7FF;
     --halftone:#3A2F4C;
+    --seal:#3DF58C;
   }
   *, *::before, *::after{
     transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
@@ -242,8 +247,11 @@
     z-index:39;
   }
   .toc::-webkit-scrollbar{ display:none; }
+  /* `1 0 auto`: le voci si distendono a riempire la barra, così l'ultima arriva al
+     margine invece di lasciare carta vuota che sembra una sezione mancante. Lo shrink
+     resta 0: sul mobile la barra deve scorrere, non schiacciare le voci. */
   .toc a{
-    flex:0 0 auto;
+    flex:1 0 auto;
     text-decoration:none;
     padding:16px 18px;
     border-right:1px solid var(--ink);
@@ -765,7 +773,7 @@
     display:flex; align-items:center; justify-content:center;
     font-family:'Anton', sans-serif;
     font-size:15px;
-    color:var(--ink);
+    color:var(--seal);
   }
   .fine-print{
     max-width:1100px; margin:32px auto 0;
