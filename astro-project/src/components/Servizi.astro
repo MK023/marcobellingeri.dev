@@ -11,6 +11,7 @@ type Service = { tag: string; title: string; body: string; deliverables: string[
 
 const copy: Record<Lang, {
   title: string; intro: string; note: string; cta: string;
+  guaranteeTag: string; guarantee: string; guaranteeNote: string;
   services: Service[];
   order: {
     tag: string; note: string;
@@ -25,7 +26,10 @@ const copy: Record<Lang, {
     title: 'Servizi',
     intro: 'Cinque modi di lavorare insieme. Qui sotto trovi cosa comprende ciascuno; se il tuo problema non rientra in nessuno, scrivimi lo stesso.',
     note: 'Nessuna tariffa pubblicata: ogni intervento è dimensionato sul problema reale, non su un listino a taglia unica. Il primo confronto è sempre gratuito e senza impegno — pair programming, non prompt-e-vai.',
-    cta: '↓ PRENOTA UNA CALL — È GRATIS',
+    cta: '↓ PRENOTA 30 MINUTI — GRATIS, NESSUN IMPEGNO',
+    guaranteeTag: 'GARANZIA',
+    guarantee: 'La prima giornata di lavoro: se non ti convince, non la paghi.',
+    guaranteeNote: 'Non hai referenze da consultare su di me, quindi il rischio del primo passo me lo prendo io. Decidi a fine giornata, senza spiegazioni da darmi.',
     prev: 'Precedente',
     next: 'Successivo',
     services: [
@@ -44,7 +48,7 @@ const copy: Record<Lang, {
       {
         tag: 'PAIR', title: 'Pair & Advisory',
         body: 'Il metodo di lavoro principale: hands-on, al tuo fianco. Non consegno una scatola nera — costruiamo insieme e il tuo team resta autonomo.',
-        deliverables: ['Sessioni di pair programming', 'Refactor mirati su sistemi in produzione', 'Advisory su architettura e sicurezza'],
+        deliverables: ['Sessioni di pair programming', 'Refactor mirati (una cache Redis: throughput ×41, zero downtime)', 'Advisory su architettura e sicurezza'],
         basis: 'A GIORNATA',
       },
       {
@@ -76,7 +80,10 @@ const copy: Record<Lang, {
     title: 'Services',
     intro: 'Five ways to work together. Below, what each one includes; if your problem fits none of them, write to me anyway.',
     note: 'No published rates: every engagement is sized to the real problem, not to a one-size-fits-all price list. The first conversation is always free and no-strings — pair programming, not prompt-and-go.',
-    cta: "↓ BOOK A CALL — IT'S FREE",
+    cta: '↓ BOOK 30 MINUTES — FREE, NO COMMITMENT',
+    guaranteeTag: 'GUARANTEE',
+    guarantee: "The first day of work: if it doesn't convince you, you don't pay for it.",
+    guaranteeNote: 'You have no references to check on me, so I take the risk of the first step. You decide at the end of the day, with no explanation owed.',
     prev: 'Previous',
     next: 'Next',
     services: [
@@ -95,7 +102,7 @@ const copy: Record<Lang, {
       {
         tag: 'PAIR', title: 'Pair & Advisory',
         body: 'The primary way of working: hands-on, at your side. No black box handed over — we build together and your team stays autonomous.',
-        deliverables: ['Pair-programming sessions', 'Targeted refactors on production systems', 'Architecture & security advisory'],
+        deliverables: ['Pair-programming sessions', 'Targeted refactors (one Redis cache: ×41 throughput, zero downtime)', 'Architecture & security advisory'],
         basis: 'DAY RATE',
       },
       {
@@ -210,9 +217,47 @@ const briefLabels = {
     </div>
   </div>
 
+  <aside class="svc-guarantee">
+    <span class="svc-guarantee-tag mono">{c.guaranteeTag}</span>
+    <p class="svc-guarantee-claim">{c.guarantee}</p>
+    <p class="svc-guarantee-note">{c.guaranteeNote}</p>
+  </aside>
+
   <div class="svc-cta"><a href="#booking"><button type="button" class="util-btn">{c.cta}</button></a></div>
   <p class="svc-note">{c.note}</p>
 </section>
+
+<style>
+  /* La garanzia è l'unica cosa in pagina che sposta il rischio sul venditore:
+     ha il peso tipografico dell'inchiostro pieno, non di una nota a piè di pagina. */
+  .svc-guarantee{
+    max-width:1100px;
+    margin:36px auto 0;
+    border:3px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    padding:26px 24px 22px;
+    position:relative;
+  }
+  .svc-guarantee-tag{
+    position:absolute; top:-13px; left:22px;
+    background:var(--orange); color:var(--ink);
+    font-size:10px; letter-spacing:0.08em;
+    padding:3px 10px; border:2px solid var(--ink);
+  }
+  .svc-guarantee-claim{
+    margin:0 0 10px;
+    font-family:'Anton', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.01em;
+    font-size:clamp(22px, 3.2vw, 34px);
+    line-height:1.1;
+  }
+  .svc-guarantee-note{
+    margin:0; max-width:640px;
+    font-size:15px; line-height:1.6; opacity:0.82;
+  }
+</style>
 
 <script>
   // ---- carosello servizi: scorrimento continuo, in pausa quando lo guardi ----

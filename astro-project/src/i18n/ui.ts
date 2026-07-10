@@ -81,7 +81,7 @@ export const ui = {
     // ---- appuntamenti ----
     'booking.title': 'Booking',
     'booking.note':
-      'Free slots, time zone handled automatically, email confirmation — no back-and-forth to find a time.',
+      'Thirty minutes, free, no commitment. Time zone handled automatically, email confirmation — no back-and-forth to find a time. If we then work together, the first day is on me unless it convinces you.',
     'booking.facadeLabel': 'CAL.EU — LOADED ON REQUEST',
     'booking.facadeCopy':
       'The calendar is served by Cal.eu, a third party. Nothing is loaded — and nothing leaves your browser — until you click.',
@@ -164,7 +164,7 @@ export const ui = {
     // ---- appuntamenti ----
     'booking.title': 'Appuntamenti',
     'booking.note':
-      'Slot liberi, fuso orario gestito in automatico, conferma via email — niente scambi di messaggi per trovare un orario.',
+      'Trenta minuti, gratis, nessun impegno. Fuso orario gestito in automatico, conferma via email — niente scambi di messaggi per trovare un orario. Se poi lavoriamo insieme, la prima giornata la paghi solo se ti convince.',
     'booking.facadeLabel': 'CAL.EU — CARICATO SU RICHIESTA',
     'booking.facadeCopy':
       'Il calendario è servito da Cal.eu, una terza parte. Finché non clicchi non viene caricato nulla, e nulla lascia il tuo browser.',
