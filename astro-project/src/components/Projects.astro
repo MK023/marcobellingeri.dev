@@ -1,4 +1,5 @@
 ---
+import { numeroSezione } from '../lib/sections';
 import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
@@ -121,7 +122,7 @@ const labels = { problem: lang === 'en' ? 'PROBLEM' : 'PROBLEMA', approach: lang
 
 <section id="projects" class="reveal">
   <div class="section-head">
-    <span class="num mono">04</span>
+    <span class="num mono">{numeroSezione('projects')}</span>
     <h2 class="display">{title}</h2>
   </div>
   <div class="reviews reveal-stagger" data-details={t('proj.details')} data-close={t('proj.close')}>

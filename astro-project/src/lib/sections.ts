@@ -21,10 +21,24 @@ const ALL = [
 
 export type Section = { id: string; num: string; label: string };
 
+const attive = ALL.filter(([id]) => id !== 'archive' || hasIssues);
+
 export function sections(t: (key: (typeof ALL)[number][1]) => string): Section[] {
-  return ALL.filter(([id]) => id !== 'archive' || hasIssues).map(([id, key], i) => ({
+  return attive.map(([id, key], i) => ({
     id,
     num: String(i + 1).padStart(2, '0'),
     label: t(key),
   }));
+}
+
+/**
+ * Il numero da stampare nel titolo di una sezione. Deve venire da qui e non essere
+ * scritto a mano nel componente: quando l'Archivio sparisce, i titoli scorrono
+ * insieme al sommario. Prima non era così, e `Booking` mostrava «09» mentre il
+ * sommario diceva «08».
+ */
+export function numeroSezione(id: (typeof ALL)[number][0]): string {
+  const i = attive.findIndex(([voce]) => voce === id);
+  if (i === -1) throw new Error(`sezione sconosciuta o non attiva: ${id}`);
+  return String(i + 1).padStart(2, '0');
 }

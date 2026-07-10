@@ -1,4 +1,5 @@
 ---
+import { numeroSezione } from '../lib/sections';
 import { defaultLang, type Lang } from '../i18n/ui';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
@@ -33,7 +34,7 @@ const copy = {
 
 <section id="dossier" class="reveal">
   <div class="section-head">
-    <span class="num mono">01</span>
+    <span class="num mono">{numeroSezione('dossier')}</span>
     <h2 class="display">{copy.title}</h2>
   </div>
   <div class="dossier">
