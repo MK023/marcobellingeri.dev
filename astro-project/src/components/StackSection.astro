@@ -7,6 +7,7 @@ const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 const copy = {
   it: {
     title: 'Stack',
+    certsHead: 'Certificazioni · verificabili su Credly',
     cards: [
       ['CORE', 'Python & Backend', 'FastAPI, Flask, Falcon — Clean Architecture e DDD, 100+ endpoint REST in produzione.'],
       ['INFRA', 'Cloud & IaC', 'AWS (Lambda, SQS, S3, IAM, VPC), Kubernetes / K3s, Terraform, Cloudflare Tunnel.'],
@@ -17,6 +18,7 @@ const copy = {
   },
   en: {
     title: 'Stack',
+    certsHead: 'Certifications · verifiable on Credly',
     cards: [
       ['CORE', 'Python & Backend', 'FastAPI, Flask, Falcon — Clean Architecture and DDD, 100+ REST endpoints in production.'],
       ['INFRA', 'Cloud & IaC', 'AWS (Lambda, SQS, S3, IAM, VPC), Kubernetes / K3s, Terraform, Cloudflare Tunnel.'],
@@ -26,6 +28,19 @@ const copy = {
     ],
   },
 }[lang];
+
+// Certificazioni curate (5, non tutte: un muro di badge legge "junior"). Rese come
+// chip self-hosted, non immagini Credly esterne — la CSP `img-src 'self'` le
+// bloccherebbe, e i badge a gradiente stonerebbero col design a bordi netti. Il
+// link porta al profilo Credly, dove sono tutte verificabili.
+const certs = [
+  { name: 'GitHub Foundations', org: 'GitHub', year: '2025' },
+  { name: 'Python PCEP', org: 'Python Institute', year: '2024' },
+  { name: 'Containers & Kubernetes', org: 'IBM', year: '2024' },
+  { name: 'Docker Essentials', org: 'IBM', year: '2024' },
+  { name: 'Linux Essential', org: 'LPI', year: '2022' },
+];
+const CREDLY = 'https://credly.com/users/marco-bellingeri';
 ---
 
 <section id="stack" class="reveal">
@@ -40,5 +55,17 @@ const copy = {
         <p>{body}</p>
       </div>
     ))}
+  </div>
+
+  <div class="certs">
+    <p class="certs-head mono">{copy.certsHead}</p>
+    <div class="certs-row">
+      {certs.map((c) => (
+        <a class="cert-chip" href={CREDLY} target="_blank" rel="noopener">
+          <span class="cert-name mono">{c.name}</span>
+          <span class="cert-org mono">{c.org} · {c.year}</span>
+        </a>
+      ))}
+    </div>
   </div>
 </section>
