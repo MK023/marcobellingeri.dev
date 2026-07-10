@@ -68,6 +68,20 @@ const suggestTargets = (Object.keys(languages) as Lang[])
   <meta property="og:description" content={pageDescription} />
   <meta property="og:locale" content={t('og.locale')} />
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="marcobellingeri.dev" />
+  <meta property="og:url" content={canonical} />
+  <!-- WhatsApp, Telegram, LinkedIn e Slack non renderizzano HTML né SVG: senza una
+       immagine raster il link condiviso resta una riga di testo. L'immagine è
+       generata dalla card in public/og.png, con i font e i colori del sito.
+       URL assoluto obbligatorio: i crawler non risolvono i path relativi. -->
+  <meta property="og:image" content={new URL('/og.png', Astro.site).href} />
+  <meta property="og:image:width" content="2400" />
+  <meta property="og:image:height" content="1260" />
+  <meta property="og:image:alt" content={t('og.imageAlt')} />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={pageTitle} />
+  <meta name="twitter:description" content={pageDescription} />
+  <meta name="twitter:image" content={new URL('/og.png', Astro.site).href} />
 
   <!--
     Rilevamento giorno/notte eseguito PRIMA del primo paint, per evitare

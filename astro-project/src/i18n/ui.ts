@@ -78,6 +78,7 @@ export const ui = {
     'archive.openIssue': 'Open issue',
     'archive.source': 'Source',
     'archive.unavailable': 'archive temporarily unavailable',
+    'og.imageAlt': 'Marco Bellingeri — Cloud Platform & Security Engineer',
 
     // ---- appuntamenti ----
     'booking.title': 'Booking',
@@ -162,6 +163,7 @@ export const ui = {
     'archive.openIssue': 'Apri numero',
     'archive.source': 'Fonte',
     'archive.unavailable': 'archivio momentaneamente non disponibile',
+    'og.imageAlt': 'Marco Bellingeri — Cloud Platform & Security Engineer',
 
     // ---- appuntamenti ----
     'booking.title': 'Appuntamenti',

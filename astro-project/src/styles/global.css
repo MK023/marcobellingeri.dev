@@ -259,7 +259,10 @@
     transition:transform 0.25s ease;
   }
   .toc a:hover::after{ transform:scaleX(1); }
-  .toc a:last-child{border-right:none;}
+  /* L'ultima voce tiene il suo bordo destro. Serviva a evitare un doppio segno quando
+     le voci riempivano tutta la larghezza; da quando l'Archivio compare solo con un
+     numero pubblicato sono nove e lasciano carta vuota a destra, e la fila sembrava
+     interrotta a metà mentre la linea di base proseguiva fino al margine. */
   .toc a:hover{background:var(--paper-dark);}
   .toc a.active{ background:var(--ink); color:var(--paper); }
   .toc a.active .num{ color:var(--orange-text); }
