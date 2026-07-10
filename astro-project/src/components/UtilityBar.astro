@@ -76,8 +76,8 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
   setInterval(tickClock, 1000);
 
   // ---- override lingua: la scelta manuale vince sul geo/IP ----
-  // Memorizza la lingua scelta in un cookie che il Worker geo (al go-live)
-  // rispetterà prima di qualunque redirect per IP/Accept-Language.
+  // Memorizza la lingua scelta in un cookie che il Worker su `/`
+  // (worker/index.js) rispetta prima di qualunque redirect per paese.
   document.querySelectorAll('.lang-opt[data-lang]').forEach((el) => {
     el.addEventListener('click', () => {
       const chosen = (el as HTMLElement).dataset.lang;

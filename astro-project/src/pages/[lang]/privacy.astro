@@ -8,11 +8,10 @@ export function getStaticPaths() {
 
 const { lang } = Astro.params as { lang: Lang };
 
-// Placeholder legali: Marco li compila prima del go-live.
-const TITOLARE = '[TITOLARE — nome / ragione sociale]';
+// Niente P.IVA: Marco non ne ha una (2026-07-10). Quando l'aprirà, si aggiunge qui.
+const TITOLARE = 'Marco Bellingeri';
 const CONTATTO = 'mkdevpy@proton.me';
-const PIVA = '[P.IVA / dati fiscali, se applicabile]';
-const UPDATED = '[DATA — aggiornare alla pubblicazione]';
+const UPDATED = '2026-07-10';
 
 // Body per-lingua (il resto del sito segue lo stesso pattern: body nei componenti).
 const copy = {
@@ -21,7 +20,7 @@ const copy = {
     intro:
       'This is a static personal website. It does not collect personal data directly and uses no tracking or analytics. Below, exactly what happens to any data.',
     controllerH: 'Data controller',
-    controller: `Controller: ${TITOLARE}. Contact: ${CONTATTO}. ${PIVA}.`,
+    controller: `Controller: ${TITOLARE}. Contact: ${CONTATTO}.`,
     dataH: 'Data collected',
     data: 'None directly. The site is served statically. The hosting provider (Cloudflare) may keep technical access logs (IP, user agent) for security and delivery, under its own policy.',
     cookiesH: 'Cookies',
@@ -48,7 +47,7 @@ const copy = {
     intro:
       'Questo è un sito personale statico. Non raccoglie dati personali in modo diretto e non usa tracciamento o analytics. Qui sotto, esattamente cosa accade ai dati.',
     controllerH: 'Titolare del trattamento',
-    controller: `Titolare: ${TITOLARE}. Contatto: ${CONTATTO}. ${PIVA}.`,
+    controller: `Titolare: ${TITOLARE}. Contatto: ${CONTATTO}.`,
     dataH: 'Dati raccolti',
     data: 'Nessuno in modo diretto. Il sito è servito staticamente. Il provider di hosting (Cloudflare) può conservare log tecnici di accesso (IP, user agent) per sicurezza ed erogazione, secondo la propria policy.',
     cookiesH: 'Cookie',

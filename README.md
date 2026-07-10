@@ -113,7 +113,7 @@ il tracking dei task vive su Notion, non su GitHub Issues.
 - [x] **Engine nel repo** — `engine/` (ingest, embed, radar competitor), database ricostruibile da migration, tracing Langfuse
 - [x] **Sito sbloccato** (`v0.2.0`) — CSP risolta con gli hash, hosting Cloudflare configurato, CI sul frontend, repository pubblico
 - [ ] **Primo numero** — archivio DB-backed e pubblicazione del numero #1. Finché non esiste un numero vero, la sezione Archivio non viene renderizzata: un archivio con dentro un segnaposto vale meno di un archivio assente
-- [ ] **Go-live** (`v1.0.0`) — dominio su Cloudflare e deploy
+- [x] **Go-live** (`v1.0.0`, 2026-07-10) — [marcobellingeri.dev](https://marcobellingeri.dev) su Cloudflare, deploy automatico da `main`, www e anti-spoofing email configurati
 - [ ] **Blog** (`v1.x`) — Hashnode in POSSE: la fonte di verità resta qui, il canonical punta qui
 - [ ] **Terminale C1** (`v1.x`) — interfaccia RAG reale (`ask`), endpoint con rate-limit, guardrail e disclosure AI Act art. 50
 
