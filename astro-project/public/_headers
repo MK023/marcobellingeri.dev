@@ -1,5 +1,16 @@
 # Security & cache headers per Cloudflare (Workers static assets / Pages).
 # Hosting = Cloudflare (ADR-0001). Migrati da vercel.json, che resta legacy.
+#
+# ⛔ BLOCCO PRE-GO-LIVE — NON deployare prima di aver risolto questo.
+# `script-src 'self'` e `style-src 'self'` non ammettono inline, ma la build
+# Astro emette 15 <script> inline. Verificato servendo dist/ con questi header:
+# 26 violazioni CSP, il pre-paint del tema non gira, il press-loader resta a
+# schermo intero e archivio, orologio, sommario e tabella Security restano vuoti.
+# In produzione il sito sarebbe una schermata "SFOGLIANDO…" permanente.
+# Strade: (a) experimental.csp di Astro, che emette gli hash dei suoi script
+# (l'inline is:inline del tema va aggiunto a mano); (b) style-src 'self'
+# 'unsafe-inline' + rimozione dell'ultimo attributo style=. Non allentare
+# script-src: è ciò che rende innocuo un XSS.
 /*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com; frame-src https://www.cal.eu https://cal.eu; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload

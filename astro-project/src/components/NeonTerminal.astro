@@ -27,6 +27,12 @@
     let cmdHistory: string[] = [];
     let historyPos = -1;
 
+    // printLine accetta markup: le righe sono costanti scritte qui dentro.
+    // Tutto ciò che digita l'utente passa PRIMA da esc(), altrimenti un
+    // `<img src=x onerror=…>` incollato nel prompt esegue davvero.
+    const esc = (s: string) =>
+      s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
     function printLine(html: string, cls?: string | null) {
       const div = document.createElement('div');
       div.className = 'line' + (cls ? ' ' + cls : '');
@@ -185,14 +191,14 @@
       const raw = input!.value;
       const cmd = raw.trim().toLowerCase();
       if (cmd.length) { cmdHistory.push(raw); historyPos = cmdHistory.length; }
-      printLine('<span class="magenta">guest@bellingeri:~$</span> ' + (raw || ''));
+      printLine('<span class="magenta">guest@bellingeri:~$</span> ' + esc(raw || ''));
       input!.value = '';
 
       if (!cmd) return;
       if (COMMANDS[cmd]) {
         COMMANDS[cmd]();
       } else {
-        printLine("comando non trovato: " + cmd + " <span class=\"dim\">— prova 'help'</span>", 'magenta');
+        printLine('comando non trovato: ' + esc(cmd) + " <span class=\"dim\">— prova 'help'</span>", 'magenta');
       }
     });
 
