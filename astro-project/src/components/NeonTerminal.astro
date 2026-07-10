@@ -1,4 +1,22 @@
-<div class="neon-terminal-overlay" id="neon-terminal">
+---
+import { hasIssues } from '../lib/issues';
+
+// `ls` elenca le sezioni che esistono davvero. Senza numeri pubblicati l'Archivio
+// non è renderizzato: elencarlo qui manderebbe l'utente su un'ancora morta.
+const lsEntries = [
+  'dossier',
+  'percorso',
+  'stack',
+  'field-notes',
+  'projects',
+  'servizi',
+  ...(hasIssues ? ['archive'] : []),
+  'contact',
+];
+const lsLine = lsEntries.map((e) => e + '/').join('  ');
+---
+
+<div class="neon-terminal-overlay" id="neon-terminal" data-ls={lsLine}>
   <div class="crt-screen">
     <div class="scanlines"></div>
     <div class="crt-flicker"></div>
@@ -77,7 +95,8 @@
         printLine('<span class="dim">freelance · casale monferrato, it · github.com/MK023</span>');
       },
       ls() {
-        printLine('dossier/  percorso/  stack/  field-notes/  projects/  servizi/  archive/  contact/');
+        // Costante di build (data-ls), non input utente: printLine può riceverla così.
+        printLine(esc(overlay!.dataset.ls || ''));
       },
       'cat redis.log'() {
         REDIS_LOG.forEach((l) => printLine(l));

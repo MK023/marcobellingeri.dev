@@ -20,6 +20,7 @@ const strings = {
   loadingIssue: t('archive.loadingIssue'),
   openIssue: t('archive.openIssue'),
   source: t('archive.source'),
+  unavailable: t('archive.unavailable'),
   locale: dateLocale[lang],
 };
 ---
@@ -58,32 +59,10 @@ const strings = {
 
     const S = JSON.parse(shelf.dataset.strings || '{}');
 
-    // Mostrato solo se /data/issues/index.json non è raggiungibile (es. prima
-    // che la pipeline abbia prodotto un primo numero reale).
-    const FALLBACK_INDEX: { issues: IndexEntry[] } = {
-      issues: [{ id: 'demo-01', number: 1, title: 'Cloud & Security Watch — Numero Zero', date: '2026-07-01' }],
-    };
-    const FALLBACK_ISSUE: Issue = {
-      id: 'demo-01',
-      number: 1,
-      title: 'Cloud & Security Watch — Numero Zero',
-      date: '2026-07-01',
-      signals: [
-        {
-          category: 'competitor',
-          label: 'Concorrenza',
-          headline: 'Numero dimostrativo',
-          summary: 'Questo archivio si popola da solo ogni mese: la pipeline engine/ (sourcing Valyu → verifica → bozza Claude → embed) genera i segnali reali e li committa nel repo.',
-        },
-        {
-          category: 'market',
-          label: 'Mercato del lavoro',
-          headline: 'I numeri reali arriveranno da qui',
-          summary: 'Ogni voce diventerà una card con titolo, sintesi e fonte, generata automaticamente — segnali dal mercato, mosse della concorrenza, novità normative.',
-        },
-      ],
-    };
-
+    // Nessun numero finto di riserva. Questa sezione è renderizzata solo quando
+    // index.json contiene almeno un numero vero (vedi src/lib/issues.ts): se poi
+    // il fetch fallisce, si dice che non è disponibile. Un segnaposto spacciato
+    // per numero è la sola bugia che questa pagina non può permettersi.
     let index: { issues: IndexEntry[] } | null = null;
     let activeId: string | null = null;
 
@@ -193,7 +172,7 @@ const strings = {
         if (!res.ok) throw new Error('not found');
         renderReader((await res.json()) as Issue);
       } catch (e) {
-        renderReader(FALLBACK_ISSUE);
+        if (reader) status(reader, S.unavailable);
       }
     }
 
@@ -209,7 +188,9 @@ const strings = {
         index = await res.json();
         if (!index || !index.issues || index.issues.length === 0) throw new Error('empty');
       } catch (e) {
-        index = FALLBACK_INDEX;
+        if (shelf) status(shelf, S.unavailable);
+        if (reader) reader.replaceChildren();
+        return;
       }
       activeId = index.issues[index.issues.length - 1].id;
       renderShelf();

@@ -1,23 +1,12 @@
 ---
 import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
+import { sections as siteSections } from '../lib/sections';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 const t = useTranslations(lang);
 
-// Le voci "vai a" riusano le etichette del sommario: una sola fonte per i nomi
-// delle sezioni.
-const sections = [
-  ['dossier', '01', t('nav.dossier')],
-  ['servizi', '02', t('nav.servizi')],
-  ['field-notes', '03', t('nav.fieldNotes')],
-  ['projects', '04', t('nav.projects')],
-  ['percorso', '05', t('nav.percorso')],
-  ['stack', '06', t('nav.stack')],
-  ['security', '07', t('nav.security')],
-  ['archive', '08', t('nav.archive')],
-  ['booking', '09', t('nav.booking')],
-  ['contact', '10', t('nav.contact')],
-];
+// Le voci "vai a" riusano il sommario: una sola fonte per nomi e numeri.
+const sections = siteSections(t).map((s) => [s.id, s.num, s.label]);
 
 const strings = {
   goTo: t('cmdk.goTo'),
