@@ -11,12 +11,12 @@ name: Site CI
 #
 # Nessun dato dell'evento (titoli PR, messaggi di commit, head_ref) entra in un
 # `run:`: gli unici input sono path statici.
+# Nessun filtro per path: è un check obbligatorio nel ruleset di main, e un
+# workflow che non parte non riporta nulla — la PR resterebbe in attesa per sempre.
 on:
   pull_request:
-    paths: ["astro-project/**", ".github/workflows/site-ci.yml"]
   push:
     branches: [main]
-    paths: ["astro-project/**", ".github/workflows/site-ci.yml"]
 
 permissions:
   contents: read

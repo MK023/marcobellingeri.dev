@@ -51,13 +51,18 @@ manda il sito offline.
 
 ## Pull request
 
-Ogni branch entra in `main` con una PR. Devono essere verdi:
+Ogni branch entra in `main` con una PR: `main` è protetta da un ruleset che vieta il
+push diretto, la cancellazione e il force-push. Devono essere verdi:
 
-- **Backend CI** (`engine/**`, `supabase/**`): unit + integration, gitleaks
-  full-history, ricostruzione del DB da zero con assert su schema, RLS e publish gate.
-- **Site CI** (`astro-project/**`): build, poi i test su `dist/` — hash CSP di ogni
-  script inline, `_headers` che non annulla il `<meta>`, Archivio coerente con
-  l'indice dei numeri.
+- **Backend CI**: unit + integration, gitleaks full-history, ricostruzione del DB da
+  zero con assert su schema, RLS e publish gate.
+- **Site CI**: build, poi i test su `dist/` — hash CSP di ogni script inline,
+  `_headers` che non annulla il `<meta>`, Archivio coerente con l'indice dei numeri.
+
+Entrambi girano su **ogni** PR, senza filtri per path. Un filtro farebbe risparmiare
+una cinquantina di secondi e in cambio bloccherebbe per sempre ogni PR che tocca solo
+un `.md`: un check obbligatorio che non parte non riporta nulla, e GitHub lo lascia in
+attesa all'infinito.
 
 La CI del sito gira su `dist/`, non sul sorgente, perché il modo in cui questo sito si
 rompe non è compilando: è servendo. `astro preview` non applica `public/_headers`, e

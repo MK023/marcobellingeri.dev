@@ -6,12 +6,15 @@ name: Backend CI
 #  - db-rebuild: migration 0001->0007 + seed su Postgres+pgvector EFFIMERO,
 #    con assert su schema e publish gate -> "ricostruibile da zero" verificato a ogni push
 #  - e2e (secrets, DB live, dati sintetici+teardown) SOLO su push main, mai su PR
+# Nessun filtro per path, di proposito. Questi job sono check obbligatori nel
+# ruleset di main: un workflow che non parte non riporta nulla, e un check
+# obbligatorio che non riporta lascia la PR bloccata in attesa per sempre.
+# Girare sempre costa una cinquantina di secondi; il filtro costerebbe una PR
+# inmergiabile ogni volta che si tocca solo un .md.
 on:
   pull_request:
-    paths: ["engine/**", "supabase/**", ".github/workflows/backend-ci.yml"]
   push:
     branches: [main]
-    paths: ["engine/**", "supabase/**", ".github/workflows/backend-ci.yml"]
 
 permissions:
   contents: read
