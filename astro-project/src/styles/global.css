@@ -1028,7 +1028,9 @@
      Sta in fondo al foglio di proposito — `.svc-chip{min-height:40px}` è dichiarata
      più sotto di dove stava prima questa regola, e a parità di specificità vinceva lei. */
   @media (pointer:coarse){
-    .util-btn, .svc-chip, .review-toggle{ min-height:44px; }
+    /* .grade-chip è un <a>, non un .util-btn: senza nominarla resta a 37px. */
+    .util-btn, .svc-chip, .review-toggle, .grade-chip{ min-height:44px; }
+    .grade-chip{ align-items:center; }
     .toc a{ padding-top:14px; padding-bottom:14px; }
   }
 
