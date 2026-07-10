@@ -289,6 +289,8 @@
     .toc-hint{ display:block; }
   }
 
+
+
   section{padding:56px 24px; border-bottom:3px solid var(--ink);}
   section:last-of-type{border-bottom:none;}
   /* Le due barre sono sticky: senza questo margine ogni ancora del sommario
@@ -1007,6 +1009,27 @@
   }
   @media (prefers-reduced-motion: reduce){
     .press-loader{ display:none; }
+  }
+
+  /* Sotto i 640px la utility-bar va a capo e cresce da 60 a 118px — a 320px arriva a
+     131. Restando sticky insieme al sommario si mangiava il 32% dell'altezza di un
+     iPhone SE prima che il contenuto cominciasse. Qui scorre via: l'orologio, la lingua
+     e il CV restano raggiungibili in cima alla pagina, e a incollarsi resta il solo
+     sommario, che è l'unico dei due a servire mentre si legge. */
+  @media (max-width:640px){
+    .utility-bar{ position:static; }
+    .toc{ top:0; }
+    /* La barra non copre più nulla: contarla qui manderebbe le ancore troppo in basso. */
+    section, footer{ scroll-margin-top:calc(var(--toc-h, 53px) + 8px); }
+  }
+
+  /* Dito, non puntatore: 44px è il minimo raccomandato da Apple, 48 da Android. I
+     pulsanti stavano fra 37 e 42. La resa col mouse non cambia: lì 36px bastano.
+     Sta in fondo al foglio di proposito — `.svc-chip{min-height:40px}` è dichiarata
+     più sotto di dove stava prima questa regola, e a parità di specificità vinceva lei. */
+  @media (pointer:coarse){
+    .util-btn, .svc-chip, .review-toggle{ min-height:44px; }
+    .toc a{ padding-top:14px; padding-bottom:14px; }
   }
 
   /* ---- print ---- */
