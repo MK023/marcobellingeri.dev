@@ -10,5 +10,15 @@
   "compatibility_date": "2026-07-09",
   "assets": {
     "directory": "./dist"
+  },
+  // Il dominio è già una zona su questo account (nameserver lara/frank.ns.cloudflare.com).
+  "routes": [{ "pattern": "marcobellingeri.dev", "custom_domain": true }],
+  // Senza questo il sito sarebbe servito anche su marcobellingeri-dev.workers.dev:
+  // stesso contenuto a due indirizzi, con canonical e sitemap che puntano solo
+  // all'apex. Contenuto duplicato per i motori, e una seconda superficie pubblica
+  // che nessuno sorveglia.
+  "workers_dev": false,
+  "observability": {
+    "enabled": true
   }
 }
