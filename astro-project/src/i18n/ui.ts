@@ -79,6 +79,9 @@ export const ui = {
     'archive.source': 'Source',
     'archive.unavailable': 'archive temporarily unavailable',
     'og.imageAlt': 'Marco Bellingeri — Cloud Platform & Security Engineer',
+    'hero.grade': 'SECURITY HEADERS',
+    'hero.gradeVerify': 'verify it yourself',
+    'hero.gradeTitle': 'Graded by Mozilla HTTP Observatory. The link re-runs the scan live.',
 
     // ---- appuntamenti ----
     'booking.title': 'Booking',
@@ -164,6 +167,9 @@ export const ui = {
     'archive.source': 'Fonte',
     'archive.unavailable': 'archivio momentaneamente non disponibile',
     'og.imageAlt': 'Marco Bellingeri — Cloud Platform & Security Engineer',
+    'hero.grade': 'SECURITY HEADERS',
+    'hero.gradeVerify': 'verificalo tu',
+    'hero.gradeTitle': 'Voto della HTTP Observatory di Mozilla. Il link rifà la scansione dal vivo.',
 
     // ---- appuntamenti ----
     'booking.title': 'Appuntamenti',
