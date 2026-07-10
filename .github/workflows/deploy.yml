@@ -1,0 +1,82 @@
+name: Deploy
+
+# Il sito era pubblicabile solo dal portatile di Marco: `main` era la verità del
+# codice, ma nessuno la pubblicava. Qui ogni push su main diventa la produzione.
+#
+# I test girano PRIMA del deploy e sulla stessa dist/ che verrà caricata: la CSP
+# non si verifica sul sorgente, si verifica sul build servito. Se `test:csp`
+# fallisce, `wrangler deploy` non parte.
+#
+# Si usa `npx wrangler deploy` e non cloudflare/wrangler-action: wrangler è già una
+# devDependency, quindi la CI pubblica con la stessa versione che gira in locale, e
+# non si aggiunge una action di terze parti alla catena di fornitura.
+#
+# Nessun dato dell'evento (titoli PR, messaggi di commit, head_ref) entra in un
+# `run:`. Il token vive solo nell'ambiente dello step che ne ha bisogno.
+on:
+  push:
+    branches: [main]
+  # Rilancio a mano, per ridistribuire senza inventare un commit.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Un deploy alla volta. `cancel-in-progress: false` perché interrompere l'upload
+# degli asset a metà lascerebbe la produzione in uno stato che nessuno ha scelto.
+concurrency:
+  group: deploy-produzione
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: produzione
+      url: https://marcobellingeri.dev
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: astro-project/package-lock.json
+
+      - name: Installa
+        working-directory: astro-project
+        run: npm ci
+
+      - name: Build
+        working-directory: astro-project
+        run: npm run build
+
+      - name: CSP + sezioni (sulla dist/ che sto per pubblicare)
+        working-directory: astro-project
+        run: npm run test:csp
+
+      - name: Deploy su Cloudflare
+        working-directory: astro-project
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+
+      # Un deploy che risponde 500, o che perde gli header, è fallito anche se
+      # wrangler è uscito con 0. Qui si guarda il sito vero, non l'exit code.
+      - name: Verifica il sito servito
+        run: |
+          set -euo pipefail
+          codice=000
+          for tentativo in 1 2 3 4 5; do
+            codice=$(curl -s -o /dev/null -w '%{http_code}' https://marcobellingeri.dev/it/ || echo 000)
+            [ "$codice" = "200" ] && break
+            echo "tentativo $tentativo: HTTP $codice, riprovo fra 10s"
+            sleep 10
+          done
+          [ "$codice" = "200" ] || { echo "il sito risponde $codice"; exit 1; }
+
+          intestazioni=$(curl -sI https://marcobellingeri.dev/it/)
+          for atteso in content-security-policy strict-transport-security x-content-type-options; do
+            echo "$intestazioni" | grep -qi "^$atteso:" || { echo "header mancante: $atteso"; exit 1; }
+          done
+          echo "sito servito, header di sicurezza presenti"
