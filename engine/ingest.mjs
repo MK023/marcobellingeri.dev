@@ -13,7 +13,7 @@
 //    senza >=1 verify Tier-1 o Tier-2 indipendente.
 //  - raw_content e' testo di terzi NON fidato: in generazione = dato, mai istruzioni.
 import { readFileSync } from "node:fs";
-import { select, insert } from "./lib/supabase.mjs";
+import { select, insert, pg } from "./lib/supabase.mjs";
 import { search } from "./lib/valyu.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
 
@@ -112,7 +112,7 @@ async function main() {
 
   // find-or-create del numero draft per il periodo corrente (period e' unique).
   const period = new Date().toISOString().slice(0, 7); // YYYY-MM
-  let [issue] = await select(`issues?select=id,number,status&period=eq.${period}`);
+  let [issue] = await select(pg`issues?select=id,number,status&period=eq.${period}`);
   if (!issue) {
     const nums = await select("issues?select=number");
     const number = nums.reduce((m, i) => Math.max(m, i.number), 0) + 1;
@@ -122,7 +122,7 @@ async function main() {
     console.log(`ingest: numero esistente per ${period} (status=${issue.status}).`);
   }
 
-  const seen = (await select(`signals?select=source_url&issue_id=eq.${issue.id}`)).map((s) => s.source_url);
+  const seen = (await select(pg`signals?select=source_url&issue_id=eq.${issue.id}`)).map((s) => s.source_url);
   const fresh = dedupFresh(mapped, seen, issue.id);
   await trace.span("signals-insert",
     { input: { mapped: mapped.length, dejaVu: seen.length }, summarize: () => ({ fresh: fresh.length, issue: issue.number }) },
