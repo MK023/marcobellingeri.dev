@@ -1,4 +1,5 @@
 ---
+import { numeroSezione } from '../lib/sections';
 import { defaultLang, type Lang } from '../i18n/ui';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
@@ -144,7 +145,7 @@ const briefLabels = {
 
 <section id="servizi" class="reveal">
   <div class="section-head">
-    <span class="num mono">02</span>
+    <span class="num mono">{numeroSezione('servizi')}</span>
     <h2 class="display">{c.title}</h2>
   </div>
   <p class="case-archive-note">{c.intro}</p>

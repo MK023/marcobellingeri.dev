@@ -49,4 +49,32 @@ for (const page of PAGES) {
     const attesi = nums.map((_, i) => String(i + 1).padStart(2, '0'));
     assert.deepEqual(nums, attesi, 'Togliendo una sezione la numerazione deve richiudersi.');
   });
+
+  test(`${page}: il numero nel titolo coincide con quello nel sommario`, () => {
+    const html = readFileSync(page, 'utf8');
+
+    // Il numero stampato nel titolo di ogni sezione, per id.
+    // `[^>]*` non è cosmetico: Astro aggiunge `data-astro-cid-…` agli elementi dei
+    // componenti che hanno uno <style> scoped, e senza quello sfuggivano proprio
+    // `booking` e `servizi` — cioè uno dei due che questo test deve sorvegliare.
+    const titoli = new Map(
+      [
+        ...html.matchAll(
+          /<section id="([^"]+)"[\s\S]{0,400}?<span class="num mono"[^>]*>(\d{2})<\/span>/g,
+        ),
+      ].map((m) => [m[1], m[2]]),
+    );
+
+    for (const { id, num } of navEntries(html)) {
+      const titolo = titoli.get(id);
+      if (titolo === undefined) continue; // `contact` è il footer, non ha numero
+      assert.equal(
+        titolo,
+        num,
+        `La sezione "${id}" mostra ${titolo} nel titolo e ${num} nel sommario. ` +
+          'I numeri devono venire da src/lib/sections.ts, non essere scritti nel componente.',
+      );
+    }
+    assert.ok(titoli.size >= 7, `trovati solo ${titoli.size} titoli numerati: il selettore è rotto?`);
+  });
 }

@@ -1,4 +1,5 @@
 ---
+import { numeroSezione } from '../lib/sections';
 import { defaultLang, type Lang } from '../i18n/ui';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
@@ -72,7 +73,7 @@ const { title, roles } = copy[lang];
 
 <section id="percorso" class="reveal">
   <div class="section-head">
-    <span class="num mono">05</span>
+    <span class="num mono">{numeroSezione('percorso')}</span>
     <h2 class="display">{title}</h2>
   </div>
   <div class="tl2">
