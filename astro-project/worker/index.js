@@ -20,7 +20,27 @@ export function scegliLingua(paese, cookie = null) {
 }
 
 const rispostaJson = (obj, status = 200) =>
-  new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
+  new Response(JSON.stringify(obj), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      // Le risposte del Worker NON passano da public/_headers (copre solo gli
+      // asset): gli header di sicurezza qui vanno messi a mano.
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
+
+// Per testo destinato a header email (subject): via i caratteri di controllo —
+// un nome con \r\n diventerebbe header injection nella mail.
+const rigaPulita = (s, max) =>
+  String(s ?? '').replace(/[\u0000-\u001F\u007F]+/g, ' ').trim().slice(0, max);
+
+// Il wrapper di produzione (worker/sentry.js) registra qui il reporter: così
+// index.js resta puro (niente SDK negli import) e i test girano senza Sentry.
+// I fallimenti GESTITI (Resend giù, config mancante) altrimenti non arriverebbero
+// mai a Sentry: withSentry vede solo le eccezioni non catturate.
+const segnala = (messaggio, extra) => globalThis.__SEGNALA_SENTRY__?.(messaggio, extra);
 
 /**
  * Endpoint del form di contatto (POST /api/contact): valida, filtra i bot con
@@ -34,6 +54,18 @@ const rispostaJson = (obj, status = 200) =>
 export async function gestisciContatto(request, env) {
   if (request.method !== 'POST') return rispostaJson({ error: 'method' }, 405);
 
+  // Difesa in profondità: il form vive solo sul nostro dominio. Un Origin diverso
+  // è una richiesta forgiata da un altro sito. (curl senza Origin passa di qui,
+  // ma lo ferma comunque Turnstile: il token è legato al nostro hostname.)
+  const origin = request.headers.get('Origin');
+  if (origin && origin !== 'https://marcobellingeri.dev') return rispostaJson({ error: 'origin' }, 403);
+
+  // Cap sul body PRIMA di parsarlo: un JSON enorme è CPU bruciata (OWASP API4 —
+  // Unrestricted Resource Consumption). I campi legittimi stanno larghi in 32 KB.
+  if (parseInt(request.headers.get('Content-Length') || '0', 10) > 32768) {
+    return rispostaJson({ error: 'too-large' }, 413);
+  }
+
   let dati;
   try { dati = await request.json(); } catch { return rispostaJson({ error: 'body' }, 400); }
 
@@ -43,7 +75,9 @@ export async function gestisciContatto(request, env) {
 
   // Validazione al confine di fiducia: mai passare input grezzo oltre. Lunghezze
   // limitate per non trasformare il form in un amplificatore di abuso.
-  const nome = String(dati.nome ?? '').trim().slice(0, 120);
+  // rigaPulita: il nome finisce nel SUBJECT della mail — un \r\n dentro sarebbe
+  // header injection. Via ogni carattere di controllo.
+  const nome = rigaPulita(dati.nome, 120);
   const email = String(dati.email ?? '').trim().slice(0, 200);
   const brief = String(dati.brief ?? '').trim().slice(0, 4000);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || brief.length < 10) {
@@ -62,7 +96,11 @@ export async function gestisciContatto(request, env) {
     if (!esito.success) return rispostaJson({ error: 'turnstile' }, 403);
   }
 
-  if (!env.RESEND_API_KEY) return rispostaJson({ error: 'unconfigured' }, 503);
+  if (!env.RESEND_API_KEY) {
+    // Regressione di configurazione, non azione utente: Sentry deve saperlo.
+    segnala('contact: RESEND_API_KEY mancante in produzione');
+    return rispostaJson({ error: 'unconfigured' }, 503);
+  }
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -75,7 +113,13 @@ export async function gestisciContatto(request, env) {
       text: `Da: ${nome || '(senza nome)'} <${email}>\n\n${brief}`,
     }),
   });
-  return res.ok ? rispostaJson({ ok: true }) : rispostaJson({ error: 'send' }, 502);
+  if (!res.ok) {
+    // Fallimento GESTITO: senza questa segnalazione Sentry non lo vedrebbe mai
+    // (withSentry cattura solo le eccezioni non gestite). Niente PII nell'extra.
+    segnala('contact: Resend ha risposto ' + res.status, { status: res.status });
+    return rispostaJson({ error: 'send' }, 502);
+  }
+  return rispostaJson({ ok: true });
 }
 
 export default {

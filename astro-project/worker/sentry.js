@@ -8,6 +8,11 @@
 import * as Sentry from '@sentry/cloudflare';
 import handler from './index.js';
 
+// Reporter per i fallimenti GESTITI del form (Resend giù, config mancante):
+// index.js lo chiama via globalThis così resta puro e testabile senza SDK.
+globalThis.__SEGNALA_SENTRY__ = (messaggio, extra) =>
+  Sentry.captureMessage(messaggio, { level: 'error', extra });
+
 export default Sentry.withSentry(
   () => ({
     dsn: 'https://ffcac5d108001982eb70aa431c32af75@o4511713634484224.ingest.de.sentry.io/4511714029273168',

@@ -112,6 +112,64 @@ test('contatto: solo POST', async () => {
   assert.equal(r.status, 405);
 });
 
+test('contatto: Origin estraneo = 403 (richiesta forgiata da altro sito)', async () => {
+  const r = await gestisciContatto(
+    new Request('https://marcobellingeri.dev/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://attaccante.example' },
+      body: JSON.stringify({ email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' }),
+    }),
+    { RESEND_API_KEY: 'test' },
+  );
+  assert.equal(r.status, 403);
+});
+
+test('contatto: body oltre i 32 KB = 413, senza nemmeno parsarlo', async () => {
+  const r = await gestisciContatto(
+    new Request('https://marcobellingeri.dev/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': '999999' },
+      body: '{}',
+    }),
+    { RESEND_API_KEY: 'test' },
+  );
+  assert.equal(r.status, 413);
+});
+
+test('contatto: un nome con \\r\\n non inietta header nel subject', async () => {
+  const originale = globalThis.fetch;
+  let inviato;
+  globalThis.fetch = async (u, opt) => { inviato = JSON.parse(opt.body); return new Response('{}', { status: 200 }); };
+  try {
+    const r = await postContatto({ nome: 'Mario\r\nBcc: spam@evil.example', email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' });
+    assert.equal(r.status, 200);
+    assert.ok(!/[\r\n]/.test(inviato.subject), 'il subject non deve contenere CR/LF');
+    assert.match(inviato.subject, /Mario Bcc: spam@evil\.example/);
+  } finally { globalThis.fetch = originale; }
+});
+
+test('contatto: le risposte API portano no-store e nosniff', async () => {
+  const r = await gestisciContatto(new Request('https://marcobellingeri.dev/api/contact'), {});
+  assert.equal(r.headers.get('cache-control'), 'no-store');
+  assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+});
+
+test('contatto: Resend giù = 502 E segnalato a Sentry (fallimento gestito)', async () => {
+  const originale = globalThis.fetch;
+  const hookOriginale = globalThis.__SEGNALA_SENTRY__;
+  let segnalato = null;
+  globalThis.__SEGNALA_SENTRY__ = (msg) => { segnalato = msg; };
+  globalThis.fetch = async () => new Response('{}', { status: 500 });
+  try {
+    const r = await postContatto({ email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' });
+    assert.equal(r.status, 502);
+    assert.match(String(segnalato), /Resend/);
+  } finally {
+    globalThis.fetch = originale;
+    globalThis.__SEGNALA_SENTRY__ = hookOriginale;
+  }
+});
+
 test('contatto: Turnstile configurato + token valido = inoltra', async () => {
   const originale = globalThis.fetch;
   globalThis.fetch = async (u) =>
