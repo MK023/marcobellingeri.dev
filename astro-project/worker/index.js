@@ -54,8 +54,10 @@ const segnala = (messaggio, extra) => globalThis.__SEGNALA_SENTRY__?.(messaggio,
 export async function gestisciContatto(request, env) {
   if (request.method !== 'POST') return rispostaJson({ error: 'method' }, 405);
 
-  // Rate limit per IP (binding CONTACT_LIMITER, 5/min da wrangler.jsonc): il
-  // flooding si ferma qui, prima di costare verifiche Turnstile o quota Resend.
+  // Rate limit per IP (binding CONTACT_LIMITER): ~5/min, ma APPROSSIMATIVO e
+  // per-location per design di Cloudflare — il contatore è locale a ogni isolate
+  // ed è "eventually consistent, intentionally not accurate". Non è una ghigliottina
+  // al 6° colpo: ferma il flood vero (volume sostenuto), non il singolo burst.
   // Il binding manca nei test e in `wrangler dev` senza supporto: si salta.
   if (env.CONTACT_LIMITER) {
     const ip = request.headers.get('CF-Connecting-IP') || 'sconosciuto';
