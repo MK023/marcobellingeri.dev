@@ -30,6 +30,8 @@ test('il redirect non è cacheabile', async () => {
   assert.equal(r.status, 302);
   assert.equal(r.headers.get('cache-control'), 'no-store');
   assert.equal(r.headers.get('location'), 'https://marcobellingeri.dev/en/');
+  // Le risposte del Worker non passano da _headers: l'HSTS va messo a mano.
+  assert.match(r.headers.get('strict-transport-security') || '', /max-age=63072000/);
 });
 
 test('tutto ciò che non è `/` passa agli asset', async () => {
@@ -188,10 +190,11 @@ test('contatto: un nome con \\r\\n non inietta header nel subject', async () => 
   } finally { globalThis.fetch = originale; }
 });
 
-test('contatto: le risposte API portano no-store e nosniff', async () => {
+test('contatto: le risposte API portano no-store, nosniff e HSTS', async () => {
   const r = await gestisciContatto(new Request('https://marcobellingeri.dev/api/contact'), {});
   assert.equal(r.headers.get('cache-control'), 'no-store');
   assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(r.headers.get('strict-transport-security') || '', /max-age=63072000/);
 });
 
 test('contatto: Resend giù = 502 E segnalato a Sentry (fallimento gestito)', async () => {

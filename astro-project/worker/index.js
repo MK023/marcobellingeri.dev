@@ -19,15 +19,19 @@ export function scegliLingua(paese, cookie = null) {
   return paese === 'IT' ? 'it' : 'en';
 }
 
+// public/_headers copre solo gli asset statici: le risposte generate dal Worker
+// (JSON dell'API, 302 sulla root) non ci passano e vanno messe a mano. Valore
+// allineato a public/_headers, che resta la fonte di verità per gli asset.
+const HSTS = 'max-age=63072000; includeSubDomains; preload';
+
 const rispostaJson = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      // Le risposte del Worker NON passano da public/_headers (copre solo gli
-      // asset): gli header di sicurezza qui vanno messi a mano.
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
+      'Strict-Transport-Security': HSTS,
     },
   });
 
@@ -187,6 +191,7 @@ export default {
       headers: {
         Location: destinazione.toString(),
         'Cache-Control': 'no-store',
+        'Strict-Transport-Security': HSTS,
       },
     });
   },
