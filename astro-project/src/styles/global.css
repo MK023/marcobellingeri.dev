@@ -757,6 +757,23 @@
     font-size:12.5px; line-height:1.85;
     white-space:pre-wrap; word-break:break-word;
   }
+  /* honeypot: fuori schermo e non focusabile — i bot lo compilano, gli umani no. */
+  .svc-hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; pointer-events:none; }
+  /* toast di notifica: popup fisso in basso, sopra ogni overlay. Compare all'esito
+     dell'invio (ok/errore) e sparisce dopo qualche secondo. */
+  .svc-toast{
+    position:fixed; left:50%; bottom:24px;
+    transform:translateX(-50%) translateY(16px);
+    max-width:90vw; padding:12px 20px;
+    border:2px solid var(--ink); background:var(--paper); color:var(--ink);
+    font-size:13px; letter-spacing:0.03em; text-align:center;
+    z-index:600; opacity:0; pointer-events:none;
+    transition:opacity 0.22s ease, transform 0.22s ease;
+  }
+  .svc-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .svc-toast.ok{ border-color:var(--violet); }
+  .svc-toast.err{ border-color:var(--orange); color:var(--orange); }
+  @media (prefers-reduced-motion: reduce){ .svc-toast{ transition:opacity 0.22s ease; transform:translateX(-50%); } }
   .svc-brief-actions{ display:flex; border-top:1px solid var(--halftone); }
   .svc-brief-copy{
     flex:1;

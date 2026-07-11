@@ -4,9 +4,6 @@ import { defaultLang, type Lang } from '../i18n/ui';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 
-// Indirizzo pubblico di contatto. Le prenotazioni passano invece da Cal.eu
-// (vedi Booking.astro), il cui slug non espone alcuna casella.
-const EMAIL = 'mkdevpy@proton.me';
 
 type Service = { tag: string; title: string; body: string; deliverables: string[]; basis: string };
 
@@ -19,7 +16,9 @@ const copy: Record<Lang, {
     steps: [string, string, string, string];
     modes: string[]; durations: string[];
     notePlaceholder: string;
+    contactStep: string; namePlaceholder: string; emailPlaceholder: string;
     briefHead: string; copyBtn: string; sendBtn: string;
+    sending: string; sent: string; failed: string;
   };
   prev: string; next: string;
 }> = {
@@ -72,9 +71,13 @@ const copy: Record<Lang, {
       modes: ['Da remoto', 'In sede', 'Ibrido'],
       durations: ['Intervento spot', 'Qualche settimana', 'Collaborazione continua'],
       notePlaceholder: 'Contesto, stack attuale, vincoli, scadenze…',
+      contactStep: '05 — I TUOI CONTATTI',
+      namePlaceholder: 'Nome e Cognome',
+      emailPlaceholder: 'La tua email',
       briefHead: 'BOZZA DI BRIEF',
       copyBtn: '⧉ COPIA BRIEF',
-      sendBtn: 'INVIA VIA EMAIL →',
+      sendBtn: 'INVIA →',
+      sending: 'INVIO…', sent: 'INVIATO ✓', failed: 'ERRORE — RIPROVA',
     },
   },
   en: {
@@ -126,9 +129,13 @@ const copy: Record<Lang, {
       modes: ['Remote', 'On-site', 'Hybrid'],
       durations: ['One-off', 'A few weeks', 'Ongoing'],
       notePlaceholder: 'Context, current stack, constraints, deadlines…',
+      contactStep: '05 — YOUR CONTACT',
+      namePlaceholder: 'Full name',
+      emailPlaceholder: 'Your email',
       briefHead: 'DRAFT BRIEF',
       copyBtn: '⧉ COPY BRIEF',
-      sendBtn: 'SEND BY EMAIL →',
+      sendBtn: 'SEND →',
+      sending: 'SENDING…', sent: 'SENT ✓', failed: 'ERROR — RETRY',
     },
   },
 };
@@ -138,8 +145,8 @@ const c = copy[lang];
 // Etichette del brief generato lato client: passate via data-* per non
 // duplicare il dizionario dentro lo <script>.
 const briefLabels = {
-  it: { greet: 'Ciao Marco,', want: 'Mi servirebbe:', none: '(seleziona un servizio qui a fianco)', mode: 'Modalità:', dur: 'Durata:', notes: 'Note:', sign: '— inviato dal listino del sito', unset: 'da definire', copied: 'COPIATO ✓', subject: 'Richiesta di preventivo' },
-  en: { greet: 'Hi Marco,', want: "I'd need:", none: '(select a service on the left)', mode: 'Mode:', dur: 'Duration:', notes: 'Notes:', sign: '— sent from the site rate card', unset: 'to be defined', copied: 'COPIED ✓', subject: 'Quote request' },
+  it: { greet: 'Ciao Marco,', want: 'Mi servirebbe:', none: '(seleziona un servizio qui a fianco)', mode: 'Modalità:', dur: 'Durata:', notes: 'Note:', sign: '— inviato dal listino del sito', unset: 'da definire', copied: 'COPIATO ✓', needEmail: 'Inserisci un indirizzo email valido.', needBrief: 'Seleziona un servizio o scrivi una nota.' },
+  en: { greet: 'Hi Marco,', want: "I'd need:", none: '(select a service on the left)', mode: 'Mode:', dur: 'Duration:', notes: 'Notes:', sign: '— sent from the site rate card', unset: 'to be defined', copied: 'COPIED ✓', needEmail: 'Enter a valid email address.', needBrief: 'Pick a service or write a note.' },
 }[lang];
 ---
 
@@ -175,7 +182,6 @@ const briefLabels = {
   <div
     class="svc-order"
     id="svc-order"
-    data-email={EMAIL}
     data-labels={JSON.stringify(briefLabels)}
   >
     <span class="svc-order-tag">{c.order.tag}</span>
@@ -205,15 +211,42 @@ const briefLabels = {
 
         <div class="svc-step"><label for="svc-note">{c.order.steps[3]}</label></div>
         <textarea id="svc-note" class="svc-note-input" rows="3" placeholder={c.order.notePlaceholder}></textarea>
+
+        <div class="svc-step"><label for="svc-email">{c.order.contactStep}</label></div>
+        <input type="text" id="svc-name" class="svc-note-input" placeholder={c.order.namePlaceholder} autocomplete="name" required />
+        <input type="email" id="svc-email" class="svc-note-input" placeholder={c.order.emailPlaceholder} autocomplete="email" required />
+        {/* honeypot: fuori dal flusso e non focusabile; un umano non lo vede, un bot lo compila. */}
+        <input type="text" id="svc-azienda" class="svc-hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
       </div>
 
       <div class="svc-brief">
         <div class="svc-brief-head"><span>{c.order.briefHead}</span><span id="svc-ref"></span></div>
         <div class="svc-brief-body" id="svc-brief-body" aria-live="polite"></div>
+        {/* data-execution="execute": il challenge NON parte al caricamento ma quando
+            lo chiamo io al click su Invia. Per non mostrare proprio nessuna scatola,
+            il widget va messo in modalità "Invisible" nel dashboard Turnstile. */}
+        <div
+          class="cf-turnstile"
+          id="svc-turnstile"
+          data-sitekey="0x4AAAAAADzdR4ih-HswrLQJ"
+          data-execution="execute"
+          data-callback="svcTurnstileOk"
+          data-error-callback="svcTurnstileErr"
+          data-action="turnstile-spin-v1"
+        ></div>
         <div class="svc-brief-actions">
           <button type="button" class="svc-brief-copy" id="svc-copy" data-label={c.order.copyBtn}>{c.order.copyBtn}</button>
-          <a class="svc-brief-send" id="svc-send" href={`mailto:${EMAIL}`}>{c.order.sendBtn}</a>
+          <button
+            type="button"
+            class="svc-brief-send"
+            id="svc-send"
+            data-label={c.order.sendBtn}
+            data-sending={c.order.sending}
+            data-sent={c.order.sent}
+            data-failed={c.order.failed}
+          >{c.order.sendBtn}</button>
         </div>
+        <div class="svc-toast mono" id="svc-toast" role="status" aria-live="polite"></div>
       </div>
     </div>
   </div>
@@ -227,6 +260,10 @@ const briefLabels = {
   <div class="svc-cta"><a href="#booking"><button type="button" class="util-btn">{c.cta}</button></a></div>
   <p class="svc-note">{c.note}</p>
 </section>
+
+<!-- Turnstile: carica il widget del form. Script esterno di Cloudflare, permesso in
+     CSP (script-src challenges.cloudflare.com). is:inline così Astro non lo bundla. -->
+<script is:inline async defer src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>
 
 <style>
   /* La garanzia è l'unica cosa in pagina che sposta il rischio sul venditore:
@@ -357,10 +394,9 @@ const briefLabels = {
     const noteEl = document.getElementById('svc-note') as HTMLTextAreaElement | null;
     const refEl = document.getElementById('svc-ref');
     const copyEl = document.getElementById('svc-copy') as HTMLButtonElement | null;
-    const sendEl = document.getElementById('svc-send') as HTMLAnchorElement | null;
+    const sendEl = document.getElementById('svc-send') as HTMLButtonElement | null;
     if (!wrap || !body || !noteEl || !refEl || !copyEl || !sendEl) return;
 
-    const email = wrap.dataset.email || '';
     const L = JSON.parse(wrap.dataset.labels || '{}');
     const copyLabel = copyEl.dataset.label || '';
 
@@ -381,12 +417,6 @@ const briefLabels = {
 
       const text = lines.join('\n');
       body!.textContent = text;
-      // mailto: il brief precompila il corpo, così "in un clic" è vero davvero.
-      sendEl!.href =
-        'mailto:' + email +
-        '?subject=' + encodeURIComponent(L.subject) +
-        '&body=' + encodeURIComponent(text);
-
       copyEl!.classList.remove('copied');
       copyEl!.textContent = copyLabel;
     }
@@ -421,6 +451,95 @@ const briefLabels = {
         copyEl!.classList.add('copied');
         setTimeout(() => { copyEl!.textContent = copyLabel; copyEl!.classList.remove('copied'); }, 1800);
       } catch (e) {}
+    });
+
+    // ---- invio: POST → Worker /api/contact → Resend, gated da Turnstile ----
+    const nameEl = document.getElementById('svc-name') as HTMLInputElement | null;
+    const emailEl = document.getElementById('svc-email') as HTMLInputElement | null;
+    const hpEl = document.getElementById('svc-azienda') as HTMLInputElement | null;
+    const tsEl = document.getElementById('svc-turnstile');
+    const toastEl = document.getElementById('svc-toast');
+    // Il toast è position:fixed, ma dentro la sezione .reveal (transform + opacity
+    // animati) resterebbe intrappolato nella sezione e invisibile. Lo sposto sul
+    // body: solo lì il fixed è davvero relativo al viewport.
+    if (toastEl) document.body.appendChild(toastEl);
+    const S = {
+      label: sendEl.dataset.label || '',
+      sending: sendEl.dataset.sending || '…',
+      sent: sendEl.dataset.sent || '✓',
+      failed: sendEl.dataset.failed || 'error',
+    };
+
+    // Popup di notifica al visitatore: senza, non saprebbe se è andata a buon fine.
+    let toastTimer: ReturnType<typeof setTimeout> | undefined;
+    function toast(msg: string, kind: 'ok' | 'err') {
+      if (!toastEl) return;
+      toastEl.textContent = msg;
+      toastEl.className = 'svc-toast mono show ' + kind;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toastEl.className = 'svc-toast mono ' + kind; }, 5000);
+    }
+    function resetSendBtn() { sendEl.disabled = false; sendEl.textContent = S.label; }
+
+    // Dopo un invio riuscito il form torna vuoto: pronto per una nuova richiesta,
+    // anche dallo stesso cliente.
+    function resetForm() {
+      services.clear(); mode = null; duration = null;
+      document.querySelectorAll('#svc-order .svc-chip').forEach((c) => c.setAttribute('aria-pressed', 'false'));
+      noteEl!.value = '';
+      if (nameEl) nameEl.value = '';
+      if (emailEl) emailEl.value = '';
+      build();
+    }
+
+    async function invia(token: string) {
+      try {
+        const r = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: nameEl?.value || '',
+            email: (emailEl?.value || '').trim(),
+            brief: body!.textContent || '',
+            turnstile: token,
+            azienda: hpEl?.value || '',
+          }),
+        });
+        if (!r.ok) throw new Error(String(r.status));
+        toast(S.sent, 'ok');
+        resetForm();
+      } catch (e) {
+        toast(S.failed, 'err');
+      } finally {
+        resetSendBtn();
+        (window as any).turnstile?.reset?.(tsEl || undefined);
+      }
+    }
+
+    // Turnstile richiama questi globali (data-callback / data-error-callback del widget).
+    let inCorso = false;
+    (window as any).svcTurnstileOk = (token: string) => {
+      if (!inCorso) return;
+      inCorso = false;
+      invia(token);
+    };
+    (window as any).svcTurnstileErr = () => {
+      inCorso = false;
+      toast(S.failed, 'err');
+      resetSendBtn();
+    };
+
+    sendEl.addEventListener('click', () => {
+      // Obbligatori con popup NATIVO del browser: nome e email.
+      if (nameEl && !nameEl.reportValidity()) return;
+      if (emailEl && !emailEl.reportValidity()) return;
+      // Il brief deve avere sostanza: almeno un servizio o una nota.
+      if (services.size === 0 && !(noteEl.value || '').trim()) { toast(L.needBrief || '', 'err'); return; }
+      sendEl.disabled = true;
+      sendEl.textContent = S.sending;
+      inCorso = true;
+      // Turnstile parte ORA, al click (data-execution="execute"): niente badge fermo lì.
+      (window as any).turnstile?.execute?.(tsEl || undefined);
     });
 
     build();
