@@ -41,6 +41,24 @@ const entries = sections(t);
     }
   })();
 
+  // ---- is-stuck: accende la dissolvenza sopra la toc solo quando è incollata ----
+  // (global.css, media mobile). A riposo la dissolvenza coprirebbe l'hero.
+  (function stuckFlag() {
+    const toc = document.querySelector<HTMLElement>('.toc');
+    if (!toc) return;
+    let queued = false;
+    function check() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        toc!.classList.toggle('is-stuck', toc!.getBoundingClientRect().top <= 0);
+      });
+    }
+    window.addEventListener('scroll', check, { passive: true });
+    check();
+  })();
+
   // ---- scroll-spy: evidenzia la sezione attiva nel sommario ----
   (function scrollSpy() {
     const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('#toc-nav a'));

@@ -759,6 +759,10 @@
   }
   /* honeypot: fuori schermo e non focusabile — i bot lo compilano, gli umani no. */
   .svc-hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; pointer-events:none; }
+  /* errori di validazione inline: le bolle native del browser non si stilizzano
+     e stonano col design — qui bordo arancio + riga mono sotto il campo. */
+  .svc-err{ font-size:11px; letter-spacing:0.05em; color:var(--orange); margin:6px 0 4px; }
+  .svc-note-input.invalid{ border-color:var(--orange); }
   /* toast di notifica: popup fisso in basso, sopra ogni overlay. Compare all'esito
      dell'invio (ok/errore) e sparisce dopo qualche secondo. */
   .svc-toast{
@@ -1084,6 +1088,21 @@
     .toc{ top:0; padding-top:env(safe-area-inset-top, 0px); }
     /* La barra non copre più nulla: contarla qui manderebbe le ancore troppo in basso. */
     section, footer{ scroll-margin-top:calc(var(--toc-h, 53px) + 8px); }
+    /* Su Safari iOS il contenuto scorre DIETRO la status bar, sopra la toc incollata
+       (env(safe-area-inset-top) lì vale 0: il padding sopra non basta). Questa
+       dissolvenza copre la striscia: il testo sfuma e sparisce mentre sale, stile
+       iOS. Solo a barra incollata (classe is-stuck da Toc.astro), altrimenti
+       coprirebbe l'hero. */
+    .toc::before{
+      content:""; position:absolute; left:0; bottom:100%; width:100%; height:72px;
+      pointer-events:none; opacity:0; transition:opacity 0.2s ease;
+      background:linear-gradient(to top, var(--paper) 0%, transparent 100%);
+      -webkit-backdrop-filter:blur(8px);
+      backdrop-filter:blur(8px);
+      -webkit-mask-image:linear-gradient(to top, #000 0%, transparent 100%);
+      mask-image:linear-gradient(to top, #000 0%, transparent 100%);
+    }
+    .toc.is-stuck::before{ opacity:1; }
   }
 
   /* Dito, non puntatore: 44px è il minimo raccomandato da Apple, 48 da Android. I

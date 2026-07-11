@@ -145,8 +145,8 @@ const c = copy[lang];
 // Etichette del brief generato lato client: passate via data-* per non
 // duplicare il dizionario dentro lo <script>.
 const briefLabels = {
-  it: { greet: 'Ciao Marco,', want: 'Mi servirebbe:', none: '(seleziona un servizio qui a fianco)', mode: 'Modalità:', dur: 'Durata:', notes: 'Note:', sign: '— inviato dal listino del sito', unset: 'da definire', copied: 'COPIATO ✓', needEmail: 'Inserisci un indirizzo email valido.', needBrief: 'Seleziona un servizio o scrivi una nota.' },
-  en: { greet: 'Hi Marco,', want: "I'd need:", none: '(select a service on the left)', mode: 'Mode:', dur: 'Duration:', notes: 'Notes:', sign: '— sent from the site rate card', unset: 'to be defined', copied: 'COPIED ✓', needEmail: 'Enter a valid email address.', needBrief: 'Pick a service or write a note.' },
+  it: { greet: 'Ciao Marco,', want: 'Mi servirebbe:', none: '(seleziona un servizio qui a fianco)', mode: 'Modalità:', dur: 'Durata:', notes: 'Note:', sign: '— inviato dal listino del sito', unset: 'da definire', copied: 'COPIATO ✓', needName: 'Inserisci nome e cognome.', needEmail: 'Inserisci un indirizzo email valido.', needBrief: 'Seleziona un servizio o scrivi una nota.' },
+  en: { greet: 'Hi Marco,', want: "I'd need:", none: '(select a service on the left)', mode: 'Mode:', dur: 'Duration:', notes: 'Notes:', sign: '— sent from the site rate card', unset: 'to be defined', copied: 'COPIED ✓', needName: 'Enter your full name.', needEmail: 'Enter a valid email address.', needBrief: 'Pick a service or write a note.' },
 }[lang];
 ---
 
@@ -213,8 +213,12 @@ const briefLabels = {
         <textarea id="svc-note" class="svc-note-input" rows="3" placeholder={c.order.notePlaceholder}></textarea>
 
         <div class="svc-step"><label for="svc-email">{c.order.contactStep}</label></div>
+        {/* Validazione custom (vedi script): niente reportValidity — le bolle native
+            del browser stonano col design. Errori inline, on-brand. */}
         <input type="text" id="svc-name" class="svc-note-input" placeholder={c.order.namePlaceholder} autocomplete="name" required />
+        <p class="svc-err mono" id="svc-err-name" hidden></p>
         <input type="email" id="svc-email" class="svc-note-input" placeholder={c.order.emailPlaceholder} autocomplete="email" required />
+        <p class="svc-err mono" id="svc-err-email" hidden></p>
         {/* honeypot: fuori dal flusso e non focusabile; un umano non lo vede, un bot lo compila. */}
         <input type="text" id="svc-azienda" class="svc-hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
       </div>
@@ -489,6 +493,8 @@ const briefLabels = {
       noteEl!.value = '';
       if (nameEl) nameEl.value = '';
       if (emailEl) emailEl.value = '';
+      pulisciErrore(nameEl, errName);
+      pulisciErrore(emailEl, errEmail);
       build();
     }
 
@@ -529,10 +535,31 @@ const briefLabels = {
       resetSendBtn();
     };
 
+    // Errori inline al posto delle bolle native del browser (non stilizzabili,
+    // stonavano col design): bordo arancio + riga mono sotto il campo.
+    const errName = document.getElementById('svc-err-name');
+    const errEmail = document.getElementById('svc-err-email');
+    function segnaErrore(input: HTMLInputElement | null, errEl: HTMLElement | null, msg: string) {
+      if (errEl) { errEl.textContent = msg; errEl.hidden = false; }
+      input?.classList.add('invalid');
+      input?.setAttribute('aria-invalid', 'true');
+      input?.focus();
+    }
+    function pulisciErrore(input: HTMLInputElement | null, errEl: HTMLElement | null) {
+      if (errEl) errEl.hidden = true;
+      input?.classList.remove('invalid');
+      input?.removeAttribute('aria-invalid');
+    }
+    nameEl?.addEventListener('input', () => pulisciErrore(nameEl, errName));
+    emailEl?.addEventListener('input', () => pulisciErrore(emailEl, errEmail));
+
     sendEl.addEventListener('click', () => {
-      // Obbligatori con popup NATIVO del browser: nome e email.
-      if (nameEl && !nameEl.reportValidity()) return;
-      if (emailEl && !emailEl.reportValidity()) return;
+      // Obbligatori: nome e cognome + email valida, con errori inline.
+      if (!(nameEl?.value || '').trim()) { segnaErrore(nameEl, errName, L.needName || ''); return; }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((emailEl?.value || '').trim())) {
+        segnaErrore(emailEl, errEmail, L.needEmail || '');
+        return;
+      }
       // Il brief deve avere sostanza: almeno un servizio o una nota.
       if (services.size === 0 && !(noteEl.value || '').trim()) { toast(L.needBrief || '', 'err'); return; }
       sendEl.disabled = true;
