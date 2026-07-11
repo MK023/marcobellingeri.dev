@@ -48,6 +48,12 @@ jobs:
 
       - name: Build
         working-directory: astro-project
+        env:
+          # Col token presente, @sentry/astro carica le source map e crea la
+          # release durante la build (poi cancella i .map: mai deployati).
+          # Senza token — build locali, fork — l'upload resta spento.
+          # Solo secrets.*, nessun dato dell'evento: pattern injection-safe.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: npm run build
 
       - name: CSP + sezioni (sulla dist/ che sto per pubblicare)

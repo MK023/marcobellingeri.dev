@@ -7,8 +7,12 @@
   // prima che il Worker giri, e il redirect non avverrebbe mai.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "marcobellingeri-dev",
-  "main": "worker/index.js",
+  // sentry.js = index.js avvolto in Sentry (error monitoring del Worker).
+  // I test importano index.js puro; questo entry lo vede solo wrangler.
+  "main": "worker/sentry.js",
   "compatibility_date": "2026-07-09",
+  // Richiesto da @sentry/cloudflare (AsyncLocalStorage).
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
