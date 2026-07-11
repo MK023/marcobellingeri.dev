@@ -1,0 +1,5 @@
+{
+  "_comment": "Blacklist editoriale, curata a mano. 'terms': sottostringhe (case-insensitive) vietate nell'output. 'patterns': regex (stringa, flag 'i'). Vuoto = nessun blocco. NON è la barriera anti-injection/anti-script: quella vive sempre attiva in lib/guardrails.mjs (DENY_PATTERNS). Qui vanno solo i termini/censure editoriali che tu vuoi escludere.",
+  "terms": [],
+  "patterns": []
+}

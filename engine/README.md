@@ -37,10 +37,12 @@ falliscono — nessun rosso silenzioso.
 
 ```bash
 doppler run -- node engine/ingest.mjs <vertical> [--angle "<focus>"]  # Valyu proof pass -> signals
+doppler run -- node engine/generate.mjs <settore> [--angle "<focus>"] # signal verify -> bozza IT+EN (status=draft)
 doppler run -- node engine/embed.mjs                                   # chunk+embed article_chunks
 doppler run -- node engine/retrieve.mjs "<query>" [it|en]              # healthcheck RAG (gated a published)
 doppler run -- node engine/competitors.mjs [--limit N]                 # Firecrawl -> snapshots -> chunks
 node engine/lib/voyage.mjs                                             # self-check del chunker (no rete)
+node engine/lib/guardrails.mjs                                         # self-check barriere di contenuto (no rete)
 ```
 
 ## Moduli
@@ -48,7 +50,11 @@ node engine/lib/voyage.mjs                                             # self-ch
 - `lib/supabase.mjs` — REST client PostgREST (service_role): `select/insert/update/remove/rpc`.
 - `lib/voyage.mjs` — `chunk()` paragraph-aware + `embed()` voyage-3.5 (`document`/`query`) + `toVector()`.
 - `lib/valyu.mjs` — `search()` su `/v1/search` (motore di sourcing primario).
+- `lib/anthropic.mjs` — client Messages zero-dep: `generateJson()` (structured output) + `countTokens()`, con retry/backoff e rate-limit. Modello: `claude-sonnet-5`.
+- `lib/guardrails.mjs` — barriere di contenuto SEMPRE attive: `sanitizeSource`/`sourceIsPoisoned` (input di terzi), `screen`/`validateArticle` (output prima del DB), `slugify`.
 - `primary-sources.json` — registro allowlist fonti primarie (proof pass); curato a mano.
+- `blocklist.json` — blacklist editoriale (termini/regex) curata a mano; livello aggiuntivo sopra i `DENY_PATTERNS` anti-injection di `guardrails.mjs`.
+- `generate.mjs` — **stadio 2 GENERATE**: signal `verify` → bozza IT+EN (caso→applicazione→soluzione) grounded solo sulle fonti → `status=draft`. NON embedda, NON pubblica (gate umano).
 - `retrieve.mjs` — read-end del RAG (query→match_article_chunks). NON è l'endpoint pubblico C1 (rate-limit/guardrail/AI-Act = roadmap).
 
 ## Test
@@ -71,4 +77,11 @@ doppler run -- npm run test:e2e       # e2e live: dati sintetici 9999-01 + teard
 
 - Il testo scrapato di terzi (`signals.raw_content`, summary competitor) è **dato non
   fidato**: in generazione va trattato come contenuto, mai come istruzioni (delimitatori).
-- Il gate umano pre-publish è la mitigazione principale.
+  In `generate.mjs` questo è **imposto**, non solo raccomandato: `lib/guardrails.mjs`
+  sanifica e screena le fonti in ingresso (scarta quelle con injection palese) e
+  **valida + screena l'output prima di scrivere a DB** (script attivo, injection,
+  blacklist, lunghezze, malformazioni → la scrittura si blocca).
+- Difesa in profondità: structured output a schema, `count_tokens` con tetto duro,
+  segreto solo in header (mai loggato), nessun eval/shell.
+- Il gate umano pre-publish resta la mitigazione principale: `generate.mjs` scrive
+  solo `status=draft`.
