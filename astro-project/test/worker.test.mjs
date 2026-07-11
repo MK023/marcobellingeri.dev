@@ -112,6 +112,29 @@ test('contatto: solo POST', async () => {
   assert.equal(r.status, 405);
 });
 
+test('contatto: oltre il rate limit = 429, sotto = passa', async () => {
+  const richiestaValida = () =>
+    new Request('https://marcobellingeri.dev/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '1.2.3.4' },
+      body: JSON.stringify({ email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' }),
+    });
+  const bloccato = await gestisciContatto(richiestaValida(), {
+    CONTACT_LIMITER: { limit: async () => ({ success: false }) },
+  });
+  assert.equal(bloccato.status, 429);
+
+  const originale = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{}', { status: 200 });
+  try {
+    const passa = await gestisciContatto(richiestaValida(), {
+      CONTACT_LIMITER: { limit: async () => ({ success: true }) },
+      RESEND_API_KEY: 'test',
+    });
+    assert.equal(passa.status, 200);
+  } finally { globalThis.fetch = originale; }
+});
+
 test('contatto: Origin estraneo = 403 (richiesta forgiata da altro sito)', async () => {
   const r = await gestisciContatto(
     new Request('https://marcobellingeri.dev/api/contact', {
