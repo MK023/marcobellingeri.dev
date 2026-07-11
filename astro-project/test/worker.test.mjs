@@ -147,7 +147,24 @@ test('contatto: Origin estraneo = 403 (richiesta forgiata da altro sito)', async
   assert.equal(r.status, 403);
 });
 
-test('contatto: body oltre i 32 KB = 413, senza nemmeno parsarlo', async () => {
+test('contatto: body oltre i 32 KB = 413, sul peso reale non su Content-Length', async () => {
+  // Body davvero > 32 KB: il cap si misura sui byte letti dallo stream, e si
+  // interrompe senza parsare l'intero payload.
+  const grosso = JSON.stringify({ email: 'ok@x.com', brief: 'x'.repeat(40000) });
+  const r = await gestisciContatto(
+    new Request('https://marcobellingeri.dev/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: grosso,
+    }),
+    { RESEND_API_KEY: 'test' },
+  );
+  assert.equal(r.status, 413);
+});
+
+test('contatto: Content-Length gonfiato con body piccolo NON scatta il cap (no header-trust)', async () => {
+  // Regressione L-2: il vecchio cap si fidava di Content-Length. Ora un header
+  // gonfiato con body reale piccolo passa il cap (poi cade sulla validazione).
   const r = await gestisciContatto(
     new Request('https://marcobellingeri.dev/api/contact', {
       method: 'POST',
@@ -156,7 +173,7 @@ test('contatto: body oltre i 32 KB = 413, senza nemmeno parsarlo', async () => {
     }),
     { RESEND_API_KEY: 'test' },
   );
-  assert.equal(r.status, 413);
+  assert.notEqual(r.status, 413, 'un Content-Length gonfiato non deve più far scattare il cap');
 });
 
 test('contatto: un nome con \\r\\n non inietta header nel subject', async () => {
