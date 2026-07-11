@@ -54,6 +54,15 @@ const segnala = (messaggio, extra) => globalThis.__SEGNALA_SENTRY__?.(messaggio,
 export async function gestisciContatto(request, env) {
   if (request.method !== 'POST') return rispostaJson({ error: 'method' }, 405);
 
+  // Rate limit per IP (binding CONTACT_LIMITER, 5/min da wrangler.jsonc): il
+  // flooding si ferma qui, prima di costare verifiche Turnstile o quota Resend.
+  // Il binding manca nei test e in `wrangler dev` senza supporto: si salta.
+  if (env.CONTACT_LIMITER) {
+    const ip = request.headers.get('CF-Connecting-IP') || 'sconosciuto';
+    const { success } = await env.CONTACT_LIMITER.limit({ key: ip });
+    if (!success) return rispostaJson({ error: 'rate' }, 429);
+  }
+
   // Difesa in profondità: il form vive solo sul nostro dominio. Un Origin diverso
   // è una richiesta forgiata da un altro sito. (curl senza Origin passa di qui,
   // ma lo ferma comunque Turnstile: il token è legato al nostro hostname.)
