@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
+import sentry from '@sentry/astro';
 
 // Config minimale: nessun adapter framework aggiuntivo, output statico puro.
 // Se in futuro serviranno funzioni server-side (es. proxy verso FastAPI),
@@ -23,7 +24,8 @@ export default defineConfig({
         // challenges.cloudflare.com: il widget Turnstile del form di contatto —
         // script + iframe + XHR verso Cloudflare. Unica concessione a un host esterno,
         // e di Cloudflare stessa; la CSP resta a hash, senza unsafe-inline.
-        "connect-src 'self' https://api.github.com https://challenges.cloudflare.com",
+        // L'ingest Sentry (region DE): dove client e Worker spediscono gli errori.
+        "connect-src 'self' https://api.github.com https://challenges.cloudflare.com https://o4511713634484224.ingest.de.sentry.io",
         'frame-src https://www.cal.eu https://cal.eu https://challenges.cloudflare.com',
         "object-src 'none'",
         "base-uri 'self'",
@@ -74,6 +76,23 @@ export default defineConfig({
       i18n: {
         defaultLocale: 'en',
         locales: { en: 'en', it: 'it' },
+      },
+    }),
+    // Sentry, SOLO error monitoring: la config del client sta in
+    // sentry.client.config.js (tracing/replay/logs spenti — quota tutta sugli
+    // errori). SDK bundlato nella build → servito da 'self', la CSP script-src
+    // resta a hash; l'unica concessione è l'ingest in connect-src (region DE, UE).
+    sentry({
+      // L'upload delle source map si accende quando SENTRY_AUTH_TOKEN arriva
+      // dalla CI (Doppler → GitHub secret). In locale resta spento e non stampa
+      // warning a ogni build.
+      sourceMapsUploadOptions: {
+        enabled: Boolean(process.env.SENTRY_AUTH_TOKEN),
+        org: 'bellingeri',
+        project: 'marcobellingeri-dev',
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        // Le mappe serviranno solo a Sentry: mai deployate su Cloudflare.
+        filesToDeleteAfterUpload: './dist/**/*.map',
       },
     }),
   ],
