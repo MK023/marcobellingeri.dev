@@ -12,12 +12,14 @@ process.env.VALYU_API_KEY = "valyu_fake";
 process.env.LANGFUSE_BASE_URL = "https://fake.langfuse.local";
 process.env.LANGFUSE_PUBLIC_KEY = "pk_fake";
 process.env.LANGFUSE_SECRET_KEY = "sk_lf_fake";
+process.env.ANTHROPIC_API_KEY = "sk-ant_fake";
 
 const { buildAllowlist, buildQuery, mapResults, dedupFresh, DEFAULT_ANGLE } = await import("../ingest.mjs");
 const { embed } = await import("../lib/voyage.mjs");
 const { select, insert, rpc } = await import("../lib/supabase.mjs");
 const { search } = await import("../lib/valyu.mjs");
 const { startTrace } = await import("../lib/langfuse.mjs");
+const { generateJson, countTokens } = await import("../lib/anthropic.mjs");
 
 const realFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = realFetch; });
@@ -188,4 +190,54 @@ test("valyu: body con query+allowlist; non-success -> throw", async () => {
 
   mockFetch(() => ({ success: false }));
   await assert.rejects(() => search("q"), /non-success/);
+});
+
+// ---- anthropic client -------------------------------------------------------
+
+const OKJSON = JSON.stringify({ it: { title: "t" }, en: { title: "t" } });
+
+test("anthropic: generateJson happy -> data parsato + usage; header/version/thinking corretti", async () => {
+  const calls = mockFetch(() => ({
+    stop_reason: "end_turn",
+    content: [{ type: "text", text: OKJSON }],
+    usage: { input_tokens: 10, output_tokens: 20 },
+  }));
+  const { data, usage } = await generateJson({ model: "claude-sonnet-5", system: [], messages: [], schema: {}, maxTokens: 100 });
+  assert.deepEqual(data, { it: { title: "t" }, en: { title: "t" } });
+  assert.equal(usage.output_tokens, 20);
+  assert.equal(calls[0].init.headers["x-api-key"], "sk-ant_fake");
+  assert.equal(calls[0].init.headers["anthropic-version"], "2023-06-01");
+  const body = JSON.parse(calls[0].init.body);
+  assert.equal(body.thinking.type, "disabled", "thinking off: budget deterministico");
+  assert.equal(body.output_config.format.type, "json_schema");
+});
+
+test("anthropic: refusal -> throw (mai output al posto di un rifiuto)", async () => {
+  mockFetch(() => ({ stop_reason: "refusal", stop_details: { category: "cyber" }, content: [] }));
+  await assert.rejects(() => generateJson({ model: "m", system: [], messages: [], schema: {}, maxTokens: 100 }), /rifiuto/);
+});
+
+test("anthropic: max_tokens -> throw (output troncato non passa)", async () => {
+  mockFetch(() => ({ stop_reason: "max_tokens", content: [{ type: "text", text: "{" }] }));
+  await assert.rejects(() => generateJson({ model: "m", system: [], messages: [], schema: {}, maxTokens: 100 }), /troncato/);
+});
+
+test("anthropic: JSON non parseabile -> throw (niente malformato in silenzio)", async () => {
+  mockFetch(() => ({ stop_reason: "end_turn", content: [{ type: "text", text: "non-json {" }] }));
+  await assert.rejects(() => generateJson({ model: "m", system: [], messages: [], schema: {}, maxTokens: 100 }), /non parseabile/);
+});
+
+test("anthropic: 400 non ritentabile -> throw immediato (una sola chiamata)", async () => {
+  const calls = mockFetch(() => new Response("bad", { status: 400 }));
+  await assert.rejects(() => countTokens({ model: "m", system: [], messages: [] }), /400/);
+  assert.equal(calls.length, 1, "nessun retry sui 4xx");
+});
+
+test("anthropic: 429 ritentato -> poi 200 (rate-limit gestito)", async () => {
+  const calls = mockFetch((n) =>
+    n === 1 ? new Response("slow", { status: 429, headers: { "retry-after": "0" } }) : { input_tokens: 7 },
+  );
+  const t = await countTokens({ model: "m", system: [], messages: [] });
+  assert.equal(t, 7);
+  assert.equal(calls.length, 2, "ha ritentato una volta");
 });
