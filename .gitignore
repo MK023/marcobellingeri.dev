@@ -5,6 +5,8 @@ node_modules/
 dist/
 .output/
 .vercel/
+# wrangler dev: stato locale e bundle temporanei, mai da committare
+.wrangler/
 
 # astro generated cache
 .astro/
