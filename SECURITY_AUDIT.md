@@ -1,0 +1,193 @@
+# Security Audit — marcobellingeri.dev
+
+**Data:** 2026-07-11 · **Autore:** audit automatico (Claude) · **Scope:** intera repo
+(frontend Astro, Worker Cloudflare, CI/CD, engine Node, Supabase, config).
+**Modalità:** sola lettura + build servita in locale + probe read-only sugli header
+live (`curl -sI`). Nessuna modifica al codice, nessun POST/carico verso la produzione.
+**Nota:** questo file NON è committato — è per la sola valutazione di Marco.
+
+**Aggiornamento 2026-07-11 (post-remediation):** **tutti e 3 i Low risolti** e in
+produzione (PR #34, #35, #36). Verificato dal vivo che l'HSTS ora compare anche sulle
+risposte del Worker. Restano solo gli Info (nessuno actionable). Dettaglio nelle sezioni.
+
+---
+
+## Executive summary
+
+La codebase è **matura e ben difesa**. Le difese dichiarate nei commenti sono
+implementate davvero e, dove verificabili, reggono: validazione al confine di fiducia
+nel Worker, CSP a hash senza `unsafe-inline`, parametrizzazione PostgREST, RLS completa
+su Supabase, actions CI pinnate a SHA, secret fuori dal repo (gitleaks pulito su 88
+commit). L'XSS "pending" annotato in Atlas per `ArchiveSection.astro` **risulta già
+chiuso** (costruzione DOM nodo-per-nodo + whitelist di protocollo, nessuna scrittura
+HTML grezza).
+
+Nessun finding **Critical** o **High**. I residui sono di severità **Low/Info** e
+riguardano soprattutto *fail-open silenziosi* e *guardie che si fidano di un header
+client*. Il più actionable: se `TURNSTILE_SECRET_KEY` sparisse in produzione, la
+protezione bot verrebbe disattivata **senza alcun allarme**.
+
+| Severità | Aperti | Risolti |
+|----------|--------|---------|
+| Critical | 0 | — |
+| High     | 0 | — |
+| Medium   | 0 | — |
+| Low      | 0 | 3 (L-1, L-2, L-3) |
+| Info     | 4 | — |
+
+Verifiche eseguite: `npm run build` (verde) · `npm run test:csp` (**35/35 pass**,
+incl. il test anti header-injection) · `gitleaks detect` full-history (**no leaks**,
+88 commit) · zero `.map` nella `dist/` · header di sicurezza confermati serviti su
+`/it/`.
+
+---
+
+## Findings
+
+### L-1 — Turnstile fail-open silenzioso se il secret manca (Low) — ✅ RISOLTO
+> **Risolto** in PR #34 (commit `9ca7695`, in produzione). Aggiunto il ramo `else` che
+> chiama `segnala()` verso Sentry quando `TURNSTILE_SECRET_KEY` è assente, mantenendo il
+> fail-open. Test `contatto: TURNSTILE_SECRET_KEY mancante = fail-open ma segnalato a
+> Sentry`. Issue #33 chiusa. *(Descrizione originale del finding sotto.)*
+
+**File:** `astro-project/worker/index.js:100-108`
+La verifica Turnstile è dentro `if (env.TURNSTILE_SECRET_KEY) { … }`. È fail-open per
+scelta (in locale/test il secret non c'è). Ma in **produzione** una regressione di
+config — secret cancellato in Doppler, typo nel nome del binding — disattiva del tutto
+la verifica bot **in silenzio**. Contrasta col trattamento di `RESEND_API_KEY:600`, la
+cui assenza chiama `segnala()` verso Sentry e ritorna 503.
+**Scenario:** secret Turnstile assente + richiesta senza header `Origin` (curl, `L-2`) +
+honeypot vuoto → l'unica barriera residua è il rate-limit (~5/min/IP). Spam/abuse del
+form senza che nessuno lo sappia.
+**Raccomandazione:** in produzione, se `TURNSTILE_SECRET_KEY` è assente, chiamare
+`segnala('contact: TURNSTILE_SECRET_KEY mancante in produzione')` (come per Resend).
+Decidere se fail-open (alert) o fail-closed (503). Niente fix applicato.
+
+### L-2 — Il cap da 32 KB si fida di `Content-Length` (Low) — ✅ RISOLTO
+> **Risolto** in PR #35 (in produzione). Nuovo helper `leggiBodyLimitato()`: legge lo
+> stream del body con un tetto di byte e si ferma (`reader.cancel()`) appena supera 32 KB,
+> senza fidarsi di `Content-Length`. Test riscritto sul peso reale + guard di regressione
+> (header gonfiato con body piccolo non scatta più il cap). *(Descrizione originale sotto.)*
+
+**File:** `astro-project/worker/index.js:76-78`
+Il guard legge `Content-Length` dall'header e, se assente, usa `'0'` → il check passa e
+`request.json()` bufferizza comunque il body. Una richiesta con `Transfer-Encoding:
+chunked` o senza `Content-Length` **aggira il cap dichiarato**.
+**Scenario:** POST senza `Content-Length` con body > 32 KB → il cap non morde; il parse
+avviene comunque. Impatto reale limitato: il runtime Cloudflare Workers impone comunque
+un tetto di piattaforma al body e alla CPU, e il rate-limit per-IP delimita il volume.
+**Raccomandazione:** trattare il cap come best-effort (com'è) oppure imporlo dopo il
+parse misurando la dimensione effettiva del payload. Da confermare quale limite il
+runtime applichi davvero a un body chunked. Basso impatto — nota di robustezza.
+
+### L-3 — Le risposte del Worker non portano HSTS (Low) — ✅ RISOLTO
+> **Risolto** in PR #36 (in produzione). Costante `HSTS` aggiunta a `rispostaJson()` e
+> alla risposta 302, allineata a `_headers`. Verificato dal vivo: `curl -sI` mostra ora
+> `strict-transport-security` sul 302 della root e sul 405 di `/api/contact`. *(Descrizione
+> originale sotto.)*
+
+**File:** `astro-project/worker/index.js:22-32` (JSON API), `:155-161` (302 root)
+`public/_headers` copre solo gli asset statici; le risposte generate dal Worker (il 302
+su `/` e le risposte di `/api/contact`) non passano di lì e **non portano HSTS**.
+**Mitigazione forte:** il dominio è `.dev`, TLD con **HSTS preload obbligatorio a
+livello di TLD** — i browser forzano HTTPS a prescindere. Il probe conferma: `curl -sI
+https://marcobellingeri.dev/` (302) non ha `Strict-Transport-Security`, mentre `/it/`
+sì. Coerente con la scelta documentata ("root spoglia, preload dal TLD").
+**Raccomandazione:** nessuna azione necessaria finché il dominio resta `.dev`. Se un
+giorno si aggiungesse un dominio non-preload, aggiungere HSTS anche in `rispostaJson` e
+sul 302.
+
+### I-1 — Engine fuori dalla copertura Dependabot (Info)
+**File:** `.github/dependabot.yml`, `engine/package.json`
+`dependabot.yml` monitora `npm` solo in `/astro-project` e le `github-actions`.
+L'engine **oggi non ha dipendenze** (solo built-in Node + `fetch` nativo, nessun
+lockfile) → superficie supply-chain nulla, nessun gap concreto. Ma se un domani l'engine
+aggiungesse una dipendenza, **Dependabot non la vedrebbe**.
+**Raccomandazione:** promemoria — quando l'engine acquisirà un `package-lock.json`,
+aggiungere una terza voce `npm` con `directory: "/engine"`.
+
+### I-2 — `img-src 'self' data:` nella CSP (Info)
+**File:** `astro-project/astro.config.mjs:23`
+`data:` in `img-src` è storicamente un vettore XSS minore (immagini data-URI). Nel
+contesto (sito statico, nessun input utente che genera `<img>`) il rischio è
+trascurabile ed è lì per i subset di font/asset inline. Nessuna azione.
+
+### I-3 — Rate-limit per-IP, approssimato e per-location (Info)
+**File:** `astro-project/worker/index.js:57-66`, `wrangler.jsonc:18-20`
+Il binding è "eventually consistent, intentionally not accurate" (per design
+Cloudflare) e keyed su `CF-Connecting-IP`. Un attaccante con un blocco IPv6 /64 dispone
+di molti IP. È difesa-in-profondità, non la barriera primaria (lo sono Turnstile +
+honeypot). Coerente con la documentazione. Nessuna azione.
+
+### I-4 — `reply_to` email non passa da `rigaPulita` (Info — non sfruttabile)
+**File:** `astro-project/worker/index.js:92, 122`
+L'email finisce in `reply_to` senza passare dal filtro dei caratteri di controllo. **Non
+è sfruttabile**: la regex `^[^@\s]+@[^@\s]+\.[^@\s]+$` vieta ogni whitespace (incluso
+`\r\n`) nell'intera stringa, quindi la CRLF-injection è impossibile; inoltre si invia
+JSON all'API Resend (non SMTP grezzo), che gestisce l'encoding degli header. Il test
+`test/csp.test.mjs` copre già l'header injection nel subject. Documentato per completezza.
+
+---
+
+## Difese confermate (ciò che regge, con la prova)
+
+- **Worker `/api/contact`** — ordine dei controlli corretto (rate-limit → Origin →
+  cap body → parse → honeypot → validazione → Turnstile → Resend): i check economici
+  precedono quelli costosi; la fetch esterna (Turnstile) sta dopo la validazione locale.
+  `rigaPulita:36` neutralizza la CRLF-injection nel subject — **verificato dal test**.
+- **XSS lato client** — grep completo su `src/`: nessun `set:html`, nessun sink di
+  scrittura HTML non controllato. `ArchiveSection.astro` costruisce il DOM con
+  `createElement`/`textContent`/`replaceChildren` e filtra i link con `new URL()` +
+  whitelist `http/https` (`:149-160`). `NeonTerminal.astro` usa `innerHTML` solo su
+  costanti hardcoded; **ogni** input utente passa da `esc()` (`:213, :220`) che copre
+  `& < > " '`.
+- **CSP** — `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`,
+  `form-action 'self'`, **nessun `unsafe-inline`/`unsafe-eval`**, script a hash SHA-256.
+  Host esterni minimi e giustificati (Turnstile, api.github.com, ingest Sentry DE, cal).
+  `frame-ancestors 'none'` in `_headers` (clickjacking coperto). `test:csp` valida gli
+  hash sulla `dist/` reale, non sul sorgente.
+- **Header live** — probe `curl -sI` su `/it/`: HSTS `preload`, `X-Content-Type-Options`,
+  `Referrer-Policy`, `Permissions-Policy` tutti presenti e serviti.
+- **CI/CD** — nessun `pull_request_target`; nessuna interpolazione `${{ github.event.* }}`
+  in blocchi `run:` (niente script injection); actions pinnate a SHA con commento
+  versione; `permissions` least-privilege per workflow (`deploy` solo `contents: read`;
+  keepalive/radar `issues: write` giustificato). `deploy.yml` verifica gli header
+  **post-deploy** sul sito vero, non sull'exit code di wrangler. Le sourcemap Sentry
+  sono cancellate dopo l'upload (`filesToDeleteAfterUpload`) — **0 `.map` nella dist**.
+- **Engine** — `lib/supabase.mjs` parametrizza le query PostgREST col template tag `pg``
+  che codifica anche `!'()*` (i metacaratteri di `in.()`/`or=()`), difesa già pronta per
+  il futuro endpoint pubblico. `lib/langfuse.mjs` è fail-open e **non spedisce mai
+  `raw_content` di terzi** nelle trace (solo riassunti/conteggi). Il `SERVICE_ROLE_KEY`
+  resta negli header delle richieste, mai loggato.
+- **Supabase** — RLS abilitata su tutte le tabelle; `anon` legge solo `status='published'`;
+  `signals` e `competitor_*` prive di policy anon = doppiamente negate. `match_article_chunks`
+  **non è SECURITY DEFINER** (RLS si applica anche all'anon) e filtra comunque a
+  `published`. RPC con `search_path` pinnato (`0003`). Il publish gate (`0006`) è
+  `BEFORE INSERT OR UPDATE`: non bypassabile con insert diretto, ri-valida a ogni update.
+  Il job `db-rebuild` in CI asserisce schema + RLS + gate a ogni push.
+- **Secret / supply-chain** — `.gitignore` esclude `.env*` e `.dev.vars*`; `gitleaks`
+  full-history **pulito** (88 commit); pre-commit hook con gitleaks staged + fallback
+  grep; secret da Doppler → GitHub secrets, mai nel repo.
+
+---
+
+## Rischi futuri noti (non finding attuali)
+
+- **Shiki + CSP** — il primo articolo con blocchi di codice introdurrà stili/script che
+  romperanno la CSP a hash: `test:csp` fallirà alla build. Da gestire quando arriva il
+  primo contenuto con codice (già annotato in memoria di progetto).
+- **Endpoint pubblico C1 (ADR-0003)** — quando il terminale RAG diventerà interrogabile
+  dal browser, i valori delle query PostgREST passeranno da input utente: il template
+  `pg`` è già pronto, ma andrà verificato che *ogni* interpolazione lo usi.
+- **Schedule GitHub a 60gg** — se il repo resta inattivo 60 giorni, il cron keepalive si
+  spegne in silenzio e Supabase va in pausa (gotcha già documentato nel workflow).
+
+---
+
+## Metodo e limiti
+
+Audit statico + build servita in locale + probe **read-only** (GET) sugli header live.
+**Non** eseguito, per scelta concordata: POST al form, test di carico, fuzzing attivo
+dell'endpoint, scrittura su DB/prod. Le voci marcate "da confermare" (es. il
+comportamento del runtime Workers su body chunked, `L-2`) richiederebbero un test attivo
+in staging per essere chiuse con certezza. Nessun file del progetto è stato modificato.
