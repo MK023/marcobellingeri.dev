@@ -37,12 +37,14 @@ falliscono — nessun rosso silenzioso.
 
 ```bash
 doppler run -- node engine/ingest.mjs <vertical> [--angle "<focus>"]  # Valyu proof pass -> signals
-doppler run -- node engine/generate.mjs <settore> [--angle "<focus>"] # signal verify -> bozza IT+EN (status=draft)
+doppler run -- node engine/generate.mjs <settore> [--angle "<focus>"] # signal verify -> caso Field Notes IT+EN (status=draft)
 doppler run -- node engine/embed.mjs                                   # chunk+embed article_chunks
+doppler run -- node engine/export.mjs [<period YYYY-MM>]               # numero approvato -> Field Notes MD -> published
 doppler run -- node engine/retrieve.mjs "<query>" [it|en]              # healthcheck RAG (gated a published)
 doppler run -- node engine/competitors.mjs [--limit N]                 # Firecrawl -> snapshots -> chunks
 node engine/lib/voyage.mjs                                             # self-check del chunker (no rete)
 node engine/lib/guardrails.mjs                                         # self-check barriere di contenuto (no rete)
+node engine/export.mjs --selfcheck                                     # self-check frontmatter/mappatura (no rete)
 ```
 
 ## Moduli
@@ -54,7 +56,8 @@ node engine/lib/guardrails.mjs                                         # self-ch
 - `lib/guardrails.mjs` — barriere di contenuto SEMPRE attive: `sanitizeSource`/`sourceIsPoisoned` (input di terzi), `screen`/`validateArticle` (output prima del DB), `slugify`.
 - `primary-sources.json` — registro allowlist fonti primarie (proof pass); curato a mano.
 - `blocklist.json` — blacklist editoriale (termini/regex) curata a mano; livello aggiuntivo sopra i `DENY_PATTERNS` anti-injection di `guardrails.mjs`.
-- `generate.mjs` — **stadio 2 GENERATE**: signal `verify` → bozza IT+EN (caso→applicazione→soluzione) grounded solo sulle fonti → `status=draft`. NON embedda, NON pubblica (gate umano).
+- `generate.mjs` — **stadio 2 GENERATE**: signal `verify` → un caso Field Notes IT+EN (problema/approccio/risultato/lezione) grounded solo sulle fonti → `status=draft`. NON embedda, NON pubblica (gate umano).
+- `export.mjs` — **stadio 5 EXPORT**: numero `approved` → file Markdown Field Notes in `astro-project/src/content/cases/{it,en}/` → `status=published`. Mappatura inversa (application→approach, solution→result, body→lesson), ri-screening prima di scrivere nel repo. NON committa: il contenuto lo merge Marco.
 - `retrieve.mjs` — read-end del RAG (query→match_article_chunks). NON è l'endpoint pubblico C1 (rate-limit/guardrail/AI-Act = roadmap).
 
 ## Test

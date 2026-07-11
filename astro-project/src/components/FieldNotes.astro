@@ -30,19 +30,9 @@ const copy = {
   </div>
   <p class="case-archive-note">{copy.intro}</p>
   <div class="case-archive">
-    {cases.map((c, i) => (
+    {cases.map((c) => (
       <div class="case-card">
         <div class="case-stat-col">
-          {c.data.stat != null && (
-            <div
-              class="big-stat display"
-              id={`case-stat-${i}`}
-              data-target={c.data.stat}
-              data-suffix={c.data.statSuffix ?? ''}
-            >
-              0{c.data.statSuffix ?? ''}
-            </div>
-          )}
           <span class="cred mono">{copy.cred} — {c.data.month.toUpperCase()}</span>
         </div>
         <div>
@@ -56,40 +46,3 @@ const copy = {
     ))}
   </div>
 </section>
-
-<script>
-  // Count-up per ogni statistica in evidenza, appena entra in viewport.
-  // Nuovo caso al mese = aggiungi la coppia it/ + en/ in src/content/cases/, nient'altro.
-  document.querySelectorAll<HTMLElement>('.big-stat[data-target]').forEach((el) => {
-    const target = parseInt(el.dataset.target || '0', 10);
-    const suffix = el.dataset.suffix || '';
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      el.textContent = target + suffix;
-      return;
-    }
-
-    let started = false;
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !started) {
-            started = true;
-            const duration = 1100;
-            const startTime = performance.now();
-            function tick(now: number) {
-              const progress = Math.min((now - startTime) / duration, 1);
-              const eased = 1 - Math.pow(1 - progress, 3);
-              el.textContent = Math.round(eased * target) + suffix;
-              if (progress < 1) requestAnimationFrame(tick);
-            }
-            requestAnimationFrame(tick);
-            io.unobserve(el);
-          }
-        });
-      },
-      { threshold: 0.5 }
-    );
-    io.observe(el);
-  });
-</script>

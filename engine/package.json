@@ -9,6 +9,7 @@
     "ingest": "node ingest.mjs",
     "generate": "node generate.mjs",
     "embed": "node embed.mjs",
+    "export": "node export.mjs",
     "competitors": "node competitors.mjs",
     "test": "node --test test/*.test.mjs",
     "test:e2e": "RUN_E2E=1 node --test test/e2e.test.mjs"

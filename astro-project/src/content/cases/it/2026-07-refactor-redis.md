@@ -3,8 +3,6 @@ lang: "it"
 month: "Luglio 2026"
 date: 2026-07-01
 title: "Refactor Redis — sistema in produzione"
-stat: 41
-statSuffix: "×"
 problem: >
   La query critica del sistema era lenta sotto carico: la cache Redis veniva
   invalidata molto più spesso di quanto servisse davvero, vanificando gran
