@@ -42,6 +42,29 @@ const rigaPulita = (s, max) =>
 // mai a Sentry: withSentry vede solo le eccezioni non catturate.
 const segnala = (messaggio, extra) => globalThis.__SEGNALA_SENTRY__?.(messaggio, extra);
 
+// Legge il body con un tetto REALE di byte, senza fidarsi di Content-Length: è un
+// header client, assente o mentito (Transfer-Encoding: chunked) aggirerebbe il cap.
+// Si legge lo stream e si interrompe appena supera il limite, così un payload
+// arbitrario non viene mai bufferizzato per intero. Ritorna il testo, o null se
+// troppo grande.
+async function leggiBodyLimitato(request, maxBytes) {
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const parti = [];
+  let totale = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totale += value.byteLength;
+    if (totale > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    parti.push(value);
+  }
+  return new TextDecoder().decode(await new Blob(parti).arrayBuffer());
+}
+
 /**
  * Endpoint del form di contatto (POST /api/contact): valida, filtra i bot con
  * honeypot e inoltra via Resend alla casella di Marco. Il `from` è il sottodominio
@@ -71,14 +94,15 @@ export async function gestisciContatto(request, env) {
   const origin = request.headers.get('Origin');
   if (origin && origin !== 'https://marcobellingeri.dev') return rispostaJson({ error: 'origin' }, 403);
 
-  // Cap sul body PRIMA di parsarlo: un JSON enorme è CPU bruciata (OWASP API4 —
-  // Unrestricted Resource Consumption). I campi legittimi stanno larghi in 32 KB.
-  if (parseInt(request.headers.get('Content-Length') || '0', 10) > 32768) {
-    return rispostaJson({ error: 'too-large' }, 413);
-  }
+  // Cap REALE sul body PRIMA di parsarlo: un JSON enorme è CPU/memoria bruciata
+  // (OWASP API4 — Unrestricted Resource Consumption). Si misura sui byte letti,
+  // non su Content-Length, che un client può omettere o gonfiare. I campi
+  // legittimi stanno larghi in 32 KB.
+  const grezzo = await leggiBodyLimitato(request, 32768);
+  if (grezzo === null) return rispostaJson({ error: 'too-large' }, 413);
 
   let dati;
-  try { dati = await request.json(); } catch { return rispostaJson({ error: 'body' }, 400); }
+  try { dati = JSON.parse(grezzo); } catch { return rispostaJson({ error: 'body' }, 400); }
 
   // Honeypot: campo nascosto che un umano non vede né compila. Se è pieno è un bot:
   // si finge successo e non si manda nulla, così non impara a evitarlo.
