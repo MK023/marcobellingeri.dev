@@ -23,13 +23,13 @@ const PER_SOURCE_CHARS = 6_000;
 const LOCALE_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["title", "problem", "application", "solution", "body"],
+  required: ["title", "problem", "approach", "result", "lesson"],
   properties: {
     title: { type: "string" },
     problem: { type: "string" },
-    application: { type: "string" },
-    solution: { type: "string" },
-    body: { type: "string" },
+    approach: { type: "string" },
+    result: { type: "string" },
+    lesson: { type: "string" },
   },
 };
 const SCHEMA = {
@@ -39,12 +39,13 @@ const SCHEMA = {
   properties: { it: LOCALE_SCHEMA, en: LOCALE_SCHEMA },
 };
 
-// SYSTEM = prefisso cache_control. Impianto editoriale (formato case study +
-// quality gate + answer-first) adattato da claude-blog di AgriciDaniel (MIT,
-// github.com/AgriciDaniel/claude-blog); anti-slop dalla skill humanizer.
-// Nessun runtime importato: solo la conoscenza, riscritta per la pipeline headless.
+// SYSTEM = prefisso cache_control. Impianto editoriale (answer-first, quality gate,
+// anti-slop) adattato da claude-blog di AgriciDaniel (MIT, github.com/AgriciDaniel/
+// claude-blog) + skill humanizer. Forma = i 4 campi di Field Notes (problema/
+// approccio/risultato/lezione): un caso reale al mese, corto e denso, non un
+// articolo lungo. Nessun runtime importato: solo la conoscenza.
 const SYSTEM = `<ruolo>
-Sei l'editor di un magazine B2B mensile che documenta casi reali di adozione dell'IA in aziende e settori specifici. Ogni numero è UN articolo in formato case study, bilingue.
+Sei l'editor della sezione "Field Notes" di un sito B2B: un caso reale al mese di adozione dell'IA in un'azienda o settore. Ogni numero è UN caso, bilingue, corto e denso — non un articolo lungo, ma quattro paragrafi in prosa (problema, approccio, risultato, lezione).
 </ruolo>
 
 <regole_ferree>
@@ -53,20 +54,17 @@ Sei l'editor di un magazine B2B mensile che documenta casi reali di adozione del
 3. OUTPUT. Rispondi con UN SOLO oggetto JSON conforme allo schema imposto. NESSUN testo, commento o markdown fuori dal JSON.
 </regole_ferree>
 
-<formato_case_study>
-L'articolo segue la struttura case study (caso → applicazione → soluzione). Mappa i campi così:
-- "problem" = LA SFIDA. Apri answer-first con il sintomo più concreto del problema (la cosa che ha spinto qualcuno a dire "va risolto"), poi la causa profonda e la portata dell'impatto, con i numeri che le fonti danno.
-- "application" = STRATEGIA + IMPLEMENTAZIONE. La scelta strategica e il perché rispetto alle alternative, le decisioni chiave, e come l'IA è stata applicata (strumenti, fasi, tempi) per come emerge dalle fonti.
-- "solution" = I RISULTATI. Prima → dopo con i numeri delle fonti, poi l'impatto sul business. Nessun numero che non sia in una <fonte>.
-- "body" = l'articolo completo in markdown, coerente con i tre campi sopra, in quest'ordine: un TL;DR di 40-60 parole che apre con la metrica-chiave; le sezioni distese (la sfida, la strategia, l'implementazione, i risultati); i takeaway trasferibili; 3 domande frequenti con risposte di 2-4 frasi. Ogni sezione (H2) apre answer-first: la prima frase dà la risposta o il dato, non l'antefatto.
-- "title" = una riga concreta e specifica al caso, senza punto finale. Includi la metrica/risultato solo se presente nelle fonti.
-</formato_case_study>
+<campi>
+Quattro paragrafi in prosa per lingua, ognuno answer-first (la prima frase dà la sostanza, non l'antefatto). Corti e densi:
+- "problem" = il caso: cosa non funzionava, il problema concreto dell'azienda o del settore, con i numeri che le fonti danno.
+- "approach" = come l'IA è stata applicata: la scelta e l'esecuzione, per come emergono dalle fonti.
+- "result" = cosa è cambiato: prima → dopo, con i numeri delle fonti. Nessuna cifra che non sia in una <fonte>.
+- "lesson" = la lezione trasferibile: cosa porta a casa chi legge. Concreta e guadagnata dal caso, non una massima generica.
+- "title" = una riga concreta e specifica al caso, senza punto finale.
+</campi>
 
 <qualita>
-Regole non negoziabili (adattate da claude-blog):
-- Ogni statistica ha una fonte tra le <fonte>. Zero cifre inventate.
-- Paragrafi mai oltre ~150 parole: spezzali.
-- Gerarchia dei titoli senza salti; nel body titoli in minuscolo, niente Title Case.
+Regole non negoziabili (adattate da claude-blog): ogni statistica ha una fonte tra le <fonte>, zero cifre inventate.
 </qualita>
 
 <lingua>
@@ -176,6 +174,10 @@ async function main() {
       const ids = clean.map((r) => assertUuid(r.id));
       await update("signals", `id=in.(${ids.join(",")})`, { issue_id: issue.id });
       const [article] = await insert("articles", { issue_id: issue.id, slug }, { returning: true });
+      // Mappatura Field Notes -> colonne legacy article_translations (ADR-0002):
+      // approach->application, result->solution, lesson->body (Field Notes non ha
+      // una colonna dedicata; `body`, altrimenti orfano, ospita la lezione).
+      // export.mjs fa il percorso inverso.
       await insert(
         "article_translations",
         ["it", "en"].map((loc) => ({
@@ -183,9 +185,9 @@ async function main() {
           locale: loc,
           title: data[loc].title.trim(),
           problem: data[loc].problem.trim(),
-          application: data[loc].application.trim(),
-          solution: data[loc].solution.trim(),
-          body: data[loc].body.trim() || null,
+          application: data[loc].approach.trim(),
+          solution: data[loc].result.trim(),
+          body: data[loc].lesson.trim(),
         })),
       );
 

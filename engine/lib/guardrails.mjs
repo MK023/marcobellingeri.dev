@@ -73,8 +73,8 @@ export const slugify = (s) =>
 // Limiti di lunghezza per campo (caratteri): min per "non vuoto/non-triviale",
 // max come rete anti-anomalia (output gonfiato = qualcosa non va).
 const BOUNDS = {
-  title: [8, 200], problem: [40, 4000], application: [40, 4000],
-  solution: [40, 4000], body: [1, 30000],
+  title: [8, 200], problem: [40, 1500], approach: [40, 1500],
+  result: [40, 1500], lesson: [40, 1200],
 };
 
 // Valida e mette in sicurezza l'articolo. Lancia con motivo esplicito se qualcosa
@@ -107,9 +107,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   assert.ok(!sourceIsPoisoned("Un caso clinico ordinario in radiologia."), "fonte pulita");
   assert.ok(screen("<iframe src=x>").length > 0, "screen blocca iframe");
   assert.equal(screen("Testo pulito e perfettamente valido.").length, 0, "screen passa il pulito");
-  const good = { title: "un titolo valido", problem: "x".repeat(50), application: "y".repeat(50), solution: "z".repeat(50), body: "corpo" };
-  assert.doesNotThrow(() => validateArticle({ it: good, en: good }), "articolo valido passa");
-  assert.throws(() => validateArticle({ it: {}, en: {} }), "articolo vuoto rifiutato");
-  assert.throws(() => validateArticle({ it: { ...good, body: "<script>x</script>" }, en: good }), "body con script rifiutato");
+  const good = { title: "un titolo valido", problem: "x".repeat(50), approach: "y".repeat(50), result: "z".repeat(50), lesson: "w".repeat(50) };
+  assert.doesNotThrow(() => validateArticle({ it: good, en: good }), "caso valido passa");
+  assert.throws(() => validateArticle({ it: {}, en: {} }), "caso vuoto rifiutato");
+  assert.throws(() => validateArticle({ it: { ...good, lesson: "<script>alert(1)</script> testo lungo abbastanza da superare i 40 caratteri" }, en: good }), "campo con script rifiutato dallo screen");
   console.log("guardrails.mjs self-check OK");
 }
