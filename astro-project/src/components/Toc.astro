@@ -13,6 +13,10 @@ const entries = sections(t);
     <a href={`#${e.id}`} data-section={e.id}><span class="num">{e.num}</span> {e.label}</a>
   ))}
 </nav>
+{/* La dissolvenza sopra la toc NON può essere un ::before della toc: overflow-x:auto
+    la ritaglierebbe (un asse non-visible trascina anche l'altro). Vive da fratello,
+    fixed sopra il bordo del viewport — la striscia dietro la status bar di Safari. */}
+<div class="toc-fade" aria-hidden="true"></div>
 <p class="toc-hint mono">{t('nav.hint')}</p>
 
 <script>
