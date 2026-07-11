@@ -97,6 +97,10 @@ export async function gestisciContatto(request, env) {
 
   // Turnstile: se il secret è configurato, il token del widget dev'essere valido.
   // Verifica server-side contro Cloudflare (mai dal browser). Difesa oltre l'honeypot.
+  // Fail-open CON allarme: senza secret la verifica bot si spegne, ma in produzione
+  // è una regressione di config (secret sparito da Doppler, binding rinominato) che
+  // deve arrivare a Sentry — altrimenti il form resterebbe scoperto in silenzio. In
+  // locale/test `segnala` è un no-op (nessun reporter registrato), quindi non rumoreggia.
   if (env.TURNSTILE_SECRET_KEY) {
     const verifica = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
@@ -105,6 +109,8 @@ export async function gestisciContatto(request, env) {
     });
     const esito = await verifica.json().catch(() => ({ success: false }));
     if (!esito.success) return rispostaJson({ error: 'turnstile' }, 403);
+  } else {
+    segnala('contact: TURNSTILE_SECRET_KEY mancante — verifica bot disattivata (fail-open)');
   }
 
   if (!env.RESEND_API_KEY) {

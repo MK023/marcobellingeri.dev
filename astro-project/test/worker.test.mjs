@@ -225,3 +225,29 @@ test('contatto: Turnstile configurato + token invalido = 403, niente invio', asy
     assert.equal(resendChiamato, false, 'un token invalido non deve arrivare a Resend');
   } finally { globalThis.fetch = originale; }
 });
+
+test('contatto: TURNSTILE_SECRET_KEY mancante = fail-open ma segnalato a Sentry', async () => {
+  const originale = globalThis.fetch;
+  const hookOriginale = globalThis.__SEGNALA_SENTRY__;
+  let segnalato = null;
+  let resendChiamato = false;
+  globalThis.__SEGNALA_SENTRY__ = (msg) => { segnalato = msg; };
+  globalThis.fetch = async (u) => {
+    if (String(u).includes('siteverify')) throw new Error('siteverify non deve essere chiamato senza secret');
+    resendChiamato = true;
+    return new Response('{}', { status: 200 });
+  };
+  try {
+    // env con Resend ma SENZA TURNSTILE_SECRET_KEY: la verifica bot si salta (fail-open)
+    const r = await postContatto(
+      { email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' },
+      { RESEND_API_KEY: 'test' },
+    );
+    assert.equal(r.status, 200, 'fail-open: la richiesta valida passa comunque');
+    assert.equal(resendChiamato, true, 'senza Turnstile la mail parte lo stesso');
+    assert.match(String(segnalato), /TURNSTILE/, 'la config mancante deve arrivare a Sentry');
+  } finally {
+    globalThis.fetch = originale;
+    globalThis.__SEGNALA_SENTRY__ = hookOriginale;
+  }
+});
