@@ -72,7 +72,7 @@ const copy: Record<Lang, {
       durations: ['Intervento spot', 'Qualche settimana', 'Collaborazione continua'],
       notePlaceholder: 'Contesto, stack attuale, vincoli, scadenze…',
       contactStep: '05 — I TUOI CONTATTI',
-      namePlaceholder: 'Nome (facoltativo)',
+      namePlaceholder: 'Nome e Cognome',
       emailPlaceholder: 'La tua email',
       briefHead: 'BOZZA DI BRIEF',
       copyBtn: '⧉ COPIA BRIEF',
@@ -130,7 +130,7 @@ const copy: Record<Lang, {
       durations: ['One-off', 'A few weeks', 'Ongoing'],
       notePlaceholder: 'Context, current stack, constraints, deadlines…',
       contactStep: '05 — YOUR CONTACT',
-      namePlaceholder: 'Name (optional)',
+      namePlaceholder: 'Full name',
       emailPlaceholder: 'Your email',
       briefHead: 'DRAFT BRIEF',
       copyBtn: '⧉ COPY BRIEF',
@@ -213,7 +213,7 @@ const briefLabels = {
         <textarea id="svc-note" class="svc-note-input" rows="3" placeholder={c.order.notePlaceholder}></textarea>
 
         <div class="svc-step"><label for="svc-email">{c.order.contactStep}</label></div>
-        <input type="text" id="svc-name" class="svc-note-input" placeholder={c.order.namePlaceholder} autocomplete="name" />
+        <input type="text" id="svc-name" class="svc-note-input" placeholder={c.order.namePlaceholder} autocomplete="name" required />
         <input type="email" id="svc-email" class="svc-note-input" placeholder={c.order.emailPlaceholder} autocomplete="email" required />
         {/* honeypot: fuori dal flusso e non focusabile; un umano non lo vede, un bot lo compila. */}
         <input type="text" id="svc-azienda" class="svc-hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
@@ -222,7 +222,18 @@ const briefLabels = {
       <div class="svc-brief">
         <div class="svc-brief-head"><span>{c.order.briefHead}</span><span id="svc-ref"></span></div>
         <div class="svc-brief-body" id="svc-brief-body" aria-live="polite"></div>
-        <div class="cf-turnstile" data-sitekey="0x4AAAAAADzdR4ih-HswrLQJ" data-action="turnstile-spin-v1"></div>
+        {/* data-execution="execute": il challenge NON parte al caricamento ma quando
+            lo chiamo io al click su Invia. Per non mostrare proprio nessuna scatola,
+            il widget va messo in modalità "Invisible" nel dashboard Turnstile. */}
+        <div
+          class="cf-turnstile"
+          id="svc-turnstile"
+          data-sitekey="0x4AAAAAADzdR4ih-HswrLQJ"
+          data-execution="execute"
+          data-callback="svcTurnstileOk"
+          data-error-callback="svcTurnstileErr"
+          data-action="turnstile-spin-v1"
+        ></div>
         <div class="svc-brief-actions">
           <button type="button" class="svc-brief-copy" id="svc-copy" data-label={c.order.copyBtn}>{c.order.copyBtn}</button>
           <button
@@ -235,7 +246,7 @@ const briefLabels = {
             data-failed={c.order.failed}
           >{c.order.sendBtn}</button>
         </div>
-        <p class="svc-send-status mono" id="svc-status" role="status" aria-live="polite"></p>
+        <div class="svc-toast mono" id="svc-toast" role="status" aria-live="polite"></div>
       </div>
     </div>
   </div>
@@ -442,55 +453,93 @@ const briefLabels = {
       } catch (e) {}
     });
 
-    // ---- invio: POST → Worker /api/contact → Resend. Niente più mailto (che apriva
-    // il client del visitatore); il brief parte server-side, gated da Turnstile. ----
+    // ---- invio: POST → Worker /api/contact → Resend, gated da Turnstile ----
     const nameEl = document.getElementById('svc-name') as HTMLInputElement | null;
     const emailEl = document.getElementById('svc-email') as HTMLInputElement | null;
     const hpEl = document.getElementById('svc-azienda') as HTMLInputElement | null;
-    const statusEl = document.getElementById('svc-status');
+    const tsEl = document.getElementById('svc-turnstile');
+    const toastEl = document.getElementById('svc-toast');
+    // Il toast è position:fixed, ma dentro la sezione .reveal (transform + opacity
+    // animati) resterebbe intrappolato nella sezione e invisibile. Lo sposto sul
+    // body: solo lì il fixed è davvero relativo al viewport.
+    if (toastEl) document.body.appendChild(toastEl);
     const S = {
+      label: sendEl.dataset.label || '',
       sending: sendEl.dataset.sending || '…',
       sent: sendEl.dataset.sent || '✓',
       failed: sendEl.dataset.failed || 'error',
     };
 
-    sendEl.addEventListener('click', async () => {
-      const addr = (emailEl?.value || '').trim();
-      // Obbligatori: email valida + un brief con sostanza (almeno un servizio o una
-      // nota). Senza, si manderebbe un modulo vuoto — e allora tanto vale niente form.
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) {
-        if (statusEl) statusEl.textContent = L.needEmail || '';
-        emailEl?.focus();
-        return;
-      }
-      if (services.size === 0 && !(noteEl.value || '').trim()) {
-        if (statusEl) statusEl.textContent = L.needBrief || '';
-        return;
-      }
-      // getResponse() dà il token se il widget Turnstile ha superato la verifica.
-      const token = (window as any).turnstile?.getResponse?.() || '';
-      sendEl.disabled = true;
-      sendEl.textContent = S.sending;
-      if (statusEl) statusEl.textContent = '';
+    // Popup di notifica al visitatore: senza, non saprebbe se è andata a buon fine.
+    let toastTimer: ReturnType<typeof setTimeout> | undefined;
+    function toast(msg: string, kind: 'ok' | 'err') {
+      if (!toastEl) return;
+      toastEl.textContent = msg;
+      toastEl.className = 'svc-toast mono show ' + kind;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toastEl.className = 'svc-toast mono ' + kind; }, 5000);
+    }
+    function resetSendBtn() { sendEl.disabled = false; sendEl.textContent = S.label; }
+
+    // Dopo un invio riuscito il form torna vuoto: pronto per una nuova richiesta,
+    // anche dallo stesso cliente.
+    function resetForm() {
+      services.clear(); mode = null; duration = null;
+      document.querySelectorAll('#svc-order .svc-chip').forEach((c) => c.setAttribute('aria-pressed', 'false'));
+      noteEl!.value = '';
+      if (nameEl) nameEl.value = '';
+      if (emailEl) emailEl.value = '';
+      build();
+    }
+
+    async function invia(token: string) {
       try {
         const r = await fetch('/api/contact', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             nome: nameEl?.value || '',
-            email: addr,
+            email: (emailEl?.value || '').trim(),
             brief: body!.textContent || '',
             turnstile: token,
             azienda: hpEl?.value || '',
           }),
         });
         if (!r.ok) throw new Error(String(r.status));
-        sendEl.textContent = S.sent;
+        toast(S.sent, 'ok');
+        resetForm();
       } catch (e) {
-        sendEl.disabled = false;
-        sendEl.textContent = S.failed;
-        (window as any).turnstile?.reset?.();
+        toast(S.failed, 'err');
+      } finally {
+        resetSendBtn();
+        (window as any).turnstile?.reset?.(tsEl || undefined);
       }
+    }
+
+    // Turnstile richiama questi globali (data-callback / data-error-callback del widget).
+    let inCorso = false;
+    (window as any).svcTurnstileOk = (token: string) => {
+      if (!inCorso) return;
+      inCorso = false;
+      invia(token);
+    };
+    (window as any).svcTurnstileErr = () => {
+      inCorso = false;
+      toast(S.failed, 'err');
+      resetSendBtn();
+    };
+
+    sendEl.addEventListener('click', () => {
+      // Obbligatori con popup NATIVO del browser: nome e email.
+      if (nameEl && !nameEl.reportValidity()) return;
+      if (emailEl && !emailEl.reportValidity()) return;
+      // Il brief deve avere sostanza: almeno un servizio o una nota.
+      if (services.size === 0 && !(noteEl.value || '').trim()) { toast(L.needBrief || '', 'err'); return; }
+      sendEl.disabled = true;
+      sendEl.textContent = S.sending;
+      inCorso = true;
+      // Turnstile parte ORA, al click (data-execution="execute"): niente badge fermo lì.
+      (window as any).turnstile?.execute?.(tsEl || undefined);
     });
 
     build();

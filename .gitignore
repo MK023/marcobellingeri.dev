@@ -16,6 +16,10 @@ graphify-out/
 .env
 .env.*
 !.env.example
+# wrangler dev legge i secret locali da qui (RESEND_API_KEY, TURNSTILE_SECRET_KEY):
+# mai committarlo. In prod i secret arrivano da Doppler, non da questo file.
+.dev.vars
+.dev.vars.*
 
 # python
 __pycache__/
