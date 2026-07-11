@@ -409,10 +409,11 @@
     grid-template-columns:repeat(auto-fill, minmax(180px,1fr));
     max-width:1100px; margin:0 auto;
   }
-  /* Sei card: con l'auto-fill a 1100px uscivano 5 + 1 orfana sulla seconda riga,
-     visivamente pesante. Su desktop stanno in linea, una fila sola. */
+  /* Sette card: con l'auto-fill a 1100px uscivano righe sbilanciate (5+2),
+     visivamente pesanti. Su desktop stanno in linea, una fila sola. */
   @media(min-width:1000px){
-    .stack-grid{ grid-template-columns:repeat(6,1fr); gap:12px; }
+    .stack-grid{ grid-template-columns:repeat(7,1fr); gap:10px; }
+    .stack-card{ padding:14px 12px; }
   }
   .stack-card{
     border:3px solid var(--ink);
