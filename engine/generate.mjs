@@ -167,10 +167,7 @@ async function main() {
     //    L'articolo resta draft; il gate umano (Studio) + export lo portano live.
     const [article] = await insert("articles", { issue_id: issue.id, slug }, { returning: true });
     try {
-      // Mappatura Field Notes -> colonne legacy article_translations (ADR-0002):
-      // approach->application, result->solution, lesson->body (Field Notes non ha
-      // una colonna dedicata; `body`, altrimenti orfano, ospita la lezione).
-      // export.mjs fa il percorso inverso.
+      // Colonne = forma Field Notes (approach/result/lesson) dopo la migration 0008.
       await insert(
         "article_translations",
         ["it", "en"].map((loc) => ({
@@ -178,9 +175,9 @@ async function main() {
           locale: loc,
           title: data[loc].title.trim(),
           problem: data[loc].problem.trim(),
-          application: data[loc].approach.trim(),
-          solution: data[loc].result.trim(),
-          body: data[loc].lesson.trim(),
+          approach: data[loc].approach.trim(),
+          result: data[loc].result.trim(),
+          lesson: data[loc].lesson.trim(),
         })),
       );
 
