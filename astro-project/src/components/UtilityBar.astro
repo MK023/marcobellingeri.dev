@@ -81,7 +81,7 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
   document.querySelectorAll('.lang-opt[data-lang]').forEach((el) => {
     el.addEventListener('click', () => {
       const chosen = (el as HTMLElement).dataset.lang;
-      document.cookie = `pref-lang=${chosen}; path=/; max-age=31536000; SameSite=Lax`;
+      document.cookie = `pref-lang=${chosen}; path=/; max-age=31536000; SameSite=Lax; Secure`;
     });
   });
 

@@ -25,7 +25,7 @@ export default defineConfig({
         // script + iframe + XHR verso Cloudflare. Unica concessione a un host esterno,
         // e di Cloudflare stessa; la CSP resta a hash, senza unsafe-inline.
         // L'ingest Sentry (region DE): dove client e Worker spediscono gli errori.
-        "connect-src 'self' https://api.github.com https://challenges.cloudflare.com https://o4511713634484224.ingest.de.sentry.io",
+        "connect-src 'self' https://challenges.cloudflare.com https://o4511713634484224.ingest.de.sentry.io",
         'frame-src https://www.cal.eu https://cal.eu https://challenges.cloudflare.com',
         "object-src 'none'",
         "base-uri 'self'",
