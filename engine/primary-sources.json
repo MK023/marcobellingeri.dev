@@ -16,5 +16,43 @@
     "ambest.com",
     "evidentinsights.com",
     "datos-insights.com"
+  ],
+  "security": [
+    "security.googleblog.com",
+    "cloud.google.com",
+    "microsoft.com",
+    "csrc.nist.gov",
+    "enisa.europa.eu",
+    "ncsc.gov.uk",
+    "cisa.gov",
+    "blog.trailofbits.com"
+  ],
+  "cloud": [
+    "aws.amazon.com",
+    "cloud.google.com",
+    "azure.microsoft.com",
+    "cncf.io",
+    "thenewstack.io",
+    "infoq.com",
+    "blog.cloudflare.com"
+  ],
+  "devsecops": [
+    "github.blog",
+    "dora.dev",
+    "about.gitlab.com",
+    "owasp.org",
+    "cloudsecurityalliance.org",
+    "sei.cmu.edu",
+    "cloud.google.com"
+  ],
+  "software-engineering": [
+    "github.blog",
+    "research.google",
+    "martinfowler.com",
+    "thoughtworks.com",
+    "stackoverflow.blog",
+    "queue.acm.org",
+    "infoq.com",
+    "dora.dev"
   ]
 }
