@@ -17,7 +17,10 @@ import { select, insert, pg } from "./lib/supabase.mjs";
 import { search } from "./lib/valyu.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
 
-export const DEFAULT_ANGLE = "AI governance, oversight, regulation and audit readiness";
+// L'angolo del magazine: IA utile APPLICATA sul lavoro (adozione, pratica,
+// risultati concreti), non governance/regolamentazione — che aveva reso il #1
+// staccato dal sito. Entra nella query Valyu (buildQuery) e nel focus di generate.
+export const DEFAULT_ANGLE = "how teams put AI to work in engineering practice: real use, patterns and measurable outcomes";
 
 // Allowlist = core cross-verticale + fonti del verticale. Solo chiavi proprie e
 // reali del registro (niente "_doc", "core" come verticale, o chiavi ereditate).
