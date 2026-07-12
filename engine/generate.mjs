@@ -131,9 +131,13 @@ async function main() {
     // 2) prompt: fonti sanificate e avvolte in delimitatori = DATO, mai istruzioni
     const sourcesBlock = clean
       .map((r, i) => {
-        // encodeURI: un url con `">` nel path romperebbe l'attributo (stessa
-        // classe del breakout </fonte>); il nome perde solo le virgolette.
-        const attrs = `n="${i + 1}" tier="${r.tier}" url="${encodeURI(r.source_url)}" nome="${(r.source_name ?? "").replace(/"/g, "'")}"`;
+        // Attributi a prova di breakout: nell'url si escapano SOLO i caratteri
+        // che chiudono attributo/tag (`">` e spazi) — encodeURI doppia-codificava
+        // i `%` degli url già encodati; il nome è testo di terzi quanto il
+        // contenuto e passa dalla stessa neutralizzazione <fonte> di sanitizeSource.
+        const attrUrl = String(r.source_url).replace(/["<>\s]/g, (c) => encodeURIComponent(c));
+        const attrNome = sanitizeSource(r.source_name ?? "", 200).replace(/"/g, "'");
+        const attrs = `n="${i + 1}" tier="${r.tier}" url="${attrUrl}" nome="${attrNome}"`;
         return `<fonte ${attrs}>\n${sanitizeSource(r.raw_content, PER_SOURCE_CHARS)}\n</fonte>`;
       })
       .join("\n\n");

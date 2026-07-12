@@ -150,7 +150,8 @@ JSON all'API Resend (non SMTP grezzo), che gestisce l'encoding degli header. Il 
   `& < > " '`.
 - **CSP** — `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`,
   `form-action 'self'`, **nessun `unsafe-inline`/`unsafe-eval`**, script a hash SHA-256.
-  Host esterni minimi e giustificati (Turnstile, api.github.com, ingest Sentry DE, cal).
+  Host esterni minimi e giustificati (Turnstile, ingest Sentry DE, cal; api.github.com
+  rimosso nel round 2: era il residuo di una feature eliminata).
   `frame-ancestors 'none'` in `_headers` (clickjacking coperto). `test:csp` valida gli
   hash sulla `dist/` reale, non sul sorgente.
 - **Header live** — probe `curl -sI` su `/it/`: HSTS `preload`, `X-Content-Type-Options`,
