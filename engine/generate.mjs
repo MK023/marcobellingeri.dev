@@ -9,7 +9,7 @@
 // nessun eval/shell, nessuna superficie d'attacco oltre la fetch all'API.
 //
 // Uso: doppler run -- node engine/generate.mjs <settore> [--angle "<focus>"]
-import { select, insert, update, remove, pg } from "./lib/supabase.mjs";
+import { select, insert, remove, pg } from "./lib/supabase.mjs";
 import { generateJson, countTokens } from "./lib/anthropic.mjs";
 import { sanitizeSource, sourceIsPoisoned, validateArticle, slugify } from "./lib/guardrails.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
@@ -85,12 +85,6 @@ Prosa naturale, senza segni di scrittura-AI:
 
 Produci esattamente un articolo. Non aggiungere campi, sezioni o contenuti non richiesti dallo schema.`;
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const assertUuid = (id) => {
-  if (!UUID.test(String(id))) throw new Error(`id non-UUID rifiutato: ${id}`);
-  return id;
-};
-
 function usage() {
   console.error('uso: doppler run -- node engine/generate.mjs <settore> [--angle "<focus>"]');
   process.exit(1);
@@ -102,19 +96,27 @@ async function main() {
   const angleIdx = process.argv.indexOf("--angle");
   const angle = angleIdx > -1 ? process.argv[angleIdx + 1] : null;
 
-  const period = new Date().toISOString().slice(0, 7); // YYYY-MM
-  const trace = startTrace("generate-issue", { tags: ["engine", "generate"], metadata: { sector, period } });
+  const trace = startTrace("generate-issue", { tags: ["engine", "generate"], metadata: { sector } });
 
   try {
-    // 1) fonti: solo signal 'verify' che superano la barra editoriale (Tier-1,
-    //    oppure Tier-2 indipendente), non ancora legati a un numero.
+    // 1) il numero: generiamo PER il numero 'draft' del settore (creato da ingest),
+    //    non ne creiamo uno nuovo. Un solo articolo per numero.
+    const [issue] = await select(
+      pg`issues?select=id,number,period&status=eq.draft&sector=eq.${sector}&order=number.desc&limit=1`,
+    );
+    if (!issue) throw new Error(`nessun numero 'draft' per il settore "${sector}" — esegui engine/ingest.mjs prima`);
+    const [already] = await select(pg`articles?select=slug&issue_id=eq.${issue.id}&limit=1`);
+    if (already) throw new Error(`il numero #${issue.number} ha già un articolo ("${already.slug}")`);
+
+    // 2) fonti: i signal 'verify' DEL NUMERO che superano la barra editoriale
+    //    (Tier-1, oppure Tier-2 indipendente). Il verify+tier è il passo umano.
     const rows = await select(
       pg`signals?select=id,source_url,source_name,tier,independent,relevance,raw_content` +
-        pg`&stage=eq.verify&issue_id=is.null&category=eq.${sector}` +
+        pg`&issue_id=eq.${issue.id}&stage=eq.verify` +
         pg`&or=(tier.eq.1,and(tier.eq.2,independent.is.true))` +
         pg`&order=relevance.desc.nullslast&limit=${String(MAX_SOURCES)}`,
     );
-    if (!rows.length) throw new Error(`nessun signal 'verify' Tier-1/2-indip libero per il settore "${sector}"`);
+    if (!rows.length) throw new Error(`numero #${issue.number}: nessun signal 'verify' Tier-1/2-indip — fai il verify pass (tagga i signal in Studio)`);
 
     // scarta a monte le fonti palesemente avvelenate (injection nel raw_content)
     const clean = rows.filter((r) => {
@@ -161,19 +163,10 @@ async function main() {
     const slug = slugify(data.en.title) || slugify(data.it.title);
     if (!slug) throw new Error("slug non derivabile dai titoli");
 
-    // 6) DB (solo ora): numero draft → attach fonti → articolo + traduzioni.
-    //    Se qualcosa fallisce a metà, rollback best-effort (il cascade pulisce).
-    const existing = await select(pg`issues?select=id&period=eq.${period}`);
-    if (existing.length) throw new Error(`esiste già un numero per il periodo ${period} (id ${existing[0].id})`);
-
-    const top = await select("issues?select=number&order=number.desc&limit=1");
-    const nextNumber = (top[0]?.number ?? 0) + 1;
-    const [issue] = await insert("issues", { number: nextNumber, period, sector, status: "draft" }, { returning: true });
-
+    // 6) DB: articolo + traduzioni PER il numero draft (già esistente da ingest).
+    //    L'articolo resta draft; il gate umano (Studio) + export lo portano live.
+    const [article] = await insert("articles", { issue_id: issue.id, slug }, { returning: true });
     try {
-      const ids = clean.map((r) => assertUuid(r.id));
-      await update("signals", `id=in.(${ids.join(",")})`, { issue_id: issue.id });
-      const [article] = await insert("articles", { issue_id: issue.id, slug }, { returning: true });
       // Mappatura Field Notes -> colonne legacy article_translations (ADR-0002):
       // approach->application, result->solution, lesson->body (Field Notes non ha
       // una colonna dedicata; `body`, altrimenti orfano, ospita la lezione).
@@ -191,11 +184,11 @@ async function main() {
         })),
       );
 
-      console.log(`\nOK · numero ${issue.number} (${period}) · articolo "${slug}" · status=draft`);
+      console.log(`\nOK · numero ${issue.number} (${issue.period}) · articolo "${slug}" · status=draft`);
       console.log(`token: in=${use.input_tokens ?? "?"} out=${use.output_tokens ?? "?"} cache_read=${use.cache_read_input_tokens ?? 0}`);
       console.log("prossimi passi: rivedi in Supabase Studio → engine/embed.mjs → approva (gate 0006).");
     } catch (e) {
-      await remove("issues", pg`id=eq.${issue.id}`).catch(() => {});
+      await remove("articles", pg`id=eq.${article.id}`).catch(() => {});
       throw e;
     }
   } finally {
