@@ -11,6 +11,10 @@ dist/
 # astro generated cache
 .astro/
 
+# report di coverage (rigenerabili: npm run test:coverage) e cache dello scanner Sonar
+coverage/
+.scannerwork/
+
 # graphify knowledge graph (rigenerabile: /graphify --update)
 graphify-out/
 
