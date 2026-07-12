@@ -80,7 +80,7 @@ Prosa naturale, senza segni di scrittura-AI:
 - NIENTE lessico da AI: "fondamentale", "cruciale", "testimonianza", "panorama", "ecosistema", "svela", "nel cuore di", "vibrante", "in continua evoluzione", "rivoluzionario". Preferisci verbi semplici e le forme "è/sono/ha".
 - NIENTE enfasi gonfiata, linguaggio promozionale, conclusioni generiche ottimiste, regola del tre forzata, participi presenti appiccicati per profondità finta, emoji, grassetto meccanico.
 - Virgolette dritte ("), mai curve. Varia la lunghezza delle frasi. Dettaglio concreto e verificabile prima della frase a effetto.
-- Nel "body" niente HTML attivo: mai <script>, <iframe>, attributi on..., javascript:.
+- In NESSUN campo (problem, approach, result, lesson) HTML attivo: mai <script>, <iframe>, attributi on..., javascript:.
 </stile>
 
 Produci esattamente un articolo. Non aggiungere campi, sezioni o contenuti non richiesti dallo schema.`;
@@ -131,7 +131,9 @@ async function main() {
     // 2) prompt: fonti sanificate e avvolte in delimitatori = DATO, mai istruzioni
     const sourcesBlock = clean
       .map((r, i) => {
-        const attrs = `n="${i + 1}" tier="${r.tier}" url="${r.source_url}" nome="${(r.source_name ?? "").replace(/"/g, "'")}"`;
+        // encodeURI: un url con `">` nel path romperebbe l'attributo (stessa
+        // classe del breakout </fonte>); il nome perde solo le virgolette.
+        const attrs = `n="${i + 1}" tier="${r.tier}" url="${encodeURI(r.source_url)}" nome="${(r.source_name ?? "").replace(/"/g, "'")}"`;
         return `<fonte ${attrs}>\n${sanitizeSource(r.raw_content, PER_SOURCE_CHARS)}\n</fonte>`;
       })
       .join("\n\n");
@@ -185,7 +187,11 @@ async function main() {
       console.log(`token: in=${use.input_tokens ?? "?"} out=${use.output_tokens ?? "?"} cache_read=${use.cache_read_input_tokens ?? 0}`);
       console.log("prossimi passi: rivedi in Supabase Studio → engine/embed.mjs → approva (gate 0006).");
     } catch (e) {
-      await remove("articles", pg`id=eq.${article.id}`).catch(() => {});
+      // Se anche il rollback fallisce resta un articolo orfano che occupa lo slug:
+      // va detto, altrimenti il prossimo run rifiuta senza spiegare il perché.
+      await remove("articles", pg`id=eq.${article.id}`).catch((re) => {
+        console.error(`generate: rollback fallito, articolo orfano id=${article.id} slug="${slug}" — rimuovilo a mano (${re.message})`);
+      });
       throw e;
     }
   } finally {

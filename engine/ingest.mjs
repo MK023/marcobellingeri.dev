@@ -53,8 +53,10 @@ export function mapResults(results, vertical) {
     try { url = new URL(r.url); } catch { continue; } // url malformato = rumore
     const domain = url.hostname.replace(/^www\./, "");
     const title = (r.title ?? r.source ?? "").trim();
-    const key = `${domain}|${title.toLowerCase().replace(/\s+/g, " ")}`;
-    if (title && seen.has(key)) continue;
+    // Senza titolo la chiave dominio+titolo collasserebbe risultati diversi dello
+    // stesso dominio: si ricade sull'URL. Il dedup scatta sempre, titolo o no.
+    const key = title ? `${domain}|${title.toLowerCase().replace(/\s+/g, " ")}` : url.href;
+    if (seen.has(key)) continue;
     seen.add(key);
     const garbage = title.length < 4 || /^\d+$/.test(title);
     const name = garbage ? (url.pathname.split("/").filter(Boolean).pop() ?? title) : title;
