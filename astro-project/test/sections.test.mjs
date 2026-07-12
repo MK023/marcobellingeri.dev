@@ -1,10 +1,7 @@
-// Il sommario, la palette comandi e il terminale derivano tutti da src/lib/sections.ts,
-// che nasconde l'Archivio finché public/data/issues/index.json è vuoto.
-//
-// Il rischio che questo test esiste per prendere non è "l'archivio si vede quando
-// non dovrebbe" — quello si nota subito. È il contrario: che il giorno in cui la
-// pipeline pubblica il primo numero, l'Archivio resti invisibile e nessuno se ne
-// accorga. Qui il sommario viene confrontato con l'indice reale, in entrambi i versi.
+// Il sommario, la palette comandi e il terminale derivano tutti da src/lib/sections.ts.
+// Questi test sorvegliano l'invariante che conta: ogni sezione dichiarata lì compare
+// nel sommario e nella pagina con lo stesso numero, senza salti. La sezione Magazine
+// è sempre presente; l'Archivio a fetch runtime è stato rimosso.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,29 +16,18 @@ const navEntries = (html) => {
   );
 };
 
-const issueCount = () =>
-  JSON.parse(readFileSync('public/data/issues/index.json', 'utf8')).issues.length;
-
 for (const page of PAGES) {
-  test(`${page}: l'Archivio compare se e solo se esiste un numero`, () => {
+  test(`${page}: la sezione Magazine compare nel sommario e nella pagina`, () => {
     const html = readFileSync(page, 'utf8');
-    const atteso = issueCount() > 0;
 
-    assert.equal(
-      navEntries(html).some((e) => e.id === 'archive'),
-      atteso,
-      atteso
-        ? 'index.json ha dei numeri ma il sommario non elenca l’Archivio.'
-        : 'index.json è vuoto ma il sommario elenca l’Archivio.',
+    assert.ok(
+      navEntries(html).some((e) => e.id === 'magazine'),
+      'il sommario deve elencare il Magazine.',
     );
-    assert.equal(
-      html.includes('id="archive"'),
-      atteso,
-      'La sezione Archivio e la voce di sommario devono comparire insieme.',
-    );
-    // `ls` nel terminale non deve mandare l'utente su un'ancora morta.
+    assert.ok(html.includes('id="magazine"'), 'la sezione Magazine deve essere renderizzata.');
+    // `ls` nel terminale non deve mandare l'utente sull'Archivio rimosso.
     const ls = html.match(/data-ls="([^"]*)"/)?.[1] ?? '';
-    assert.equal(ls.includes('archive/'), atteso, `\`ls\` elenca sezioni inesistenti: ${ls}`);
+    assert.ok(!ls.includes('archive/'), `\`ls\` elenca l'Archivio rimosso: ${ls}`);
   });
 
   test(`${page}: la numerazione del sommario non salta`, () => {
