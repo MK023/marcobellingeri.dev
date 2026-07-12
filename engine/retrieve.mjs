@@ -5,6 +5,7 @@
 // Uso: doppler run -- node engine/retrieve.mjs "<query>" [it|en]
 import { rpc } from "./lib/supabase.mjs";
 import { embed, toVector } from "./lib/voyage.mjs";
+import { logsafe } from "./lib/logsafe.mjs";
 
 const query = process.argv[2];
 const locale = process.argv[3] ?? null;
@@ -21,7 +22,10 @@ const rows = await rpc("match_article_chunks", {
   filter_locale: locale,
 });
 
-console.log(`retrieve: ${rows.length} match per "${query}"${locale ? ` (${locale})` : ""}.`);
+// anche rows.length va sanificato: rows arriva dalla risposta di rete della RPC,
+// e per il taint tracking un dato di rete resta sporco anche passando da .length.
+const conLocale = locale ? " (" + logsafe(locale) + ")" : "";
+console.log(`retrieve: ${logsafe(rows.length)} match per "${logsafe(query)}"${conLocale}.`);
 for (const m of rows) {
   console.log(`  ${m.similarity.toFixed(3)} [${m.locale}] ${m.content.slice(0, 80).replace(/\s+/g, " ")}…`);
 }

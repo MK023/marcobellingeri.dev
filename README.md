@@ -5,6 +5,8 @@ Astro statico, bilingue EN/IT, con un archivio mensile generato da una pipeline 
 
 [![Site CI](https://github.com/MK023/marcobellingeri.dev/actions/workflows/site-ci.yml/badge.svg)](https://github.com/MK023/marcobellingeri.dev/actions/workflows/site-ci.yml)
 [![Backend CI](https://github.com/MK023/marcobellingeri.dev/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/MK023/marcobellingeri.dev/actions/workflows/backend-ci.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=MK023_marcobellingeri.dev&metric=alert_status)](https://sonarcloud.io/summary/overall?id=MK023_marcobellingeri.dev)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=MK023_marcobellingeri.dev&metric=coverage)](https://sonarcloud.io/component_measures?id=MK023_marcobellingeri.dev&metric=coverage)
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
 
 Il sito fa l'audit di sé stesso: la sezione *Security* non dichiara gli header di
@@ -64,6 +66,11 @@ build, perché è l'unico posto dove gli hash sono calcolabili.
 
 Altre reti:
 
+- **Quality gate SonarQube Cloud sulla strada del deploy**: in `deploy.yml` il job
+  di analisi precede la pubblicazione (`sonar.qualitygate.wait=true`) — gate rosso,
+  niente produzione. Sulle PR l'analisi arriva come check, quando la modifica si
+  può ancora discutere. La coverage la calcola il test runner di Node, nessuna
+  dipendenza in più.
 - **gitleaks** sull'intera storia a ogni push su `main`, e in pre-commit locale.
 - **Push protection** del secret scanning: GitHub rifiuta un push che contiene un
   segreto, invece di scoprirlo dopo.

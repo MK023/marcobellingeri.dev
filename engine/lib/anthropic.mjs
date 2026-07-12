@@ -5,6 +5,8 @@
 // Sicurezza: niente eval/shell; il body è JSON; l'API key vive solo nell'header
 // e non compare in log né errori. Controllo su rate-limit e retry: 429 onora
 // Retry-After, 5xx/rete → backoff esponenziale, 4xx (400/401/403) → stop subito.
+import { randomInt } from "node:crypto";
+
 const API = "https://api.anthropic.com/v1";
 const VERSION = "2023-06-01";
 
@@ -15,8 +17,9 @@ function key() {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// backoff con jitter, tetto 30s
-const backoff = (attempt) => Math.min(30_000, 1000 * 2 ** attempt) + Math.floor(Math.random() * 500);
+// backoff con jitter, tetto 30s. randomInt e non Math.random (S2245): per un
+// jitter il CSPRNG non servirebbe, ma costa uguale e il finding sparisce.
+const backoff = (attempt) => Math.min(30_000, 1000 * 2 ** attempt) + randomInt(500);
 
 // POST con retry controllato. Ritenta solo ciò che ha senso ritentare.
 async function post(path, body, { maxRetries = 4, timeoutMs = 300_000 } = {}) {

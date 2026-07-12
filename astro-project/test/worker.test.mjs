@@ -289,3 +289,89 @@ test('contatto: TURNSTILE_SECRET_KEY mancante = fail-open ma segnalato a Sentry'
     globalThis.__SEGNALA_SENTRY__ = hookOriginale;
   }
 });
+
+// ---- ultimi rami: i casi che la coverage dice nessuno ha mai percorso ----
+
+test('contatto: POST senza body = 400, non un crash sul reader', async () => {
+  // leggiBodyLimitato deve gestire request.body null: '' → JSON.parse fallisce → 400.
+  const r = await gestisciContatto(
+    new Request('https://marcobellingeri.dev/api/contact', { method: 'POST' }),
+    { RESEND_API_KEY: 'test' },
+  );
+  assert.equal(r.status, 400);
+});
+
+test('contatto: body non-JSON = 400', async () => {
+  const r = await gestisciContatto(
+    new Request('https://marcobellingeri.dev/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: 'non sono json',
+    }),
+    { RESEND_API_KEY: 'test' },
+  );
+  assert.equal(r.status, 400);
+});
+
+test('contatto: senza CF-Connecting-IP il rate limit conta su "sconosciuto"', async () => {
+  // Il fallback dell'IP non deve far saltare il limiter: chiave di riserva, stesso conteggio.
+  let chiave = null;
+  const r = await gestisciContatto(
+    new Request('https://marcobellingeri.dev/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' }),
+    }),
+    { CONTACT_LIMITER: { limit: async ({ key }) => { chiave = key; return { success: false }; } } },
+  );
+  assert.equal(r.status, 429);
+  assert.equal(chiave, 'sconosciuto');
+});
+
+test('contatto: campo turnstile assente col secret configurato = 403, non un crash', async () => {
+  // String(dati.turnstile ?? ''): il token mancante diventa stringa vuota e la
+  // verifica fallisce pulita, senza TypeError su undefined.
+  const originale = globalThis.fetch;
+  let inviatoAVerifica = null;
+  globalThis.fetch = async (u, opt) => {
+    if (String(u).includes('siteverify')) {
+      inviatoAVerifica = JSON.parse(opt.body).response;
+      return new Response(JSON.stringify({ success: false }), { status: 200 });
+    }
+    throw new Error('Resend non deve essere chiamato con Turnstile fallito');
+  };
+  try {
+    const r = await postContatto(
+      { email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' },
+      { RESEND_API_KEY: 'test', TURNSTILE_SECRET_KEY: 'secret' },
+    );
+    assert.equal(r.status, 403);
+    assert.equal(inviatoAVerifica, '', 'il token mancante deve viaggiare come stringa vuota');
+  } finally { globalThis.fetch = originale; }
+});
+
+test('contatto: risposta Turnstile non-JSON = 403 (il .catch non lascia passare)', async () => {
+  // Se siteverify risponde spazzatura, esito = {success:false}: fallire chiuso, non aperto.
+  const originale = globalThis.fetch;
+  globalThis.fetch = async (u) => {
+    if (String(u).includes('siteverify')) return new Response('spazzatura non json', { status: 200 });
+    throw new Error('Resend non deve essere chiamato');
+  };
+  try {
+    const r = await postContatto(
+      { email: 'ok@x.com', brief: 'un messaggio abbastanza lungo', turnstile: 'tok' },
+      { RESEND_API_KEY: 'test', TURNSTILE_SECRET_KEY: 'secret' },
+    );
+    assert.equal(r.status, 403);
+  } finally { globalThis.fetch = originale; }
+});
+
+test('/api/contact è instradato dal fetch del Worker, non solo chiamato diretto', async () => {
+  // La riga di routing in fetch() è l'unico ponte tra il Worker e il form: se
+  // sparisse, i test diretti su gestisciContatto resterebbero verdi e il form morto.
+  const r = await worker.fetch(
+    Object.assign(new Request('https://marcobellingeri.dev/api/contact'), { cf: {} }),
+    asset,
+  );
+  assert.equal(r.status, 405, 'GET instradato a gestisciContatto = 405');
+});

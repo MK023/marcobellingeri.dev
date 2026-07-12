@@ -8,6 +8,7 @@
 import { select, insert, pg } from "./lib/supabase.mjs";
 import { chunk, embed, toVector } from "./lib/voyage.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
+import { logsafe } from "./lib/logsafe.mjs";
 
 const { FIRECRAWL_API_KEY } = process.env;
 
@@ -38,7 +39,8 @@ if (limIdx > -1 && (!Number.isInteger(limit) || limit < 1)) {
 const sources = await select(
   pg`competitor_sources?select=id,name,url&active=eq.true&order=name` + (limit ? pg`&limit=${limit}` : ""),
 );
-console.log(`competitors: ${sources.length} fonti attive${limit ? ` (--limit ${limit})` : ""}.`);
+const conLimite = limit ? " (--limit " + logsafe(limit) + ")" : "";
+console.log(`competitors: ${logsafe(sources.length)} fonti attive${conLimite}.`);
 const trace = startTrace("competitor-radar", { metadata: { sources: sources.length } });
 
 for (const s of sources) {

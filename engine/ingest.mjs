@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import { select, insert, pg } from "./lib/supabase.mjs";
 import { search } from "./lib/valyu.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
+import { logsafe } from "./lib/logsafe.mjs";
 
 // L'angolo del magazine: IA utile APPLICATA sul lavoro (adozione, pratica,
 // risultati concreti), non governance/regolamentazione — che aveva reso il #1
@@ -122,9 +123,9 @@ async function main() {
     const nums = await select("issues?select=number");
     const number = nums.reduce((m, i) => Math.max(m, i.number), 0) + 1;
     [issue] = await insert("issues", [{ number, period, sector: vertical, status: "draft" }], { returning: true });
-    console.log(`ingest: creato numero #${number} (${period}, ${vertical}) draft.`);
+    console.log(`ingest: creato numero #${logsafe(number)} (${period}, ${logsafe(vertical)}) draft.`);
   } else {
-    console.log(`ingest: numero esistente per ${period} (status=${issue.status}).`);
+    console.log(`ingest: numero esistente per ${period} (status=${logsafe(issue.status)}).`);
   }
 
   const seen = (await select(pg`signals?select=source_url&issue_id=eq.${issue.id}`)).map((s) => s.source_url);
@@ -132,7 +133,7 @@ async function main() {
   await trace.span("signals-insert",
     { input: { mapped: mapped.length, dejaVu: seen.length }, summarize: () => ({ fresh: fresh.length, issue: issue.number }) },
     async () => { if (fresh.length) await insert("signals", fresh); });
-  console.log(`ingest: ${fresh.length} nuovi candidati-prova (discovery) su #${issue.number}. Verify+tier = passo editoriale.`);
+  console.log(`ingest: ${fresh.length} nuovi candidati-prova (discovery) su #${logsafe(issue.number)}. Verify+tier = passo editoriale.`);
   await trace.flush();
 }
 
