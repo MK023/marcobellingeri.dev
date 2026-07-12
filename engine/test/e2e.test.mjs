@@ -43,8 +43,8 @@ test("e2e: il publish gate morde a ogni anello mancante, poi la catena passa", {
     // 4) articolo + traduzioni -> ma chunks non embeddati
     const [art] = await insert("articles", [{ issue_id: issue.id, slug: "__e2e__" }], { returning: true });
     await insert("article_translations", [
-      { article_id: art.id, locale: "it", title: "T", problem: "p", application: "a", solution: "s", body: "Il gate di pubblicazione blocca i numeri senza prova verificata ed embedding." },
-      { article_id: art.id, locale: "en", title: "T", problem: "p", application: "a", solution: "s", body: "The publication gate blocks issues lacking verified proof and embeddings." },
+      { article_id: art.id, locale: "it", title: "T", problem: "p", approach: "a", result: "s", lesson: "Il gate di pubblicazione blocca i numeri senza prova verificata ed embedding." },
+      { article_id: art.id, locale: "en", title: "T", problem: "p", approach: "a", result: "s", lesson: "The publication gate blocks issues lacking verified proof and embeddings." },
     ]);
     await assert.rejects(
       () => update("issues", `id=eq.${issue.id}`, { status: "published" }),
@@ -53,10 +53,10 @@ test("e2e: il publish gate morde a ogni anello mancante, poi la catena passa", {
     );
 
     // 5) embed reale (chunk -> voyage -> insert)
-    const trans = await select(`article_translations?article_id=eq.${art.id}&select=locale,body`);
+    const trans = await select(`article_translations?article_id=eq.${art.id}&select=locale,lesson`);
     const rows = [];
-    for (const { locale, body } of trans) {
-      chunk(body).forEach((content, i) => rows.push({ article_id: art.id, locale, chunk_index: i, content }));
+    for (const { locale, lesson } of trans) {
+      chunk(lesson).forEach((content, i) => rows.push({ article_id: art.id, locale, chunk_index: i, content }));
     }
     const vecs = await embed(rows.map((r) => r.content));
     rows.forEach((r, i) => { r.embedding = toVector(vecs[i]); });

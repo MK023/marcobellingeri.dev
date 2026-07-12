@@ -11,12 +11,12 @@ const issues = (await getCollection('magazine', (c) => c.data.lang === lang)).so
 
 const copy = {
   it: {
-    intro: "Un caso al mese di IA applicata sul lavoro nei miei ambiti (sicurezza, cloud, DevSecOps, ingegneria del software). Generato da una pipeline, verificato sulle fonti. Il primo è il punto zero: le idee migliorano nel tempo.",
+    intro: "Ogni mese un caso vero di IA applicata sul lavoro: il problema, la scelta fatta, cosa è cambiato. Lo scrive una pipeline, controllato sulle fonti. Il primo è il punto zero: le idee migliorano strada facendo.",
     toggle: 'LEGGI',
     problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA',
   },
   en: {
-    intro: 'One case a month on useful AI at work in my own fields (security, cloud, DevSecOps, software engineering). Written by a pipeline, checked against the sources. The first one is point zero: the ideas get better over time.',
+    intro: 'One real case a month of AI put to work: the problem, the call made, what changed. A pipeline writes it, checked against the sources. The first one is point zero: ideas get better as you go.',
     toggle: 'READ',
     problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED',
   },

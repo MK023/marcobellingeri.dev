@@ -6,9 +6,6 @@
 // Field Notes resta separato e personale. Gestisce anche i numeri già 'published'
 // (ri-esportazione idempotente del contenuto, senza ri-transizione di stato).
 //
-// Mappatura inversa rispetto a generate.mjs (colonne article_translations legacy):
-// application->approach, solution->result, body->lesson.
-//
 // Sicurezza: ri-screening di ogni campo testo PRIMA di scriverlo nel repo — ultimo
 // cancello prima che il contenuto entri nel codice del sito. I valori finiscono nel
 // frontmatter come scalari JSON (YAML è superset): virgolette/newline non rompono
@@ -33,7 +30,7 @@ const monthLabel = (period, bcp47) => {
   return m.charAt(0).toUpperCase() + m.slice(1);
 };
 
-// DB (colonne legacy) + meta del numero -> forma magazine.
+// DB + meta del numero -> forma magazine.
 function toIssue(tr, meta, locale) {
   const o = {
     lang: locale,
@@ -43,9 +40,9 @@ function toIssue(tr, meta, locale) {
     date: `${meta.period}-01`,
     title: tr.title,
     problem: tr.problem,
-    approach: tr.application,
-    result: tr.solution,
-    lesson: tr.body ?? "",
+    approach: tr.approach,
+    result: tr.result,
+    lesson: tr.lesson ?? "",
   };
   if (typeof meta.stat === "number") {
     o.stat = meta.stat;
@@ -96,7 +93,7 @@ async function main() {
       if (!article) { console.warn(`numero ${issue.number}: nessun articolo, salto`); continue; }
       if (!SLUG.test(article.slug)) throw new Error(`numero ${issue.number}: slug non sicuro (${article.slug})`);
 
-      const trs = await select(pg`article_translations?select=locale,title,problem,application,solution,body&article_id=eq.${article.id}`);
+      const trs = await select(pg`article_translations?select=locale,title,problem,approach,result,lesson&article_id=eq.${article.id}`);
       const byLoc = Object.fromEntries(trs.map((t) => [t.locale, t]));
       if (!byLoc.it || !byLoc.en) throw new Error(`numero ${issue.number}: mancano le traduzioni it+en`);
 
@@ -143,7 +140,7 @@ if (process.argv[2] === "--selfcheck") {
   assert.equal(monthLabel("2026-07", "it-IT"), "Luglio 2026");
   assert.equal(monthLabel("2026-07", "en-US"), "July 2026");
   const o = toIssue(
-    { title: "T", problem: "P", application: "A", solution: "R", body: "L" },
+    { title: "T", problem: "P", approach: "A", result: "R", lesson: "L" },
     { number: 1, sector: "security", period: "2026-07", stat: null, statSuffix: null },
     "it",
   );
