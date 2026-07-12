@@ -3,6 +3,8 @@ lang: "en"
 month: "July 2026"
 date: 2026-07-01
 title: "Redis refactor — production system"
+stat: 41
+statSuffix: "×"
 problem: >
   The system's critical query was slow under load: the Redis cache was
   invalidated far more often than needed, wasting most of the caching benefit.
