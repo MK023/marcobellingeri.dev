@@ -54,6 +54,13 @@ jobs:
         working-directory: astro-project
         run: npm ci
 
+      # I test di astro-project leggono dist/ (sections, csp): senza build muoiono
+      # con ENOENT su un runner pulito. Qui niente SENTRY_AUTH_TOKEN: senza token
+      # l'upload delle source map resta spento, e per la coverage va benissimo.
+      - name: Build
+        working-directory: astro-project
+        run: npm run build
+
       - name: Coverage
         run: |
           npm run test:coverage --prefix astro-project

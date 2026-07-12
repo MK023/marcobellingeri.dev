@@ -11,6 +11,9 @@
 [extend]
 useDefault = true
 
-[[allowlists]]
+# Forma singolare `[allowlist]`, non `[[allowlists]]`: la seconda è la sintassi nuova
+# e il binario più vecchio dentro gitleaks-action la ignora in silenzio — il commit
+# passava in locale e la CI restava rossa. Questa la capiscono entrambi.
+[allowlist]
 description = "La project key di SonarQube Cloud è pubblica, non è una API key"
 regexes = ['''MK023_marcobellingeri\.dev''']

@@ -64,6 +64,10 @@ jobs:
       - name: Installa
         working-directory: astro-project
         run: npm ci
+      # I test di astro-project leggono dist/: senza build muoiono con ENOENT.
+      - name: Build
+        working-directory: astro-project
+        run: npm run build
       - name: Coverage
         run: |
           npm run test:coverage --prefix astro-project
