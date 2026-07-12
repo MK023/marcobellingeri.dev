@@ -22,7 +22,7 @@ Risponderò entro **72 ore** e lavoreremo insieme per risolverla prima di qualsi
 
 ## Audit di sicurezza
 
-Il progetto è sottoposto ad audit periodici. L'ultimo report è in [SECURITY_AUDIT.md](SECURITY_AUDIT.md) (2026-07-11): nessun finding Critical/High/Medium, i Low identificati sono tutti risolti e in produzione.
+Il progetto è sottoposto ad audit periodici. L'ultimo audit (round 2, 2026-07-12) ha trovato 1 High, 5 Medium e alcuni Low: tutti gli azionabili sono stati corretti nella stessa giornata. Lo storico è in [SECURITY_AUDIT.md](SECURITY_AUDIT.md).
 
 ## Reporting a Vulnerability
 
@@ -40,4 +40,4 @@ I will respond within **72 hours** and work with you to resolve it before any pu
 
 ## Security Audit
 
-This project undergoes periodic audits. The latest report is in [SECURITY_AUDIT.md](SECURITY_AUDIT.md) (2026-07-11): no Critical/High/Medium findings, all identified Low findings resolved and shipped to production.
+This project undergoes periodic audits. The latest audit (round 2, 2026-07-12) found 1 High, 5 Medium and a few Low findings: all actionable items were fixed the same day. History lives in [SECURITY_AUDIT.md](SECURITY_AUDIT.md).

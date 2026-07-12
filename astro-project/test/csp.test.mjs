@@ -14,7 +14,15 @@ import { readFileSync } from 'node:fs';
 
 // La 404 è servita da Cloudflare per ogni percorso inesistente: è la pagina che un
 // visitatore sbagliato vede per prima, e vale la stessa CSP delle altre.
-const PAGES = ['dist/it/index.html', 'dist/en/index.html', 'dist/404.html'];
+// Le privacy vanno coperte anche loro: un inline specifico di pagina andrebbe
+// live senza hash con i test verdi, e sarebbe la pagina legale a rompersi.
+const PAGES = [
+  'dist/it/index.html',
+  'dist/en/index.html',
+  'dist/404.html',
+  'dist/it/privacy/index.html',
+  'dist/en/privacy/index.html',
+];
 
 const sha256 = (s) => 'sha256-' + createHash('sha256').update(s).digest('base64');
 const cspOf = (html) =>
@@ -48,6 +56,14 @@ for (const page of PAGES) {
     const html = readFileSync(page, 'utf8');
     const found = [...html.matchAll(/\sstyle="([^"]*)"/g)].map((m) => m[1]);
     assert.deepEqual(found, [], `Sposta questi stili in global.css: ${found.join(' | ')}`);
+  });
+
+  test(`${page}: nessun handler inline on…= (richiederebbe 'unsafe-hashes')`, () => {
+    // Stessa classe di regressione degli style=: un onclick sfuggito passerebbe
+    // la build e morirebbe solo in produzione sotto CSP.
+    const html = readFileSync(page, 'utf8');
+    const found = [...html.matchAll(/\son(?:click|error|load|mouseover|focus|submit|input|change)="([^"]*)"/gi)].map((m) => m[0].trim());
+    assert.deepEqual(found, [], `Sposta questi handler in uno <script>: ${found.join(' | ')}`);
   });
 }
 

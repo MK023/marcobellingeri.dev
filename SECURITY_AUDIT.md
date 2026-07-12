@@ -4,11 +4,18 @@
 (frontend Astro, Worker Cloudflare, CI/CD, engine Node, Supabase, config).
 **Modalità:** sola lettura + build servita in locale + probe read-only sugli header
 live (`curl -sI`). Nessuna modifica al codice, nessun POST/carico verso la produzione.
-**Nota:** questo file NON è committato — è per la sola valutazione di Marco.
+**Nota:** file committato e pubblico per scelta (SECURITY.md lo linka): la postura
+si dichiara, non si nasconde.
 
 **Aggiornamento 2026-07-11 (post-remediation):** **tutti e 3 i Low risolti** e in
 produzione (PR #34, #35, #36). Verificato dal vivo che l'HSTS ora compare anche sulle
 risposte del Worker. Restano solo gli Info (nessuno actionable). Dettaglio nelle sezioni.
+
+**Aggiornamento 2026-07-12 (audit round 2):** un secondo audit sull'intera repo
+(engine incluso, entrato in scope dopo questo report) ha trovato 1 High (dati
+personali hardcodati in `scripts/genera-cv.py`, ora sostituiti da digest sha256 —
+il dato resta nella history), 5 Medium e una coda di Low/Info: **tutti gli
+azionabili corretti nella stessa PR**. Dettagli nei commit dell'audit round 2.
 
 ---
 
@@ -143,7 +150,8 @@ JSON all'API Resend (non SMTP grezzo), che gestisce l'encoding degli header. Il 
   `& < > " '`.
 - **CSP** — `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`,
   `form-action 'self'`, **nessun `unsafe-inline`/`unsafe-eval`**, script a hash SHA-256.
-  Host esterni minimi e giustificati (Turnstile, api.github.com, ingest Sentry DE, cal).
+  Host esterni minimi e giustificati (Turnstile, ingest Sentry DE, cal; api.github.com
+  rimosso nel round 2: era il residuo di una feature eliminata).
   `frame-ancestors 'none'` in `_headers` (clickjacking coperto). `test:csp` valida gli
   hash sulla `dist/` reale, non sul sorgente.
 - **Header live** — probe `curl -sI` su `/it/`: HSTS `preload`, `X-Content-Type-Options`,

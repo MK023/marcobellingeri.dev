@@ -30,7 +30,6 @@ const copy = {
     thirdH: 'Third-party services',
     third: [
       'Cloudflare (hosting/CDN): serves the site and may process technical logs.',
-      'GitHub API (client-side): public repository stats are fetched in your browser; no personal data is sent.',
       'Cal.eu (booking): the calendar is embedded only after you explicitly click to load it. Until then your browser never contacts Cal.eu. Once loaded, booking data is processed by Cal.eu under its own policy.',
       'Resend (contact form email): when you submit the contact form, the name, email and message you provide are sent through Resend (and its sub-processor AWS SES) to deliver your request to the controller. Legal basis: legitimate interest in replying to you. Not stored on the site.',
       `Cloudflare Turnstile (contact form anti-spam): the form is protected against bots by Cloudflare Turnstile, which processes your IP address and browser signals. It is privacy-preserving (no cross-site tracking, no advertising data) and strictly necessary for security, so no consent is required. Details: ${TURNSTILE_POLICY}`,
@@ -41,7 +40,7 @@ const copy = {
     ai: 'The archive’s “monthly issue” is generated with AI assistance (Anthropic/Claude) and always reviewed by a human before publishing. Source material is limited to public pages, respecting robots.txt and terms of service.',
     transferH: 'Non-EU transfers',
     transfer:
-      'Some providers (Anthropic, GitHub, Cloudflare, Resend/AWS) are US-based. Transfers rely on their respective safeguards (Standard Contractual Clauses / adequacy frameworks).',
+      'Some providers (Anthropic, Cloudflare, Resend/AWS) are US-based. Transfers rely on their respective safeguards (Standard Contractual Clauses / adequacy frameworks).',
     rightsH: 'Your rights',
     rights: `Under the GDPR you may request access, rectification, erasure, restriction, portability, or object to processing. Write to ${CONTATTO}.`,
     updated: `Last updated: ${UPDATED}`,
@@ -60,7 +59,6 @@ const copy = {
     thirdH: 'Servizi di terze parti',
     third: [
       'Cloudflare (hosting/CDN): serve il sito e può trattare log tecnici.',
-      'GitHub API (lato client): le statistiche pubbliche dei repository sono recuperate nel tuo browser; nessun dato personale viene inviato.',
       'Cal.eu (prenotazioni): il calendario viene incorporato solo dopo un tuo clic esplicito. Fino ad allora il browser non contatta mai Cal.eu. Una volta caricato, i dati di prenotazione sono trattati da Cal.eu secondo la sua policy.',
       'Resend (email del form di contatto): quando invii il form, il nome, l’email e il messaggio che fornisci passano da Resend (e dal suo sub-responsabile AWS SES) per recapitare la tua richiesta al titolare. Base giuridica: legittimo interesse a risponderti. Non conservati sul sito.',
       `Cloudflare Turnstile (anti-spam del form): il modulo è protetto dai bot tramite Cloudflare Turnstile, che tratta il tuo indirizzo IP e i segnali del browser. È rispettoso della privacy (nessun tracciamento cross-site, nessun dato pubblicitario) e strettamente necessario alla sicurezza, quindi non richiede consenso. Dettagli: ${TURNSTILE_POLICY}`,
@@ -71,7 +69,7 @@ const copy = {
     ai: 'Il “numero mensile” dell’archivio è generato con assistenza AI (Anthropic/Claude) e sempre revisionato da una persona prima della pubblicazione. Le fonti sono limitate a pagine pubbliche, nel rispetto di robots.txt e termini di servizio.',
     transferH: 'Trasferimenti extra-UE',
     transfer:
-      'Alcuni fornitori (Anthropic, GitHub, Cloudflare, Resend/AWS) hanno sede negli USA. I trasferimenti si basano sulle rispettive garanzie (Clausole Contrattuali Standard / framework di adeguatezza).',
+      'Alcuni fornitori (Anthropic, Cloudflare, Resend/AWS) hanno sede negli USA. I trasferimenti si basano sulle rispettive garanzie (Clausole Contrattuali Standard / framework di adeguatezza).',
     rightsH: 'I tuoi diritti',
     rights: `Ai sensi del GDPR puoi richiedere accesso, rettifica, cancellazione, limitazione, portabilità od opporti al trattamento. Scrivi a ${CONTATTO}.`,
     updated: `Ultimo aggiornamento: ${UPDATED}`,

@@ -20,7 +20,11 @@ async function scrape(url) {
   });
   if (!r.ok) throw new Error(`firecrawl ${r.status}: ${await r.text()}`);
   const j = await r.json();
-  return { markdown: j.data?.markdown ?? "", title: j.data?.metadata?.title ?? null, url: j.data?.metadata?.url ?? url };
+  // Cap sul markdown: una pagina anomala non deve gonfiare la riga snapshot né
+  // moltiplicare i chunk embeddati (ogni chunk = costo Voyage). 30k char ≈ 30
+  // chunk, largo per qualsiasi pagina reale con onlyMainContent.
+  const markdown = (j.data?.markdown ?? "").slice(0, 30_000);
+  return { markdown, title: j.data?.metadata?.title ?? null, url: j.data?.metadata?.url ?? url };
 }
 
 // --limit N: scrape solo le prime N fonti attive (test/ops, controllo costo).
