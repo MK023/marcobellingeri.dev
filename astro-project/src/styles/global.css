@@ -1156,8 +1156,11 @@
   .mag-summary{
     display:grid; grid-template-columns:1fr; gap:20px;
     padding:36px 0;
-    cursor:pointer;
     list-style:none;               /* rimuove il marker nativo (Firefox) */
+    /* niente cursor qui: lo mette la regola custom-cursor (day/night), dove
+       .mag-summary e' gia' in lista. Metterlo qui, DOPO quel blocco, lo
+       sovrascriverebbe per ordine a pari specificita' e di giorno tornerebbe
+       la manina invece del pennino. */
   }
   .mag-item:first-child .mag-summary{ padding-top:0; }
   .mag-summary::-webkit-details-marker{ display:none; }  /* marker nativo (Safari/Chrome) */
