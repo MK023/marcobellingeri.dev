@@ -3,7 +3,7 @@ name: Backend CI
 # Tutto automatico, niente step manuali (scelta 2026-07-07):
 #  - test (unit+integration, zero secret) su PR e push main
 #  - gitleaks full-history su PR e push main
-#  - db-rebuild: migration 0001->0007 + seed su Postgres+pgvector EFFIMERO,
+#  - db-rebuild: TUTTE le migration + seed su Postgres+pgvector EFFIMERO,
 #    con assert su schema e publish gate -> "ricostruibile da zero" verificato a ogni push
 #  - e2e (secrets, DB live, dati sintetici+teardown) SOLO su push main, mai su PR
 # Nessun filtro per path, di proposito. Questi job sono check obbligatori nel
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Bootstrap ambiente (schema extensions + ruoli Supabase)
         run: psql -v ON_ERROR_STOP=1 -f supabase/ci/bootstrap.sql
-      - name: Applica migration 0001 -> 0007
+      - name: Applica tutte le migration in ordine
         run: |
           for f in supabase/migrations/*.sql; do
             echo "== $f"
