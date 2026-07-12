@@ -1,0 +1,19 @@
+# Configurazione gitleaks del repo. Prima non esisteva: giravano le regole di
+# default, e vanno tenute tutte — qui si estendono, non si sostituiscono.
+#
+# L'unica eccezione è la project key di SonarQube. Ha l'entropia di una chiave API
+# e la regola generica `generic-api-key` la segnala, ma non è un segreto: è
+# l'identificatore pubblico del progetto, sta nell'URL e nei badge. Il segreto vero
+# è SONAR_TOKEN, che nasce in Doppler, arriva a GitHub come secret e non tocca il repo.
+#
+# L'eccezione è sulla stringa esatta, non sul file: se domani in
+# sonar-project.properties finisse per sbaglio un token, gitleaks lo prenderebbe lo stesso.
+[extend]
+useDefault = true
+
+# Forma singolare `[allowlist]`, non `[[allowlists]]`: la seconda è la sintassi nuova
+# e il binario più vecchio dentro gitleaks-action la ignora in silenzio — il commit
+# passava in locale e la CI restava rossa. Questa la capiscono entrambi.
+[allowlist]
+description = "La project key di SonarQube Cloud è pubblica, non è una API key"
+regexes = ['''MK023_marcobellingeri\.dev''']

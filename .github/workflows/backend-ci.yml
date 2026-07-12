@@ -59,6 +59,10 @@ jobs:
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # L'action non pesca .gitleaks.toml da sola: senza questa riga gira con le
+          # regole di default e ignora la nostra unica eccezione (la project key di
+          # Sonar, che non e' un segreto). L'hook pre-commit invece lo trova da se'.
+          GITLEAKS_CONFIG: .gitleaks.toml
 
   db-rebuild:
     runs-on: ubuntu-latest
