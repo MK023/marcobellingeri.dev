@@ -1,0 +1,103 @@
+---
+import { numeroSezione } from '../lib/sections';
+import { getCollection } from 'astro:content';
+import { defaultLang, type Lang } from '../i18n/ui';
+
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+
+const issues = (await getCollection('magazine', (c) => c.data.lang === lang)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+const copy = {
+  it: {
+    intro: "Un caso al mese di IA applicata sul lavoro nei miei ambiti (sicurezza, cloud, DevSecOps, ingegneria del software). Generato da una pipeline, verificato sulle fonti. Il primo è il punto zero: le idee migliorano nel tempo.",
+    toggle: 'LEGGI',
+    problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA',
+  },
+  en: {
+    intro: 'One case a month on useful AI at work in my own fields (security, cloud, DevSecOps, software engineering). Written by a pipeline, checked against the sources. The first one is point zero: the ideas get better over time.',
+    toggle: 'READ',
+    problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED',
+  },
+}[lang];
+---
+
+<section id="magazine" class="reveal">
+  <div class="section-head">
+    <span class="num mono">{numeroSezione('magazine')}</span>
+    <h2 class="display">Magazine</h2>
+  </div>
+  <p class="case-archive-note">{copy.intro}</p>
+  <div class="mag-list">
+    {issues.map((issue, i) => (
+      <details class="mag-item">
+        <summary class="mag-summary">
+          <div class="mag-stat-col">
+            {issue.data.stat != null ? (
+              <div
+                class="mag-stat display"
+                id={`mag-stat-${i}`}
+                data-target={issue.data.stat}
+                data-suffix={issue.data.statSuffix ?? ''}
+              >
+                0{issue.data.statSuffix ?? ''}
+              </div>
+            ) : (
+              <div class="mag-number display">N.{String(issue.data.number).padStart(2, '0')}</div>
+            )}
+            <span class="mag-cred mono">{issue.data.month.toUpperCase()} · {issue.data.sector}</span>
+          </div>
+          <div class="mag-summary-main">
+            <h3 class="mag-title">{issue.data.title}</h3>
+            <span class="mag-toggle mono">{copy.toggle}</span>
+          </div>
+        </summary>
+        <div class="mag-body">
+          <div class="case-block"><span class="label mono">{copy.problem}</span><p>{issue.data.problem}</p></div>
+          <div class="case-block"><span class="label mono">{copy.approach}</span><p>{issue.data.approach}</p></div>
+          <div class="case-block"><span class="label mono">{copy.result}</span><p>{issue.data.result}</p></div>
+          <div class="case-block"><span class="label mono">{copy.lesson}</span><p>{issue.data.lesson}</p></div>
+        </div>
+      </details>
+    ))}
+  </div>
+</section>
+
+<script>
+  // Count-up per la statistica del numero, appena la tile entra in viewport.
+  // Query distinta (.mag-stat) per non collidere con .big-stat di Field Notes.
+  // Nuovo numero al mese = aggiungi la coppia it/ + en/ in src/content/magazine/.
+  document.querySelectorAll<HTMLElement>('.mag-stat[data-target]').forEach((el) => {
+    const target = parseInt(el.dataset.target || '0', 10);
+    const suffix = el.dataset.suffix || '';
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = target + suffix;
+      return;
+    }
+
+    let started = false;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !started) {
+            started = true;
+            const duration = 1100;
+            const startTime = performance.now();
+            function tick(now: number) {
+              const progress = Math.min((now - startTime) / duration, 1);
+              const eased = 1 - Math.pow(1 - progress, 3);
+              el.textContent = Math.round(eased * target) + suffix;
+              if (progress < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+            io.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+    io.observe(el);
+  });
+</script>
