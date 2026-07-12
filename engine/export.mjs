@@ -85,7 +85,10 @@ async function main() {
 
   try {
     const base = "issues?select=id,number,period,sector,status&status=in.(approved,published)&order=number.asc";
-    const issues = await select(period ? pg`${base}&period=eq.${period}` : base);
+    // base FUORI dal tag: pg`` codifica ogni valore interpolato, e una querystring
+    // passata come valore diventerebbe issues%3Fselect%3D... → 404 PostgREST.
+    // Stesso pattern di competitors.mjs: si interpola solo il dato, mai la query.
+    const issues = await select(period ? base + pg`&period=eq.${period}` : base);
     if (!issues.length) throw new Error(period ? `nessun numero approved/published per ${period}` : "nessun numero approved/published da esportare");
 
     for (const issue of issues) {

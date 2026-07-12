@@ -22,6 +22,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+# S8707: la destinazione arriva dalla CLI e finisce in un write. Si accetta solo
+# una directory esistente DENTRO il repo: un argomento sbagliato (umano o di un
+# agente) non deve poter scrivere fuori dall'albero del progetto.
+REPO = Path(__file__).resolve().parent.parent
+if len(sys.argv) != 2:
+    raise SystemExit("uso: python3 scripts/genera-cv.py astro-project/public")
+DEST = Path(sys.argv[1]).resolve()
+if not DEST.is_dir() or not DEST.is_relative_to(REPO):
+    raise SystemExit(f"destinazione non valida: {sys.argv[1]!r} — serve una directory esistente dentro {REPO}")
+
 FONTS = Path("/Users/marcobellingeri/GitHub/marcobellingeri.dev/astro-project/dist/_astro")
 ANTON = next(FONTS.glob("anton-latin-400-normal.*.woff2"))
 MONO = next(FONTS.glob("jetbrains-mono-latin-400-normal.*.woff2"))
@@ -158,7 +168,7 @@ def costruisci(lingua: str) -> Path:
             "Niente è stato scritto su public/. Controlla il .docx sorgente."
         )
 
-    out = Path(sys.argv[1]) / f"cv_{lingua}.html"
+    out = DEST / f"cv_{lingua}.html"
     out.write_text(pagina, encoding="utf-8")
     return out
 
