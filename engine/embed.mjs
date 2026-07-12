@@ -17,11 +17,14 @@ if (!articles.length) {
 let total = 0;
 for (const art of articles) {
   await trace.span(`embed:${art.slug}`, { summarize: (n) => ({ chunks: n }) }, async () => {
-    const trans = await select(pg`article_translations?article_id=eq.${art.id}&select=locale,body`);
+    const trans = await select(pg`article_translations?article_id=eq.${art.id}&select=locale,title,problem,application,solution,body`);
     const rows = [];
-    for (const { locale, body } of trans) {
-      if (!body) continue; // il body markdown è opzionale (triade problem/application/solution è a parte)
-      chunk(body).forEach((content, i) => rows.push({ article_id: art.id, locale, chunk_index: i, content }));
+    for (const t of trans) {
+      // Indicizza il caso INTERO (titolo + problema/approccio/risultato/lezione),
+      // non un solo campo: il RAG deve poter richiamare tutto il case study.
+      const text = [t.title, t.problem, t.application, t.solution, t.body].filter(Boolean).join("\n\n");
+      if (!text) continue;
+      chunk(text).forEach((content, i) => rows.push({ article_id: art.id, locale: t.locale, chunk_index: i, content }));
     }
     if (!rows.length) {
       console.log(`embed: ${art.slug} — nessun body, skip.`);
