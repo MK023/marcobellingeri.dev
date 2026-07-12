@@ -212,7 +212,7 @@ const suggestTargets = (Object.keys(languages) as Lang[])
       row.hidden = false;
       banner.hidden = false;
       const setPref = (lang) => {
-        document.cookie = 'pref-lang=' + lang + '; path=/; max-age=31536000; SameSite=Lax';
+        document.cookie = 'pref-lang=' + lang + '; path=/; max-age=31536000; SameSite=Lax; Secure';
       };
       row.querySelector('a')?.addEventListener('click', () => setPref(base));
       row.querySelector('[data-dismiss]')?.addEventListener('click', () => {

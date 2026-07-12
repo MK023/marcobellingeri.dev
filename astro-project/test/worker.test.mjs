@@ -137,6 +137,24 @@ test('contatto: oltre il rate limit = 429, sotto = passa', async () => {
   } finally { globalThis.fetch = originale; }
 });
 
+test('contatto: Origin del NOSTRO dominio = passa (ogni POST reale da browser lo porta)', async () => {
+  // Il test dell'Origin estraneo da solo non basta: un refuso nella stringa
+  // confrontata darebbe 403 a ogni invio reale con i test comunque verdi.
+  const originale = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{}', { status: 200 });
+  try {
+    const r = await gestisciContatto(
+      new Request('https://marcobellingeri.dev/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: 'https://marcobellingeri.dev' },
+        body: JSON.stringify({ email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' }),
+      }),
+      { RESEND_API_KEY: 'test' },
+    );
+    assert.equal(r.status, 200);
+  } finally { globalThis.fetch = originale; }
+});
+
 test('contatto: Origin estraneo = 403 (richiesta forgiata da altro sito)', async () => {
   const r = await gestisciContatto(
     new Request('https://marcobellingeri.dev/api/contact', {

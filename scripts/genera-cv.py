@@ -15,6 +15,7 @@ Ogni riga rimossa viene stampata a terminale: la sanificazione dev'essere visibi
 non implicita.
 """
 
+import hashlib
 import html as html_mod
 import re
 import subprocess
@@ -29,24 +30,42 @@ SERIF_B = next(FONTS.glob("source-serif-4-latin-600-normal.*.woff2"), SERIF)
 
 # Righe da NON pubblicare. Il sito espone mkdevpy@proton.me ovunque, non la Gmail.
 #
-# Il confronto NON è legato al formato: `348-450-7859`, `(348) 450 7859` e
-# `1991-04-03` devono cadere quanto le grafie di oggi. Si normalizza il testo
-# (via separatori e punteggiatura) e si cerca sulla forma canonica — una regex
-# sul formato esatto lascia passare il primo .docx riscritto diversamente, e
-# l'unica rete sarebbe una riga di log che NON compare.
-CIFRE_TELEFONO = "3484507859"
-CIFRE_DATA = {"03041991", "04031991", "19910403", "19910304"}
+# Il confronto NON è legato al formato: telefono e data di nascita devono cadere
+# in qualunque grafia. Si normalizza il testo (via separatori e punteggiatura) e
+# si confronta sulla forma canonica — a FINESTRE HASHATE: i valori in chiaro non
+# vivono in questo file, che sta in un repo PUBBLICO (il paradosso del sanificatore
+# che pubblica ciò che censura — audit 2026-07-12). Qui stanno solo i sha256.
+# ponytail: sha256 su dati a bassa entropia ferma la lettura casuale, non il
+# brute-force mirato; upgrade: valori da Doppler/Keychain se mai servisse di più.
+SHA_TELEFONO = "5e326356284a6d7ccca6447c99ecb9a50c5a57c85844ce4e83b219d0006f70e0"  # 10 cifre
+SHA_DATA = {  # 8 cifre, le 4 permutazioni note
+    "d2f157c8465b6ae1c00dd729f7d30dba02fd7d58fb522b9747e2a539cae69c9d",
+    "16ce369ed8c57e72b1b589326f73b2c8fc8bb0ac552b64879e29327fee9cf4d7",
+    "2fa6ade2fff56377bacb7aa6415612d074c8632882c0141849662000a85db933",
+    "f177b4256836dfbf7934761604ab2ac44cc12e4f0f26b0fe055fe9f0c3a81cb7",
+}
+SHA_GMAIL = "075f7b0c1c2e02b1aa1b6c417b19f5f3227934f4d782c375f41cd16e2bdc6083"  # 21 char
+LEN_TELEFONO, LEN_DATA, LEN_GMAIL = 10, 8, 21
+
+
+def _sha(s: str) -> str:
+    return hashlib.sha256(s.encode()).hexdigest()
+
+
+def _finestra_hashata(testo: str, lunghezza: int, attesi: set[str]) -> bool:
+    """Cerca una sottostringa di data lunghezza il cui sha256 è tra gli attesi."""
+    return any(_sha(testo[i : i + lunghezza]) in attesi for i in range(len(testo) - lunghezza + 1))
 
 
 def contiene_dato_sensibile(testo: str) -> bool:
     cifre = re.sub(r"\D", "", testo)
-    if CIFRE_TELEFONO in cifre:
+    if _finestra_hashata(cifre, LEN_TELEFONO, {SHA_TELEFONO}):
         return True
-    if any(d in cifre for d in CIFRE_DATA):
+    if _finestra_hashata(cifre, LEN_DATA, SHA_DATA):
         return True
     # Gmail ignora i punti nella parte locale: si confronta senza.
     compatto = re.sub(r"[\s.]", "", testo.lower())
-    return "marcobellingeri@gmail" in compatto
+    return _finestra_hashata(compatto, LEN_GMAIL, {SHA_GMAIL})
 
 CONTATTI = {
     "it": "mkdevpy@proton.me &nbsp;·&nbsp; github.com/MK023 &nbsp;·&nbsp; "

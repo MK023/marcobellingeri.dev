@@ -34,10 +34,14 @@ export async function embed(texts, inputType = "document") {
     });
     if (!r.ok) throw new Error(`voyage ${r.status}: ${await r.text()}`);
     const j = await r.json();
-    out.push(...j.data.map((d) => d.embedding));
+    // L'API restituisce `index` per item proprio perché l'ordine non è garantito:
+    // accoppiare per posizione rischia embedding scambiati IN SILENZIO (dim e
+    // count tornerebbero comunque). Si ordina per index, sempre.
+    out.push(...j.data.slice().sort((a, b) => a.index - b.index).map((d) => d.embedding));
   }
-  if (out[0]?.length !== DIM) throw new Error(`voyage dim ${out[0]?.length}, atteso ${DIM}`);
   if (out.length !== texts.length) throw new Error(`voyage: ${out.length} vettori per ${texts.length} testi`);
+  const rotto = out.findIndex((v) => v?.length !== DIM);
+  if (rotto !== -1) throw new Error(`voyage dim ${out[rotto]?.length} al vettore ${rotto}, atteso ${DIM}`);
   return out;
 }
 

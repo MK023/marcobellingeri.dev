@@ -454,7 +454,10 @@ const briefLabels = {
         copyEl!.textContent = L.copied;
         copyEl!.classList.add('copied');
         setTimeout(() => { copyEl!.textContent = copyLabel; copyEl!.classList.remove('copied'); }, 1800);
-      } catch (e) {}
+      } catch {
+        // Clipboard negata: feedback visibile, mai fallire muti (stesso principio del footer).
+        toast(S.failed, 'err');
+      }
     });
 
     // ---- invio: POST → Worker /api/contact → Resend, gated da Turnstile ----
@@ -562,11 +565,15 @@ const briefLabels = {
       }
       // Il brief deve avere sostanza: almeno un servizio o una nota.
       if (services.size === 0 && !(noteEl.value || '').trim()) { toast(L.needBrief || '', 'err'); return; }
+      // Turnstile assente (script async non ancora arrivato, o filtrato da un
+      // blocker): execute?.() sarebbe un no-op senza callback e il bottone
+      // resterebbe inchiodato su "INVIO…". Errore visibile e riprovabile, invece.
+      if (!(window as any).turnstile?.execute) { toast(S.failed, 'err'); return; }
       sendEl.disabled = true;
       sendEl.textContent = S.sending;
       inCorso = true;
       // Turnstile parte ORA, al click (data-execution="execute"): niente badge fermo lì.
-      (window as any).turnstile?.execute?.(tsEl || undefined);
+      (window as any).turnstile.execute(tsEl || undefined);
     });
 
     build();

@@ -1,4 +1,4 @@
-// Canale 1 — chunk + embed dei body degli articoli in article_chunks.
+// Canale 1 — chunk + embed dei testi degli articoli in article_chunks.
 // Idempotente per articolo: rimpiazza i chunk (delete-then-insert) così una
 // riesecuzione dopo un'edit del testo riallinea gli embedding senza doppioni.
 // Run: doppler run -- node engine/embed.mjs
@@ -27,13 +27,21 @@ for (const art of articles) {
       chunk(text).forEach((content, i) => rows.push({ article_id: art.id, locale: t.locale, chunk_index: i, content }));
     }
     if (!rows.length) {
-      console.log(`embed: ${art.slug} — nessun body, skip.`);
+      console.log(`embed: ${art.slug} — nessun testo, skip.`);
       return 0;
     }
     const vecs = await embed(rows.map((r) => r.content)); // input_type=document
     rows.forEach((r, i) => { r.embedding = toVector(vecs[i]); });
     await remove("article_chunks", pg`article_id=eq.${art.id}`);
-    await insert("article_chunks", rows);
+    try {
+      await insert("article_chunks", rows);
+    } catch (e) {
+      // delete-then-insert non è atomico: qui il delete è già passato e l'articolo
+      // è rimasto SENZA chunk (fuori dal RAG finché non si ri-esegue). Va urlato.
+      // ponytail: la vera atomicità richiede una RPC transazionale — quando servirà.
+      console.error(`embed: ${art.slug} — insert fallito DOPO il delete: articolo senza chunk, RI-ESEGUI embed.mjs (${e.message})`);
+      throw e;
+    }
     const locales = [...new Set(rows.map((r) => r.locale))].join("+");
     console.log(`embed: ${art.slug} — ${rows.length} chunk (${locales}).`);
     total += rows.length;
