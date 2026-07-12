@@ -12,7 +12,7 @@
     "export": "node export.mjs",
     "competitors": "node competitors.mjs",
     "test": "node --test test/*.test.mjs",
-    "test:coverage": "node --test --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info test/*.test.mjs && sed -i.bak 's|^SF:|SF:engine/|' coverage/lcov.info && rm coverage/lcov.info.bak",
+    "test:coverage": "mkdir -p coverage && node --test --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info test/*.test.mjs && sed -i.bak 's|^SF:|SF:engine/|' coverage/lcov.info && rm coverage/lcov.info.bak",
     "test:e2e": "RUN_E2E=1 node --test test/e2e.test.mjs"
   }
 }

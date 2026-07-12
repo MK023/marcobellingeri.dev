@@ -10,7 +10,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "test:csp": "node --test \"test/*.test.mjs\"",
-    "test:coverage": "node --test --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"test/*.test.mjs\" && sed -i.bak 's|^SF:|SF:astro-project/|' coverage/lcov.info && rm coverage/lcov.info.bak"
+    "test:coverage": "mkdir -p coverage && node --test --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"test/*.test.mjs\" && sed -i.bak 's|^SF:|SF:astro-project/|' coverage/lcov.info && rm coverage/lcov.info.bak"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
