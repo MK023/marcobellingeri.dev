@@ -1,5 +1,7 @@
 ---
 lang: "it"
+number: 1
+sector: "insurance"
 month: "Luglio 2026"
 date: "2026-07-01"
 title: "Assicurazioni sotto pressione: regole comuni per l'IA mentre l'adozione raddoppia senza governance solida"

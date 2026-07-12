@@ -1,5 +1,7 @@
 ---
 lang: "en"
+number: 1
+sector: "insurance"
 month: "July 2026"
 date: "2026-07-01"
 title: "Insurance under pressure: shared AI rules as adoption outpaces governance"
