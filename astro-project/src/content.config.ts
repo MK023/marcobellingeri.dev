@@ -12,6 +12,8 @@ const cases = defineCollection({
     month: z.string(),          // es. "Luglio 2026" / "July 2026"
     date: z.coerce.date(),
     title: z.string(),
+    stat: z.number().optional(),        // es. 41 — omesso se il caso non ha una metrica secca
+    statSuffix: z.string().optional(),  // es. "×"
     problem: z.string(),
     approach: z.string(),
     result: z.string(),
