@@ -92,8 +92,8 @@ test("anthropic: risposta senza blocco testo -> throw; senza usage -> usage vuot
 test("langfuse: fetch che esplode in flush NON rompe la pipeline", async () => {
   globalThis.fetch = async () => { throw new Error("rete giù"); };
   const trace = startTrace("test-catch");
-  await trace.span("ok", {}, async () => 1);
-  await trace.flush(); // non deve lanciare: warn e avanti
+  assert.equal(await trace.span("ok", {}, async () => 1), 1, "lo span restituisce il valore della fn");
+  await assert.doesNotReject(trace.flush(), "flush con la rete giù: warn e avanti, mai un throw");
 });
 
 test("langfuse: fn che lancia un non-Error (stringa o null) -> span ERROR senza crash del tracer", async () => {
