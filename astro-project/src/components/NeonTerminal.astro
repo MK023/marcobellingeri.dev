@@ -1,8 +1,6 @@
 ---
-import { hasIssues } from '../lib/issues';
-
-// `ls` elenca le sezioni che esistono davvero. Senza numeri pubblicati l'Archivio
-// non è renderizzato: elencarlo qui manderebbe l'utente su un'ancora morta.
+// `ls` elenca le sezioni che esistono davvero: elencarne una non renderizzata
+// manderebbe l'utente su un'ancora morta.
 const lsEntries = [
   'dossier',
   'percorso',
@@ -10,7 +8,6 @@ const lsEntries = [
   'field-notes',
   'projects',
   'servizi',
-  ...(hasIssues ? ['archive'] : []),
   'contact',
 ];
 const lsLine = lsEntries.map((e) => e + '/').join('  ');

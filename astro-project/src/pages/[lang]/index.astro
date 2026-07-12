@@ -1,6 +1,5 @@
 ---
 import type { Lang } from '../../i18n/ui';
-import { hasIssues } from '../../lib/issues';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import UtilityBar from '../../components/UtilityBar.astro';
 import Hero from '../../components/Hero.astro';
@@ -10,9 +9,9 @@ import Percorso from '../../components/Percorso.astro';
 import StackSection from '../../components/StackSection.astro';
 import SecurityCard from '../../components/SecurityCard.astro';
 import FieldNotes from '../../components/FieldNotes.astro';
+import MagazineSection from '../../components/MagazineSection.astro';
 import Projects from '../../components/Projects.astro';
 import Servizi from '../../components/Servizi.astro';
-import ArchiveSection from '../../components/ArchiveSection.astro';
 import Booking from '../../components/Booking.astro';
 import NeonTerminal from '../../components/NeonTerminal.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
@@ -34,11 +33,11 @@ const { lang } = Astro.params as { lang: Lang };
     <Dossier />
     <Servizi />
     <FieldNotes />
+    <MagazineSection />
     <Projects />
     <Percorso />
     <StackSection />
     <SecurityCard />
-    {hasIssues && <ArchiveSection />}
     <Booking />
   </main>
 

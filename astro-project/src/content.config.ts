@@ -21,4 +21,25 @@ const cases = defineCollection({
   }),
 });
 
-export const collections = { cases };
+// Magazine: un caso al mese di IA applicata sul lavoro nei domini di Marco,
+// generato da una pipeline e verificato sulle fonti. Stesso schema di `cases`
+// più `number` (il numero del volume) e `sector` (il settore trattato).
+const magazine = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/magazine' }),
+  schema: z.object({
+    lang: z.enum(['it', 'en']),
+    number: z.number(),         // numero progressivo del volume (1 = punto zero)
+    sector: z.string(),         // es. "insurance"
+    month: z.string(),          // es. "Luglio 2026" / "July 2026"
+    date: z.coerce.date(),
+    title: z.string(),
+    stat: z.number().optional(),        // metrica secca — omessa se il caso non ne ha una
+    statSuffix: z.string().optional(),  // es. "×"
+    problem: z.string(),
+    approach: z.string(),
+    result: z.string(),
+    lesson: z.string(),
+  }),
+});
+
+export const collections = { cases, magazine };

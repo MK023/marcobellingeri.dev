@@ -40,6 +40,7 @@
       0 0 10px rgba(242,237,251,0.2);
   }
   html[data-mode="night"] .big-stat,
+  html[data-mode="night"] .mag-stat,
   html[data-mode="night"] .svc-basis .v{
     text-shadow:
       0 0 1px var(--orange-text),
@@ -475,8 +476,6 @@
     font-size:11px; opacity:0.6; margin-top:14px;
   }
 
-  #archive-shelf{ min-height:150px; }
-  #issue-reader{ min-height:120px; }
   .stack-card::before{
     content:attr(data-tag);
     position:absolute; top:-13px; left:12px;
@@ -988,12 +987,12 @@
      accessibilità di sistema (cursore ingrandito, alto contrasto) per chi
      ne ha bisogno. */
   @media (hover:hover) and (pointer:fine) and (prefers-reduced-motion: no-preference){
-    a, button, .review-toggle, .issue-spine, .util-btn, .cmdk-item, .toc a,
+    a, button, .review-toggle, .mag-summary, .util-btn, .cmdk-item, .toc a,
     .stack-card, .neon-close{
       cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M14 2 L22 14 L14 26 L6 14 Z' fill='none' stroke='%23181410' stroke-width='2'/%3E%3Cline x1='14' y1='10' x2='14' y2='22' stroke='%23181410' stroke-width='1.5'/%3E%3Ccircle cx='14' cy='16' r='1.5' fill='%23FF5A1F'/%3E%3C/svg%3E") 14 14, pointer;
     }
     html[data-mode="night"] a, html[data-mode="night"] button,
-    html[data-mode="night"] .review-toggle, html[data-mode="night"] .issue-spine,
+    html[data-mode="night"] .review-toggle, html[data-mode="night"] .mag-summary,
     html[data-mode="night"] .util-btn, html[data-mode="night"] .cmdk-item,
     html[data-mode="night"] .toc a, html[data-mode="night"] .stack-card,
     html[data-mode="night"] .neon-close{
@@ -1015,7 +1014,7 @@
   }
   .skip-link:focus{ top:12px; }
   a:focus-visible, button:focus-visible, [tabindex]:focus-visible,
-  input:focus-visible, .stack-card:focus-visible, .issue-spine:focus-visible{
+  input:focus-visible, .stack-card:focus-visible, .mag-summary:focus-visible{
     outline:3px solid var(--orange-text);
     outline-offset:2px;
   }
@@ -1135,69 +1134,81 @@
     }
     html[data-mode="night"] h1.name,
     html[data-mode="night"] .section-head h2.display,
-    html[data-mode="night"] .big-stat{ text-shadow:none; }
+    html[data-mode="night"] .big-stat,
+    html[data-mode="night"] .mag-stat{ text-shadow:none; }
     body::after{ display:none !important; }
     .reveal, .reveal-stagger > *{ opacity:1 !important; transform:none !important; }
     section{ break-inside:avoid; }
   }
 
-  /* ---- issue archive ---- */
-  .archive-head{
-    display:flex; justify-content:space-between; align-items:baseline;
-    flex-wrap:wrap; gap:10px; margin-bottom:20px;
-  }
-  .archive-note{ font-size:13px; opacity:0.72; max-width:520px; }
-  .archive-shelf{
-    display:flex; gap:12px; overflow-x:auto; padding-bottom:8px;
-    max-width:1100px; margin:0 auto 24px;
-  }
-  .issue-spine{
-    flex:0 0 auto;
-    width:96px; min-height:150px;
-    background:var(--ink); color:var(--paper);
-    border:2px solid var(--ink);
-    display:flex; flex-direction:column; justify-content:space-between;
-    padding:12px 10px;
-    cursor:pointer;
-    font-family:'JetBrains Mono', monospace;
-    transition:transform 0.2s ease, background 0.2s ease;
-  }
-  .issue-spine:hover{ transform:translateY(-6px); }
-  .issue-spine.active{ background:var(--orange); color:var(--ink); }
-  .issue-spine .n{ font-family:'Anton', sans-serif; font-size:26px; line-height:1; }
-  .issue-spine .m{ font-size:10px; letter-spacing:0.05em; opacity:0.85; }
-  .issue-reader{
+  /* ---- magazine: tile a espansione inline (<details>/<summary>) ---- */
+  /* Ogni numero è una tile cliccabile: il grande N.0X (o la statistica in
+     count-up) riprende la spina dell'archivio; il corpo si apre sotto senza
+     fetch né route separate, così i crawler indicizzano tutto lo statico. */
+  .mag-list{
     max-width:1100px; margin:0 auto;
-    border:3px solid var(--ink);
+    display:flex; flex-direction:column; gap:0;
+  }
+  .mag-item{
+    border-top:3px double var(--ink);
+  }
+  .mag-item:first-child{ border-top:none; }
+  .mag-summary{
+    display:grid; grid-template-columns:1fr; gap:20px;
+    padding:36px 0;
+    cursor:pointer;
+    list-style:none;               /* rimuove il marker nativo (Firefox) */
+  }
+  .mag-item:first-child .mag-summary{ padding-top:0; }
+  .mag-summary::-webkit-details-marker{ display:none; }  /* marker nativo (Safari/Chrome) */
+  @media(min-width:820px){ .mag-summary{ grid-template-columns:200px 1fr; align-items:start; } }
+  .mag-stat-col{ display:flex; flex-direction:column; gap:6px; }
+  .mag-stat{
+    font-size:clamp(64px,11vw,120px);
+    line-height:0.8;
+    color:var(--orange-text);
+    -webkit-text-stroke:2px var(--ink);
+  }
+  .mag-number{
+    font-size:clamp(48px,8vw,88px);
+    line-height:0.85;
+    color:var(--ink);
+    -webkit-text-stroke:2px var(--ink);
+  }
+  .mag-cred{
+    font-size:11px; letter-spacing:0.06em;
+    color:var(--ink); opacity:0.7;
+    text-transform:uppercase;
+  }
+  .mag-summary-main{
+    display:flex; flex-direction:column; align-items:flex-start; gap:12px;
+  }
+  .mag-title{ font-size:22px; margin:2px 0 0; }
+  .mag-toggle{
+    font-size:11px; letter-spacing:0.08em;
+    padding:4px 10px;
+    border:2px solid var(--ink);
     background:var(--paper-dark);
-    padding:24px;
-    min-height:80px;
+    color:var(--ink);
+    transition:background 0.15s ease, color 0.15s ease;
   }
-  .issue-reader-head{
-    display:flex; justify-content:space-between; align-items:baseline;
-    margin-bottom:18px; flex-wrap:wrap; gap:8px;
+  .mag-toggle::after{ content:' +'; }
+  .mag-item[open] .mag-toggle::after{ content:' \2212'; }  /* segno meno */
+  .mag-summary:hover .mag-toggle,
+  .mag-item[open] .mag-toggle{ background:var(--ink); color:var(--paper); }
+  .mag-body{
+    padding:0 0 36px;
+    max-width:760px;
   }
-  .issue-reader-head h3{ margin:0; font-size:22px; }
-  .issue-reader-head .date{ font-family:'JetBrains Mono', monospace; font-size:11px; opacity:0.7; }
-  .signal-card{
-    border-top:2px dashed var(--ink);
-    padding:14px 0;
+  @media(min-width:820px){ .mag-body{ padding-left:220px; } }
+  .mag-item[open] .mag-body{ animation:mag-reveal 0.3s ease; }
+  @keyframes mag-reveal{
+    from{ opacity:0; transform:translateY(-6px); }
+    to{ opacity:1; transform:translateY(0); }
   }
-  .signal-card:first-child{ border-top:none; }
-  .signal-tag{
-    display:inline-block;
-    font-family:'JetBrains Mono', monospace;
-    font-size:10px; letter-spacing:0.06em;
-    padding:2px 8px; border:2px solid var(--ink);
-    margin-bottom:6px;
+  @media(prefers-reduced-motion:reduce){
+    .mag-item[open] .mag-body{ animation:none; }
   }
-  .signal-tag.competitor{ background:var(--orange); }
-  .signal-tag.market{ background:var(--violet); color:var(--paper); }
-  .signal-tag.security{ background:var(--paper); }
-  .signal-card h4{ margin:0 0 4px; font-size:16px; }
-  .signal-card p{ margin:0 0 4px; font-size:14px; line-height:1.6; }
-  .signal-card a{ font-size:12px; text-decoration:underline; }
-  .archive-status{ font-family:'JetBrains Mono', monospace; font-size:12px; opacity:0.7; }
 
   /* ---- appuntamenti ---- */
   .booking-frame{
