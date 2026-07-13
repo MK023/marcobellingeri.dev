@@ -71,7 +71,7 @@ const links = [
           copyBtn.textContent = label;
           copyBtn.classList.remove('copied');
         }, 1800);
-      } catch (e) {
+      } catch {
         copyBtn.textContent = error;
       }
     });

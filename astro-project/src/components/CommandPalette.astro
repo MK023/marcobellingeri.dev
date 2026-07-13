@@ -47,10 +47,6 @@ const strings = {
 </div>
 
 <script>
-  declare global {
-    interface Window { openNeonTerminal?: () => void; }
-  }
-
   type Command = { label: string; hint: string; action: () => void };
 
   (function commandPalette() {
@@ -91,10 +87,10 @@ const strings = {
     // Su Mac la scorciatoia è ⌘K, altrove Ctrl+K: l'etichetta deve dire il vero.
     const isMac = (() => {
       try {
-        const uaPlatform = (navigator as any).userAgentData?.platform;
+        const uaPlatform = navigator.userAgentData?.platform;
         if (uaPlatform) return /mac/i.test(uaPlatform);
         return /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent);
-      } catch (e) { return false; }
+      } catch { return false; }
     })();
     trigger.textContent = (isMac ? '⌘K ' : 'CTRL K ') + S.commands;
     trigger.setAttribute('title', (isMac ? '⌘K' : 'Ctrl+K') + S.commandsTitle);
@@ -173,7 +169,7 @@ const strings = {
     document.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        overlay!.classList.contains('open') ? close() : open();
+        if (overlay!.classList.contains('open')) close(); else open();
       }
       if (e.key === 'Escape' && overlay!.classList.contains('open')) close();
     });

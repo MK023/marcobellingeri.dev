@@ -33,7 +33,7 @@ export default defineConfig({
       ],
       scriptDirective: {
         resources: ["'self'", 'https://challenges.cloudflare.com'],
-        hashes: ['sha256-9NdyE0/QP+rTIpE4DN6oRo2gQFa4pcIWT/PwHZBV09k='],
+        hashes: ['sha256-GvFwIERKrnK0ChGkuSr0pgn3607DiBN5qqkmmw2gtiM='],
       },
       styleDirective: {
         resources: ["'self'"],

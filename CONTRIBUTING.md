@@ -56,8 +56,17 @@ push diretto, la cancellazione e il force-push. Devono essere verdi:
 
 - **Backend CI**: unit + integration, gitleaks full-history, ricostruzione del DB da
   zero con assert su schema, RLS e publish gate.
-- **Site CI**: build, poi i test su `dist/` — hash CSP di ogni script inline,
-  `_headers` che non annulla il `<meta>`, Archivio coerente con l'indice dei numeri.
+- **Site CI**: `astro check` (type-check), ESLint, build, poi i test su `dist/` —
+  hash CSP di ogni script inline, `_headers` che non annulla il `<meta>`, Archivio
+  coerente con l'indice dei numeri.
+
+Prima di aprire la PR, in `astro-project/`: `npm run check && npm run lint`. Sono le
+uniche due reti che guardano i file `.astro` — SonarCloud non li sa analizzare.
+
+**Se tocchi lo script `is:inline` in `BaseLayout.astro`**, il suo hash SHA cambia e la
+CSP non lo autorizza più: `npm run test:csp` fallisce e **stampa l'hash corretto** da
+incollare in `astro.config.mjs`. Non è un incidente, è la procedura — quel test esiste
+per impedire che l'hash e lo script divergano in silenzio.
 
 Entrambi girano su **ogni** PR, senza filtri per path. Un filtro farebbe risparmiare
 una cinquantina di secondi e in cambio bloccherebbe per sempre ogni PR che tocca solo

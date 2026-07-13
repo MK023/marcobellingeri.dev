@@ -199,7 +199,7 @@ test('contatto: Content-Length gonfiato con body piccolo NON scatta il cap (no h
 test('contatto: un nome con \\r\\n non inietta header nel subject', async () => {
   const originale = globalThis.fetch;
   let inviato;
-  globalThis.fetch = async (u, opt) => { inviato = JSON.parse(opt.body); return new Response('{}', { status: 200 }); };
+  globalThis.fetch = async (_url, opt) => { inviato = JSON.parse(opt.body); return new Response('{}', { status: 200 }); };
   try {
     const r = await postContatto({ nome: 'Mario\r\nBcc: spam@evil.example', email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' });
     assert.equal(r.status, 200);
@@ -207,6 +207,7 @@ test('contatto: un nome con \\r\\n non inietta header nel subject', async () => 
     assert.match(inviato.subject, /Mario Bcc: spam@evil\.example/);
   } finally { globalThis.fetch = originale; }
 });
+
 
 test('contatto: le risposte API portano no-store, nosniff e HSTS', async () => {
   const r = await gestisciContatto(new Request('https://marcobellingeri.dev/api/contact'), {});
