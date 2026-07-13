@@ -13,10 +13,6 @@ const entries = sections(t);
     <a href={`#${e.id}`} data-section={e.id}><span class="num">{e.num}</span> {e.label}</a>
   ))}
 </nav>
-{/* La dissolvenza sopra la toc NON può essere un ::before della toc: overflow-x:auto
-    la ritaglierebbe (un asse non-visible trascina anche l'altro). Vive da fratello,
-    fixed sopra il bordo del viewport — la striscia dietro la status bar di Safari. */}
-<div class="toc-fade" aria-hidden="true"></div>
 <p class="toc-hint mono">{t('nav.hint')}</p>
 
 <script>
@@ -49,8 +45,12 @@ const entries = sections(t);
     }
   })();
 
-  // ---- is-stuck: accende la dissolvenza sopra la toc solo quando è incollata ----
-  // (global.css, media mobile). A riposo la dissolvenza coprirebbe l'hero.
+  // ---- is-stuck: la barra copre la striscia sopra di sé solo quando è incollata ----
+  // Su Safari iOS in verticale lo zero del layout non è il bordo dello schermo:
+  // sopra l'origine resta una fascia dove il contenuto viene dipinto (il testo
+  // scorre dietro l'orologio) ma dove nessun `top:0` arriva. A barra incollata,
+  // `.toc.is-stuck` proietta un'ombra opaca verso l'alto e la copre (global.css,
+  // media mobile). A riposo la coprirebbe l'hero, quindi si accende solo qui.
   (function stuckFlag() {
     const toc = document.querySelector<HTMLElement>('.toc');
     if (!toc) return;
