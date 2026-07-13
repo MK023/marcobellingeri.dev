@@ -836,9 +836,16 @@
     margin-top:14px;
     position:relative;
   }
-  .ai-seal svg{
+  /* La rotazione sta sul div, non sull'svg: in Blink un transform animato su
+     un elemento SVG non viene promosso al compositor e rifà layout+paint a
+     ogni frame — misurato 335 ms/s di rendering (CPU 4×) contro i 6 ms/s a
+     animazione ferma, anche con il footer fuori dallo schermo. */
+  .ai-seal-ring{
     width:100%; height:100%;
     animation:spinIn 22s linear infinite;
+  }
+  .ai-seal svg{
+    width:100%; height:100%;
   }
   .ai-seal .ring-text{
     fill:var(--ink);
