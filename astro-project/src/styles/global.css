@@ -1093,24 +1093,23 @@
     .toc{ top:0; padding-top:env(safe-area-inset-top, 0px); }
     /* La barra non copre più nulla: contarla qui manderebbe le ancore troppo in basso. */
     section, footer{ scroll-margin-top:calc(var(--toc-h, 53px) + 8px); }
-    /* Su Safari iOS il contenuto scorre DIETRO la status bar, sopra la toc incollata
-       (env(safe-area-inset-top) lì vale 0: il padding sopra non basta). Questa
-       dissolvenza copre la striscia: il testo sfuma e sparisce mentre sale, stile iOS.
-       È un elemento fratello (.toc-fade in Toc.astro), NON un ::before della toc:
-       overflow-x:auto della toc ritaglierebbe qualsiasi cosa sporga sopra la barra.
-       `top` negativo: la striscia sta SOPRA l'origine del viewport — Safari ci
-       disegna comunque, è lì che il testo riemergeva. Solo a barra incollata
-       (is-stuck da Toc.astro), altrimenti sfumerebbe l'hero. */
-    .toc-fade{
-      position:fixed; top:-64px; left:0; width:100%; height:64px; z-index:39;
-      pointer-events:none; opacity:0; transition:opacity 0.2s ease;
-      background:linear-gradient(to top, var(--paper) 0%, transparent 100%);
-      -webkit-backdrop-filter:blur(8px);
-      backdrop-filter:blur(8px);
-      -webkit-mask-image:linear-gradient(to top, #000 0%, transparent 100%);
-      mask-image:linear-gradient(to top, #000 0%, transparent 100%);
-    }
-    .toc.is-stuck ~ .toc-fade{ opacity:1; }
+    /* Su Safari iOS in verticale, lo ZERO del layout non è il bordo dello schermo:
+       misurato su iPhone, innerHeight=735 su uno schermo da 852 punti, e
+       env(safe-area-inset-top) vale 0 — Safari l'inset non lo dichiara affatto.
+       Sopra l'origine resta una fascia dove Safari DIPINGE il contenuto della pagina
+       (il testo scorre dietro l'orologio) ma dove nessun elemento `top:0` arriva.
+
+       Il tentativo precedente era un fratello `.toc-fade` a `top:-64px`: il suo box
+       stava INTERAMENTE fuori dal viewport, e il browser lo scarta prima di
+       dipingerlo. Aveva opacity 1 ed era invisibile — un fix che non ha mai agito.
+
+       Qui l'ombra la proietta la BARRA, il cui box è dentro il viewport e quindi non
+       viene scartato: `box-shadow` dipinge fuori dal bordo, verso l'alto, e non la
+       ritaglia `overflow-x:auto` (l'overflow taglia i discendenti, non l'ombra
+       dell'elemento stesso). offset -50 + spread 50 ⇒ copre da -100px fino al bordo
+       inferiore della barra, senza sbordare sotto. Solo a barra incollata: a riposo
+       coprirebbe l'hero. */
+    .toc.is-stuck{ box-shadow:0 -50px 0 50px var(--paper); }
   }
 
   /* Dito, non puntatore: 44px è il minimo raccomandato da Apple, 48 da Android. I
