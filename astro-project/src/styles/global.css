@@ -651,7 +651,17 @@
   .svc-nav:hover{ background:var(--orange); }
   .svc-nav.prev{ left:-10px; }
   .svc-nav.next{ right:-10px; }
-  @media(max-width:760px){ .svc-nav{ display:none; } }
+  /* Sotto i 760px il carosello non esiste: card impilate, scroll verticale
+     naturale. Lo script di Servizi.astro usa la STESSA media query per non
+     partire proprio (niente cloni, niente auto-scroll). La regola sui cloni
+     `aria-hidden` copre il solo caso della finestra che scende sotto il
+     breakpoint a carosello già avviato: impilati sarebbero duplicati visibili. */
+  @media(max-width:760px){
+    .svc-nav{ display:none; }
+    .svc-track{ flex-direction:column; overflow-x:visible; }
+    .svc-track .svc-card{ flex-basis:auto; }
+    .svc-track .svc-card[aria-hidden="true"]{ display:none; }
+  }
   .svc-card{
     border:3px solid var(--ink);
     background:var(--paper-dark);
