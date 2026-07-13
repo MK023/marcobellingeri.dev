@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 // Caratteri di controllo (tranne \t \n \r): nascondono payload/anomalie.
 // Due copie: una non-global per .test() (stateful se global), una global per replace.
-const CONTROL_CLASS = "[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]";
+const CONTROL_CLASS = String.raw`[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]`;
 const CONTROL_TEST = new RegExp(CONTROL_CLASS);
 const CONTROL_STRIP = new RegExp(CONTROL_CLASS, "g");
 
@@ -63,10 +63,17 @@ const BLOCK = loadBlocklist();
 // di controllo, tetto di lunghezza. Neutralizza anche il delimitatore `<fonte>`/
 // `</fonte>`: una fonte che lo contiene chiuderebbe il blocco DATO e inietterebbe
 // testo a livello prompt — la parentesi angolare diventa ‹ (inerte, leggibile).
+//
+// Il lookahead gira sul testo GREZZO della fonte (il tetto di lunghezza scatta
+// solo in fondo): dev'essere lineare, o una pagina ostile con una lunga corsa di
+// spazi lo manda in tempo quadratico. Due accorgimenti: gli spazi li può mangiare
+// un solo quantificatore (il secondo viene solo dopo una `/` letterale, niente
+// ambiguità da backtracking), e sono comunque limitati a 8 — fra `<` e `fonte`
+// nessun delimitatore vero ne ha di più.
 export function sanitizeSource(text, maxChars = 6000) {
   return String(text ?? "")
     .replace(CONTROL_STRIP, " ")
-    .replace(/<(?=\s*\/?\s*fonte\b)/gi, "‹")
+    .replace(/<(?=\s{0,8}(?:\/\s{0,8})?fonte\b)/gi, "‹")
     .replace(/[ \t]{2,}/g, " ")
     .trim()
     .slice(0, maxChars);
@@ -93,9 +100,13 @@ export function screen(text) {
 
 // Slug ASCII kebab: lo deriviamo noi dal titolo (non ci fidiamo del modello per
 // una chiave che finisce in un vincolo di unicità e in un URL).
+// `-+` in coda cercava all'indietro su ogni posizione (quadratico sui titoli
+// tutti-trattini). Non serve: la replace precedente collassa ogni corsa di
+// non-alfanumerici in UN trattino, quindi due `-` di fila non esistono e basta
+// togliere il singolo trattino ai bordi.
 export const slugify = (s) =>
   String(s).normalize("NFKD").replace(/[̀-ͯ]/g, "")
-    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
 
 // Limiti di lunghezza per campo (caratteri): min per "non vuoto/non-triviale",
 // max come rete anti-anomalia (output gonfiato = qualcosa non va).

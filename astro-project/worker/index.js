@@ -119,7 +119,9 @@ export async function gestisciContatto(request, env) {
   const nome = rigaPulita(dati.nome, 120);
   const email = String(dati.email ?? '').trim().slice(0, 200);
   const brief = String(dati.brief ?? '').trim().slice(0, 4000);
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || brief.length < 10) {
+  // Le etichette del dominio escludono il punto: così il `.` lo può piazzare solo
+  // il separatore, e il matching non torna indietro a provare ogni spezzatura.
+  if (!/^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$/.test(email) || brief.length < 10) {
     return rispostaJson({ error: 'invalid' }, 422);
   }
 

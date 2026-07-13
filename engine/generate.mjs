@@ -136,7 +136,7 @@ async function main() {
         // i `%` degli url già encodati; il nome è testo di terzi quanto il
         // contenuto e passa dalla stessa neutralizzazione <fonte> di sanitizeSource.
         const attrUrl = String(r.source_url).replace(/["<>\s]/g, (c) => encodeURIComponent(c));
-        const attrNome = sanitizeSource(r.source_name ?? "", 200).replace(/"/g, "'");
+        const attrNome = sanitizeSource(r.source_name ?? "", 200).replaceAll('"', "'");
         const attrs = `n="${i + 1}" tier="${r.tier}" url="${attrUrl}" nome="${attrNome}"`;
         return `<fonte ${attrs}>\n${sanitizeSource(r.raw_content, PER_SOURCE_CHARS)}\n</fonte>`;
       })
@@ -193,8 +193,8 @@ async function main() {
     } catch (e) {
       // Se anche il rollback fallisce resta un articolo orfano che occupa lo slug:
       // va detto, altrimenti il prossimo run rifiuta senza spiegare il perché.
-      await remove("articles", pg`id=eq.${article.id}`).catch((re) => {
-        console.error(`generate: rollback fallito, articolo orfano id=${article.id} slug="${slug}" — rimuovilo a mano (${re.message})`);
+      await remove("articles", pg`id=eq.${article.id}`).catch((error) => {
+        console.error(`generate: rollback fallito, articolo orfano id=${article.id} slug="${slug}" — rimuovilo a mano (${error.message})`);
       });
       throw e;
     }
@@ -203,7 +203,9 @@ async function main() {
   }
 }
 
-main().catch((e) => {
+try {
+  await main();
+} catch (e) {
   console.error(`generate: ${e.message}`);
   process.exit(1);
-});
+}

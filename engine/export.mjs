@@ -159,8 +159,13 @@ if (process.argv[2] === "--selfcheck") {
   const withStat = frontmatter({ ...o, stat: 75, statSuffix: "%" });
   assert.ok(withStat.includes("stat: 75") && withStat.includes('statSuffix: "%"'), "stat grounded serializzata");
   const tricky = frontmatter({ ...o, title: 'con "virgolette"\ne newline' });
-  assert.ok(tricky.includes('title: "con \\"virgolette\\"\\ne newline"'), "scalare JSON a prova di iniezione YAML");
+  assert.ok(tricky.includes(String.raw`title: "con \"virgolette\"\ne newline"`), "scalare JSON a prova di iniezione YAML");
   console.log("export.mjs self-check OK");
 } else {
-  main().catch((e) => { console.error(`export: ${e.message}`); process.exit(1); });
+  try {
+    await main();
+  } catch (e) {
+    console.error(`export: ${e.message}`);
+    process.exit(1);
+  }
 }

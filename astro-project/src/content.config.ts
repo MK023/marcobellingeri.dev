@@ -1,4 +1,7 @@
-import { defineCollection, z } from 'astro:content';
+// Astro 6 deprecata `z` esportata da `astro:content`: zod si importa da `astro/zod`
+// (è il re-export di Astro, non una dipendenza in più).
+import { defineCollection } from 'astro:content';
+import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
 
 // Field Notes: un caso al mese, schema fisso, bilingue (ADR-0001 §3).

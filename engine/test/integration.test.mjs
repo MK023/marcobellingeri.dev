@@ -173,8 +173,8 @@ test("langfuse: errore di fn -> span ERROR, errore RIPROPAGATO, root status erro
 test("langfuse: fail-open — invio 500 NON rompe la pipeline", async () => {
   globalThis.fetch = async () => new Response("boom", { status: 500 });
   const trace = startTrace("test-failopen");
-  await trace.span("ok", {}, async () => 1);
-  await trace.flush(); // non deve lanciare
+  assert.equal(await trace.span("ok", {}, async () => 1), 1, "lo span rende il valore della fn");
+  await assert.doesNotReject(() => trace.flush(), "un 500 in flush non risale alla pipeline");
 });
 
 // ---- valyu client -----------------------------------------------------------

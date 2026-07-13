@@ -1,0 +1,5 @@
+# Worktree effimeri degli agenti: copie del repo, generano nodi fantasma
+.claude/
+
+# Cache generata da Astro (schema delle collection, content.d.ts)
+astro-project/.astro/
