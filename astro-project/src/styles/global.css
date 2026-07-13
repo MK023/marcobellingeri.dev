@@ -337,10 +337,19 @@
     border:3px solid var(--ink);
   }
   .fact-box dl{margin:0;}
+  /* Niente `opacity` sulle etichette: su --violet, a 11px, QUALSIASI sbiadimento
+     rompe il contrasto AA. Misurato (Lighthouse + calcolo WCAG, 2026-07-13):
+     0.78 -> 3.53 · 0.90 -> 4.20 · 0.95 -> 4.47 · 1.00 -> 4.80. La soglia e' 4.5,
+     quindi l'unico valore che passa e' l'opacita' piena. In notturna il fondo e'
+     ciano e passerebbe comunque (8.3), ma un trattamento solo diurno non varrebbe
+     la complicazione.
+     La gerarchia non si perde: l'etichetta resta mono, 11px contro i 16px del dato,
+     maiuscola e spaziata. A distinguerla e' la tipografia, non lo sbiadimento —
+     che era anche il modo peggiore, perche' toglie leggibilita' a chi ne ha meno. */
   .fact-box dt{
     font-family:'JetBrains Mono', monospace;
     font-size:11px; letter-spacing:0.1em;
-    opacity:0.78; margin-top:16px;
+    margin-top:16px;
   }
   .fact-box dt:first-child{margin-top:0;}
   .fact-box dd{margin:2px 0 0; font-size:16px; font-weight:600;}
@@ -1019,13 +1028,28 @@
     outline-offset:2px;
   }
 
+  /* Il loader è un pannello OPACO a tutto schermo: finché sta su, la pagina è
+     pronta ma invisibile. Prima lo toglieva uno <script> bundled, cioè differito —
+     doveva scaricarsi e parsare il bundle PRIMA di poter alzare il lenzuolo. Sotto
+     throttling mobile quel momento arrivava a ~6 secondi: misurato, Speed Index 9.8s
+     e otto fotogrammi di schermo bianco (Lighthouse, 2026-07-13).
+
+     Ora si toglie da solo, con un'animazione CSS: parte al parse del foglio di stile
+     e non aspetta nessun JavaScript. Il JS non è più sul cammino critico del primo
+     paint — non perché sia veloce, ma perché non serve più.
+
+     Chi ha già visto il loader in questa sessione non lo rivede: lo script pre-paint
+     in BaseLayout mette `data-loader="seen"` sull'<html> e la regola qui sotto lo
+     spegne prima ancora che si disegni (una classe messa da JS differito lo avrebbe
+     fatto lampeggiare). `prefers-reduced-motion` lo nasconde già del tutto (più giù). */
   .press-loader{
     position:fixed; inset:0; z-index:500;
     background:var(--paper);
     display:flex; align-items:center; justify-content:center;
-    transition:opacity 0.35s ease, visibility 0.35s ease;
+    animation:press-out 0.35s ease 0.78s forwards;
   }
-  .press-loader.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  @keyframes press-out{ to{ opacity:0; visibility:hidden; pointer-events:none; } }
+  html[data-loader="seen"] .press-loader{ display:none; }
   .press-loader-inner{ text-align:center; }
   .press-line{
     display:block; font-size:13px; letter-spacing:0.25em;

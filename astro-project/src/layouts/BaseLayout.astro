@@ -121,6 +121,20 @@ const suggestTargets = (Object.keys(languages) as Lang[])
         }
       } catch {}
     })();
+
+    // Il loader va deciso QUI, prima del primo paint: una classe messa da uno script
+    // differito arriverebbe a lenzuolo gia' disegnato, e lo farebbe lampeggiare a chi
+    // l'ha gia' visto. Chi non l'ha visto lo vede: se ne va da solo (animazione CSS,
+    // nessun JavaScript sul cammino critico).
+    (function () {
+      try {
+        if (sessionStorage.getItem('bellingeri-loader-seen') === '1') {
+          document.documentElement.setAttribute('data-loader', 'seen');
+        } else {
+          sessionStorage.setItem('bellingeri-loader-seen', '1');
+        }
+      } catch {}
+    })();
   </script>
 
 </head>
@@ -160,23 +174,6 @@ const suggestTargets = (Object.keys(languages) as Lang[])
 
   <slot />
 
-  <script>
-    // Loader: solo alla prima visita di sessione
-    const loader = document.getElementById('press-loader');
-    if (loader) {
-      let seen = false;
-      try { seen = sessionStorage.getItem('bellingeri-loader-seen') === '1'; } catch {}
-      if (seen) {
-        loader.classList.add('hidden');
-        loader.style.display = 'none';
-      } else {
-        setTimeout(() => {
-          loader.classList.add('hidden');
-          try { sessionStorage.setItem('bellingeri-loader-seen', '1'); } catch {}
-        }, 780);
-      }
-    }
-  </script>
   <script>
     // Scroll-reveal per sezioni e gruppi in staggered — globale, si applica
     // a qualunque elemento .reveal / .reveal-stagger in qualsiasi componente.
