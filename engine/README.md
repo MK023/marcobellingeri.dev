@@ -33,6 +33,14 @@ mai la pipeline. Input/output degli span = riassunti piccoli, mai `raw_content`
 di terzi. I cron (radar, keepalive) aprono una **GitHub Issue automatica** se
 falliscono — nessun rosso silenzioso.
 
+Un fallimento però non fa rumore: quello in cui il cron **non parte affatto**
+(GitHub spegne gli schedule dopo 60 giorni di inattività sul repo). L'issue
+automatica scatta se il ping *fallisce*, non se non arriva mai — ed è proprio
+l'assenza che manda in pausa il database. Per questo il keepalive fa anche un
+**check-in a un cron monitor Sentry**, che si allarma sul silenzio e sta *fuori*
+da GitHub: un guardiano dentro lo stesso dominio di guasto che sorveglia non è un
+guardiano. Il check-in non può far fallire il ping.
+
 ## Comandi
 
 ```bash

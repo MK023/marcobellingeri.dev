@@ -17,6 +17,12 @@ personali hardcodati in `scripts/genera-cv.py`, ora sostituiti da digest sha256 
 il dato resta nella history), 5 Medium e una coda di Low/Info: **tutti gli
 azionabili corretti nella stessa PR**. Dettagli nei commit dell'audit round 2.
 
+**Aggiornamento 2026-07-13:** dal triage dei code smell SonarCloud è emerso **M-1**, un
+ReDoS vero in `sanitizeSource` (backtracking quadratico su `raw_content` di terzi non
+ancora limitato) — **risolto**, con test di regressione sulla linearità. Nello stesso
+giro il fix di **L-1 è passato da "dedotto" a "verificato"**: il percorso Worker → Sentry
+non era mai stato visto funzionare in vita sua, ora lo è (vedi *Metodo e limiti*).
+
 ---
 
 ## Executive summary
@@ -29,23 +35,26 @@ commit). L'XSS "pending" annotato in Atlas per `ArchiveSection.astro` **risulta 
 chiuso** (costruzione DOM nodo-per-nodo + whitelist di protocollo, nessuna scrittura
 HTML grezza).
 
-Nessun finding **Critical** o **High**. I residui sono di severità **Low/Info** e
-riguardano soprattutto *fail-open silenziosi* e *guardie che si fidano di un header
-client*. Il più actionable: se `TURNSTILE_SECRET_KEY` sparisse in produzione, la
-protezione bot verrebbe disattivata **senza alcun allarme**.
+Nessun finding **Critical** o **High**. Il tema ricorrente dei residui è stato per mesi
+lo stesso: *fail-open silenziosi* — difese che, cadendo, non lo dicono a nessuno. Il caso
+esemplare era `TURNSTILE_SECRET_KEY`: se sparisse in produzione, la protezione bot si
+spegnerebbe senza un allarme. Oggi l'allarme c'è **ed è stato visto suonare** (L-1, e
+*Metodo e limiti*). Il finding più severo mai trovato — M-1, un ReDoS su input di terzi —
+è arrivato dallo stesso filone: non un buco aperto, ma un costo nascosto su un input che
+nessuno limitava.
 
 | Severità | Aperti | Risolti |
 |----------|--------|---------|
 | Critical | 0 | — |
 | High     | 0 | — |
-| Medium   | 0 | — |
+| Medium   | 0 | 1 (M-1, ReDoS — 2026-07-13) |
 | Low      | 0 | 3 (L-1, L-2, L-3) |
 | Info     | 4 | — |
 
-Verifiche eseguite: `npm run build` (verde) · `npm run test:csp` (**35/35 pass**,
-incl. il test anti header-injection) · `gitleaks detect` full-history (**no leaks**,
-88 commit) · zero `.map` nella `dist/` · header di sicurezza confermati serviti su
-`/it/`.
+Verifiche eseguite: `npm run build` (verde) · `npm run test:csp` (**53/53 pass**,
+incl. il test anti header-injection) · suite engine (**93 test**, righe 100%) ·
+`gitleaks detect` full-history (**no leaks**) · zero `.map` nella `dist/` · header di
+sicurezza confermati serviti su `/it/` · percorso Worker → Sentry provato end-to-end.
 
 ---
 
@@ -103,6 +112,32 @@ sì. Coerente con la scelta documentata ("root spoglia, preload dal TLD").
 **Raccomandazione:** nessuna azione necessaria finché il dominio resta `.dev`. Se un
 giorno si aggiungesse un dominio non-preload, aggiungere HSTS anche in `rispostaJson` e
 sul 302.
+
+### M-1 — ReDoS in `sanitizeSource`: backtracking quadratico su testo di terzi (Medium) — ✅ RISOLTO
+**File:** `engine/lib/guardrails.mjs:69` (PR #53, 2026-07-13)
+Il lookahead che neutralizza il delimitatore `<fonte>` girava su testo **non ancora
+limitato**: il tetto di 6000 caratteri è l'ultimo anello di `sanitizeSource`, quindi il
+`.replace()` vedeva il `raw_content` **grezzo** della fonte scrapata. Il pattern
+`/<(?=\s*\/?\s*fonte\b)/gi` aveva due `\s*` ambigui attorno a una `/` opzionale: gli
+spazi se li potevano contendere entrambi, e su una corsa di spazi il matching andava in
+tempo **quadratico**.
+
+Misurato prima del fix — raddoppiando l'input il tempo quadruplica: 2k spazi → 2,4 ms;
+4k → 9,1 ms; 8k → 37,7 ms; 16k → **149 ms**. Estrapolando, una pagina ostile da 1 MB
+avrebbe bloccato l'engine per **minuti**. L'attaccante è una pagina web scrapata, cioè
+proprio l'input che l'engine per mestiere non controlla.
+
+**Fix:** gli spazi li può mangiare un solo quantificatore (il secondo viene solo dopo una
+`/` letterale, niente ambiguità) e sono limitati a 8 — nessun delimitatore vero ne ha di
+più. Dopo: 200k spazi in **1 ms**. Un test di regressione fissa la **proprietà** (il
+costo non esplode col quadrato dell'input), non la velocità, così una futura
+"semplificazione" della regex fa fallire la CI invece di riaprire il buco in silenzio.
+
+*Nota sul metodo:* la stessa regola Sonar (S8786) segnalava altre due regex — lo slug e
+la validazione email del Worker — che però lavorano su input **già troncato a 200
+caratteri**: teoricamente ambigue, praticamente innocue. Stessa regola, stessa gravità
+dichiarata, rischio opposto: a distinguerle è stato il grafo dei chiamanti, non la
+severità dell'analizzatore. Sono state comunque rese non ambigue.
 
 ### I-1 — Engine fuori dalla copertura Dependabot (Info)
 **File:** `.github/dependabot.yml`, `engine/package.json`
@@ -188,7 +223,10 @@ JSON all'API Resend (non SMTP grezzo), che gestisce l'encoding degli header. Il 
   dal browser, i valori delle query PostgREST passeranno da input utente: il template
   `pg`` è già pronto, ma andrà verificato che *ogni* interpolazione lo usi.
 - **Schedule GitHub a 60gg** — se il repo resta inattivo 60 giorni, il cron keepalive si
-  spegne in silenzio e Supabase va in pausa (gotcha già documentato nel workflow).
+  spegne e Supabase va in pausa. Il rischio resta (GitHub non si può obbligare), ma dal
+  2026-07-13 **non è più silenzioso**: un cron monitor Sentry si allarma sull'assenza del
+  check-in. La scelta di metterlo *fuori* da GitHub è deliberata — un guardiano dentro lo
+  stesso dominio di guasto che sorveglia non è un guardiano.
 
 ---
 
@@ -199,3 +237,22 @@ Audit statico + build servita in locale + probe **read-only** (GET) sugli header
 dell'endpoint, scrittura su DB/prod. Le voci marcate "da confermare" (es. il
 comportamento del runtime Workers su body chunked, `L-2`) richiederebbero un test attivo
 in staging per essere chiuse con certezza. Nessun file del progetto è stato modificato.
+
+### Aggiornamento 2026-07-13 — la segnalazione di L-1 è stata *verificata*, non dedotta
+
+Il fix di L-1 poggiava su `segnala()` → Sentry, ma quel percorso **non era mai stato visto
+funzionare**: fino a stamattina Sentry aveva ricevuto un solo evento in tutta la sua vita,
+e veniva dal *browser*. Il Worker non gli aveva mai parlato — né via `withSentry`, né via
+`__SEGNALA_SENTRY__`. Un allarme mai suonato e un allarme rotto si assomigliano troppo.
+
+Verificato eseguendo il Worker (stesso bundle, stesso SDK, stesso DSN) **senza i due
+secret**: entrambi i rami gestiti producono l'evento atteso in Sentry
+(`TURNSTILE_SECRET_KEY mancante`, `RESEND_API_KEY mancante`). La produzione non è stata
+toccata: i suoi secret non sono mai stati rimossi e il form live ha continuato a
+rispondere 403 a una richiesta senza token.
+
+*Limite residuo, dichiarato:* il test è girato su `workerd` in locale, non sull'edge di
+Cloudflare. Bundle, SDK, DSN e ramo di codice sono gli stessi, quindi il dubbio è piccolo
+— ma non è zero, e non lo si spaccia per zero. (Nota: `wrangler dev --remote` **non**
+serve allo scopo — eredita i secret del Worker deployato, quindi il ramo "secret mancante"
+lì è irraggiungibile per costruzione.)

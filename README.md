@@ -88,6 +88,37 @@ git config core.hooksPath .githooks
 brew install gitleaks
 ```
 
+## Osservabilità
+
+Sentry, piano free, region DE. Il principio è che si accende solo ciò che, quando
+suona, dice qualcosa che non si sarebbe saputo altrimenti.
+
+- **Errori** su client e Worker. Sul Worker `withSentry` cattura le eccezioni non
+  gestite; i fallimenti *gestiti* del form (Turnstile senza secret, Resend che
+  risponde male) passano dall'hook `__SEGNALA_SENTRY__`, perché `withSentry` da solo
+  non li vedrebbe mai — sono `return`, non `throw`.
+- **Tracing solo su `/api/contact`.** Con `run_worker_first` ogni asset statico passa
+  dal Worker: un sample rate globale traccerebbe a tappeto il servizio di file dalla
+  cache edge, cioè spenderebbe quota per scoprire che la CDN è veloce. L'unica rotta
+  la cui latenza può degradare davvero è il form, che parla con due terzi.
+- **Cron monitor sul keepalive Supabase.** Il workflow apre già una issue se il ping
+  *fallisce*; nessuno però si accorge se il job **non parte affatto** — ed è lo
+  scenario che manda in pausa il database (GitHub spegne gli schedule dopo 60 giorni
+  di inattività sul repo). Un cron monitor è l'unico strumento che rende osservabile
+  un'assenza, e sta **fuori** da GitHub: non condivide il dominio di guasto che
+  sorveglia. Il check-in non può far fallire il ping — un guardiano che uccide ciò
+  che sorveglia è peggio di nessun guardiano.
+- **Niente session replay**, per scelta: registrerebbe il DOM di un form dove si
+  scrivono nome, email e brief, su un sito che dichiara di non tracciare — in cambio
+  di 50 sessioni al mese, cioè di un campione che non risponde a nessuna domanda.
+
+Il percorso Worker → Sentry è stato **verificato end-to-end**, non dedotto: eseguendo
+il Worker senza secret si ottengono i due eventi attesi in Sentry. Vale la pena dirlo
+perché per settimane quel percorso è esistito senza che nessuno lo avesse mai visto
+funzionare.
+
+Sul motore, il tracing è Langfuse (vedi [engine/README.md](engine/README.md)).
+
 ## Contribuire
 
 Branch `<tipo>/<slug>`, Conventional Commits con oggetto in italiano, `main` protetta
