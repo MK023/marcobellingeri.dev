@@ -42,14 +42,16 @@ const links = [
       {t('foot.setIn')}<br />
       {t('foot.printed')}
       <div class="ai-seal" title={t('foot.sealTitle')}>
-        <svg viewBox="0 0 100 100">
-          <path id="badgeCirclePath" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" fill="none"></path>
-          <text class="ring-text">
-            <textPath href="#badgeCirclePath" startOffset="0%">
-              COSTRUITO CON CLAUDE CODE • PAIR PROGRAMMING, NON PROMPT-E-VAI •
-            </textPath>
-          </text>
-        </svg>
+        <div class="ai-seal-ring">
+          <svg viewBox="0 0 100 100">
+            <path id="badgeCirclePath" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" fill="none"></path>
+            <text class="ring-text">
+              <textPath href="#badgeCirclePath" startOffset="0%">
+                COSTRUITO CON CLAUDE CODE • PAIR PROGRAMMING, NON PROMPT-E-VAI •
+              </textPath>
+            </text>
+          </svg>
+        </div>
         <div class="ai-seal-core">✳</div>
       </div>
     </div>
