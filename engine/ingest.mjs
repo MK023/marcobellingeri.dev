@@ -60,7 +60,7 @@ export function mapResults(results, vertical) {
     if (seen.has(key)) continue;
     seen.add(key);
     const garbage = title.length < 4 || /^\d+$/.test(title);
-    const name = garbage ? (url.pathname.split("/").filter(Boolean).pop() ?? title) : title;
+    const name = garbage ? (url.pathname.split("/").findLast(Boolean) ?? title) : title;
     out.push({
       source_url: r.url,
       source_name: name.slice(0, 200) || null,

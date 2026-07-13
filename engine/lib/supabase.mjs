@@ -28,7 +28,7 @@ const encodeValue = (v) => {
   if (v === null || v === undefined) throw new TypeError("valore nullo in un filtro PostgREST");
   return encodeURIComponent(String(v)).replace(
     /[!'()*]/g,
-    (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase(),
+    (c) => "%" + c.codePointAt(0).toString(16).toUpperCase(),
   );
 };
 
