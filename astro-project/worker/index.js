@@ -37,7 +37,16 @@ const rispostaJson = (obj, status = 200) =>
 
 // Per testo destinato a header email (subject): via i caratteri di controllo —
 // un nome con \r\n diventerebbe header injection nella mail.
+//
+// `no-control-regex` cerca chi mette caratteri di controllo in una regex per sbaglio.
+// Qui sono il BERSAGLIO, non l'errore: questa riga E' la difesa. La regola non sa
+// distinguere l'intenzione, quindi si disattiva — sulla riga, non nella config.
+//
+// La regex resta un LETTERALE dentro la funzione, non una costante di modulo: cosi'
+// ne nasce una nuova a ogni chiamata e non c'e' `lastIndex` condiviso fra richieste.
+// Estrarla sembrerebbe piu' pulito e introdurrebbe stato condiviso in cambio di nulla.
 const rigaPulita = (s, max) =>
+  // eslint-disable-next-line no-control-regex
   String(s ?? '').replace(/[\u0000-\u001F\u007F]+/g, ' ').trim().slice(0, max);
 
 // Il wrapper di produzione (worker/sentry.js) registra qui il reporter: così

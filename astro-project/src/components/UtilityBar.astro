@@ -115,7 +115,7 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
     try {
       const v = localStorage.getItem(EDITION_KEY);
       return v === 'day' || v === 'night' ? v : null;
-    } catch (e) { return null; }
+    } catch { return null; }
   }
 
   let autoTimer: ReturnType<typeof setInterval> | undefined;
@@ -139,6 +139,6 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
       document.documentElement.getAttribute('data-mode') === 'night' ? 'day' : 'night';
     stopAuto();
     setMode(next);
-    try { localStorage.setItem(EDITION_KEY, next); } catch (e) {}
+    try { localStorage.setItem(EDITION_KEY, next); } catch {}
   });
 </script>

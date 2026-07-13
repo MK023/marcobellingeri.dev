@@ -36,7 +36,11 @@ const entries = sections(t);
     };
 
     apply();
-    if ('ResizeObserver' in window) {
+    // `typeof`, non `'ResizeObserver' in window`: la libreria DOM di TypeScript dà
+    // ResizeObserver per garantito, quindi con `in` restringe l'else a `never` e il
+    // fallback diventa codice morto ai suoi occhi. Qui siamo più prudenti di lei —
+    // il fallback serve davvero, e va scritto in modo che TS lo veda vivo.
+    if (typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(apply);
       ro.observe(bar);
       ro.observe(toc);

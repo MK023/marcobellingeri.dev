@@ -2,7 +2,8 @@
 import '../styles/global.css';
 // Font self-hosted (Fontsource) — nessun transfer di IP a Google (GDPR-safe),
 // serviti same-origin. Pesi allineati a quelli usati in global.css.
-import '@fontsource/anton'; // 400 (unico peso)
+import '@fontsource/anton/400.css'; // unico peso. Path esplicito come gli altri: l'import
+// nudo del pacchetto non ha dichiarazioni di tipo (il contenuto è identico a 400.css).
 import '@fontsource/source-serif-4/400.css';
 import '@fontsource/source-serif-4/600.css';
 import '@fontsource/source-serif-4/400-italic.css';
@@ -104,21 +105,21 @@ const suggestTargets = (Object.keys(languages) as Lang[])
   <script is:inline>
     (function () {
       try {
-        var saved = localStorage.getItem('bellingeri-edition');
+        const saved = localStorage.getItem('bellingeri-edition');
         if (saved === 'night' || saved === 'day') {
           if (saved === 'night') document.documentElement.setAttribute('data-mode', 'night');
           return;
         }
-      } catch (e) {}
+      } catch {}
       try {
-        var h = parseInt(
+        const h = parseInt(
           new Date().toLocaleString('en-US', { timeZone: 'Europe/Rome', hour: '2-digit', hour12: false }),
           10
         );
         if (!(h >= 7 && h < 20)) {
           document.documentElement.setAttribute('data-mode', 'night');
         }
-      } catch (e) {}
+      } catch {}
     })();
   </script>
 
@@ -164,14 +165,14 @@ const suggestTargets = (Object.keys(languages) as Lang[])
     const loader = document.getElementById('press-loader');
     if (loader) {
       let seen = false;
-      try { seen = sessionStorage.getItem('bellingeri-loader-seen') === '1'; } catch (e) {}
+      try { seen = sessionStorage.getItem('bellingeri-loader-seen') === '1'; } catch {}
       if (seen) {
         loader.classList.add('hidden');
         loader.style.display = 'none';
       } else {
         setTimeout(() => {
           loader.classList.add('hidden');
-          try { sessionStorage.setItem('bellingeri-loader-seen', '1'); } catch (e) {}
+          try { sessionStorage.setItem('bellingeri-loader-seen', '1'); } catch {}
         }, 780);
       }
     }
@@ -198,7 +199,7 @@ const suggestTargets = (Object.keys(languages) as Lang[])
     // una lingua che offriamo, diversa da quella corrente, e se l'utente non ha
     // già scelto (cookie pref-lang). Nessun redirect → SEO-safe.
     (function () {
-      function hasCookie(n) {
+      function hasCookie(n: string) {
         return document.cookie.split('; ').some((c) => c.indexOf(n + '=') === 0);
       }
       if (hasCookie('pref-lang')) return;
@@ -207,11 +208,12 @@ const suggestTargets = (Object.keys(languages) as Lang[])
       const base = nav.slice(0, 2).toLowerCase();
       if (!base || base === current) return;
       const banner = document.getElementById('lang-suggest');
-      const row = banner && banner.querySelector('.lang-suggest-row[data-lang="' + base + '"]');
+      // `<HTMLElement>`: querySelector rende `Element`, che non ha `.hidden`.
+      const row = banner && banner.querySelector<HTMLElement>('.lang-suggest-row[data-lang="' + base + '"]');
       if (!banner || !row) return;
       row.hidden = false;
       banner.hidden = false;
-      const setPref = (lang) => {
+      const setPref = (lang: string) => {
         document.cookie = 'pref-lang=' + lang + '; path=/; max-age=31536000; SameSite=Lax; Secure';
       };
       row.querySelector('a')?.addEventListener('click', () => setPref(base));

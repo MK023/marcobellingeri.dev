@@ -486,7 +486,10 @@ const briefLabels = {
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => { toastEl.className = 'svc-toast mono ' + kind; }, 5000);
     }
-    function resetSendBtn() { sendEl.disabled = false; sendEl.textContent = S.label; }
+    // Arrow su `const`, non `function`: una dichiarazione viene issata, quindi per
+    // TypeScript potrebbe girare PRIMA della guardia a inizio blocco e `sendEl`
+    // tornerebbe nullable. Definita qui, la restrizione di tipo regge.
+    const resetSendBtn = () => { sendEl.disabled = false; sendEl.textContent = S.label; };
 
     // Dopo un invio riuscito il form torna vuoto: pronto per una nuova richiesta,
     // anche dallo stesso cliente.
@@ -517,22 +520,22 @@ const briefLabels = {
         if (!r.ok) throw new Error(String(r.status));
         toast(S.sent, 'ok');
         resetForm();
-      } catch (e) {
+      } catch {
         toast(S.failed, 'err');
       } finally {
         resetSendBtn();
-        (window as any).turnstile?.reset?.(tsEl || undefined);
+        window.turnstile?.reset?.(tsEl ?? undefined);
       }
     }
 
     // Turnstile richiama questi globali (data-callback / data-error-callback del widget).
     let inCorso = false;
-    (window as any).svcTurnstileOk = (token: string) => {
+    window.svcTurnstileOk = (token: string) => {
       if (!inCorso) return;
       inCorso = false;
       invia(token);
     };
-    (window as any).svcTurnstileErr = () => {
+    window.svcTurnstileErr = () => {
       inCorso = false;
       toast(S.failed, 'err');
       resetSendBtn();
@@ -568,12 +571,12 @@ const briefLabels = {
       // Turnstile assente (script async non ancora arrivato, o filtrato da un
       // blocker): execute?.() sarebbe un no-op senza callback e il bottone
       // resterebbe inchiodato su "INVIO…". Errore visibile e riprovabile, invece.
-      if (!(window as any).turnstile?.execute) { toast(S.failed, 'err'); return; }
+      if (!window.turnstile?.execute) { toast(S.failed, 'err'); return; }
       sendEl.disabled = true;
       sendEl.textContent = S.sending;
       inCorso = true;
       // Turnstile parte ORA, al click (data-execution="execute"): niente badge fermo lì.
-      (window as any).turnstile.execute(tsEl || undefined);
+      window.turnstile.execute(tsEl ?? undefined);
     });
 
     build();

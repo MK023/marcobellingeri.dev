@@ -28,10 +28,6 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
 
 <script>
   // ---- neon CRT terminal + konami trigger ----
-  declare global {
-    interface Window { openNeonTerminal?: () => void; }
-  }
-
   (function neonTerminal() {
     const overlay = document.getElementById('neon-terminal');
     const output = document.getElementById('crt-output');
@@ -39,7 +35,7 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
     const closeBtn = document.getElementById('neon-close');
     if (!overlay || !output || !input || !closeBtn) return;
 
-    let cmdHistory: string[] = [];
+    const cmdHistory: string[] = [];
     let historyPos = -1;
 
     // printLine accetta markup: le righe sono costanti scritte qui dentro.

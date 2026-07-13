@@ -91,6 +91,16 @@ jobs:
         working-directory: astro-project
         run: npm ci
 
+      # Sulla strada del deploy, non solo in `Site CI`: quel workflow e' separato e il
+      # deploy non lo aspetta (stessa ragione per cui il gate Sonar sta qui e non li').
+      # Sono le uniche due reti che guardano i .astro, che SonarCloud non sa analizzare.
+      - name: Type-check (astro check)
+        working-directory: astro-project
+        run: npm run check
+      - name: Lint (ESLint, copre i .astro)
+        working-directory: astro-project
+        run: npm run lint
+
       - name: Build
         working-directory: astro-project
         env:

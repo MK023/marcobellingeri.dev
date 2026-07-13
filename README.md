@@ -33,9 +33,15 @@ sorgente.
 cd astro-project
 npm install
 npm run dev          # sviluppo
+npm run check        # type-check dei .astro (tsconfig strict)
+npm run lint         # ESLint, gli unici occhi sui .astro
 npm run build        # build statica in dist/
 npm run test:csp     # i test girano su dist/, non sul sorgente
 ```
+
+`check` e `lint` girano anche in CI **e sulla strada del deploy**, non solo in `Site
+CI`: quel workflow è separato e il deploy non lo aspetta, quindi un gate che stesse
+solo lì non fermerebbe niente.
 
 Per servire il sito **con gli header veri** — quelli di `public/_headers`, che
 `astro preview` non applica:
@@ -71,6 +77,15 @@ Altre reti:
   niente produzione. Sulle PR l'analisi arriva come check, quando la modifica si
   può ancora discutere. La coverage la calcola il test runner di Node, nessuna
   dipendenza in più.
+- **`astro check` + ESLint**, perché Sonar da solo lasciava scoperta **più di metà
+  del sito**: non ha un parser per Astro, e i 20 file `.astro` (~2800 righe, più di
+  tutto ciò che Sonar analizza) passavano senza alcun controllo statico — proprio
+  dove vive la logica lato browser: form di contatto, palette comandi, terminale.
+  Il `tsconfig` era già `strict`, ma nessuno lo eseguiva: severità decorativa.
+  **Niente Prettier**: formatta, non trova bug — e le liti sullo stile si fanno in
+  due. Nella config di ESLint non c'è **nessuna regola disattivata**: le due sole
+  eccezioni sono sulla riga, con il motivo accanto (la regex anti header-injection
+  del Worker, dove i caratteri di controllo sono il bersaglio e non l'errore).
 - **gitleaks** sull'intera storia a ogni push su `main`, e in pre-commit locale.
 - **Push protection** del secret scanning: GitHub rifiuta un push che contiene un
   segreto, invece di scoprirlo dopo.

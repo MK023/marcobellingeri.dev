@@ -38,6 +38,18 @@ jobs:
       - name: Installa
         working-directory: astro-project
         run: npm ci
+
+      # Prima del build: sono le uniche due reti che guardano i file .astro.
+      # SonarCloud non ha un parser per Astro — 20 file e ~2800 righe (piu' di tutto
+      # cio' che Sonar analizza) passavano senza alcun controllo statico, e li' dentro
+      # sta la logica lato browser: form di contatto, palette, terminale.
+      - name: Type-check (astro check)
+        working-directory: astro-project
+        run: npm run check
+      - name: Lint (ESLint, copre i .astro)
+        working-directory: astro-project
+        run: npm run lint
+
       - name: Build
         working-directory: astro-project
         run: npm run build
