@@ -1063,7 +1063,10 @@
     position:fixed; inset:0; z-index:500;
     background:var(--paper);
     display:flex; align-items:center; justify-content:center;
-    animation:press-out 0.35s ease 0.78s forwards;
+    /* Fade a 0.2s: la dissolvenza lunga era tempo morto puro sul cammino
+       dell'LCP — l'hero sale già DIETRO il pannello durante l'attesa.
+       I 780 ms di "SFOGLIANDO" sono scelta di design e restano. */
+    animation:press-out 0.2s ease 0.78s forwards;
   }
   @keyframes press-out{ to{ opacity:0; visibility:hidden; pointer-events:none; } }
   html[data-loader="seen"] .press-loader{ display:none; }

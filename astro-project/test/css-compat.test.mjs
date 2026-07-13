@@ -7,20 +7,28 @@
 // iPhone fermo a iOS 15 perde in silenzio tutto il layout mobile, perché quelle media
 // query vengono semplicemente ignorate. Nessuno lo scopre finché non lo dice un
 // visitatore. Il target sta in astro.config.mjs (`vite.build.cssTarget`).
+//
+// Con `build.inlineStylesheets: 'always'` il CSS non vive più in file .css: sta
+// negli <style> dentro l'HTML. Il controllo è lo stesso, cambia solo dove si legge.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 
-const fogli = readdirSync('dist/_astro')
-  .filter((f) => f.endsWith('.css'))
-  .map((f) => ({ nome: f, css: readFileSync(`dist/_astro/${f}`, 'utf8') }));
-
-test('esistono fogli di stile da controllare', () => {
-  assert.ok(fogli.length > 0, 'nessun .css in dist/_astro: la build è cambiata?');
+const pagine = ['dist/it/index.html', 'dist/en/index.html'].map((f) => {
+  const html = readFileSync(f, 'utf8');
+  const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+  return { nome: f, css };
 });
 
-for (const { nome, css } of fogli) {
+test('esistono stili inline da controllare', () => {
+  assert.ok(
+    pagine.every((p) => p.css.length > 1000),
+    'niente <style> sostanziosi nelle pagine: la build è cambiata? (inlineStylesheets)',
+  );
+});
+
+for (const { nome, css } of pagine) {
   test(`${nome}: nessuna media query in sintassi a intervalli`, () => {
     const trovate = [...css.matchAll(/@media[^{]*?\(\s*(width|height)\s*[<>]=?/g)].map((m) => m[0]);
     assert.deepEqual(

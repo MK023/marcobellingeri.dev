@@ -50,6 +50,14 @@ export default defineConfig({
       prefixDefaultLocale: true,
     },
   },
+  build: {
+    // Il CSS del sito è UN file da ~10 KB gzip fetchato in serie dopo l'HTML:
+    // un giro di rete intero sul cammino del primo paint (e del loader, che
+    // parte al parse del CSS). Inline nell'HTML sparisce dal percorso critico.
+    // Gli hash CSP degli <style> inlinati li calcola Astro come per gli script
+    // (verificato: test:csp su dist e browser con la CSP del meta).
+    inlineStylesheets: 'always',
+  },
   vite: {
     build: {
       // Senza questo, il minificatore riscrive `@media (max-width:640px)` come
