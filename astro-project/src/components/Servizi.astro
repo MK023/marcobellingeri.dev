@@ -308,6 +308,18 @@ const briefLabels = {
     const track = document.getElementById('svc-track');
     if (!carousel || !track) return;
 
+    // Sotto i 760px il carosello NON parte: card impilate (global.css), niente
+    // cloni né auto-scroll — su touch l'avanzamento automatico è un problema
+    // WCAG 2.2.2 e lo swipe orizzontale compete con lo scroll verticale. È la
+    // stessa media query che nasconde le frecce. Se la finestra attraversa il
+    // breakpoint (rotazione, resize), parte in quel momento; al ritorno sotto,
+    // `inPausa` lo ferma e i cloni li nasconde il CSS.
+    const mobile = window.matchMedia('(max-width:760px)');
+    let avviato = false;
+    const avviaCarosello = () => {
+    if (avviato || mobile.matches) return;
+    avviato = true;
+
     const originals = Array.from(track.children) as HTMLElement[];
     const cardWidth = () => {
       const card = track.querySelector('.svc-card');
@@ -341,7 +353,7 @@ const briefLabels = {
     // muoveva sotto il focus) o al ritorno su una scheda con il cursore fermo
     // sopra il carosello.
     const cause = { hover: false, focus: false, nascosto: false };
-    const inPausa = () => cause.hover || cause.focus || cause.nascosto;
+    const inPausa = () => cause.hover || cause.focus || cause.nascosto || mobile.matches;
 
     // Lo scorrimento automatico è movimento non richiesto: chi lo ha disattivato
     // a livello di sistema tiene solo le frecce e lo scroll manuale.
@@ -389,6 +401,10 @@ const briefLabels = {
     };
     document.getElementById('svc-next')?.addEventListener('click', () => step(cardWidth()));
     document.getElementById('svc-prev')?.addEventListener('click', () => step(-cardWidth()));
+    };
+
+    mobile.addEventListener('change', avviaCarosello);
+    avviaCarosello();
   })();
 
   // ---- modulo d'ordine: compone la bozza di brief ----
