@@ -112,6 +112,10 @@ suona, dice qualcosa che non si sarebbe saputo altrimenti.
   gestite; i fallimenti *gestiti* del form (Turnstile senza secret, Resend che
   risponde male) passano dall'hook `__SEGNALA_SENTRY__`, perché `withSentry` da solo
   non li vedrebbe mai — sono `return`, non `throw`.
+  Sul client il SDK si carica **pigro** (prima interazione o primo idle): il suo
+  costo stava tutto nel percorso critico ed era l'ultimo motivo per cui il TBT
+  mobile non era zero. Gli errori pre-caricamento finiscono in un buffer e partono
+  appena il SDK arriva (`sentry.client.config.js`).
 - **Tracing solo su `/api/contact`.** Con `run_worker_first` ogni asset statico passa
   dal Worker: un sample rate globale traccerebbe a tappeto il servizio di file dalla
   cache edge, cioè spenderebbe quota per scoprire che la CDN è veloce. L'unica rotta
