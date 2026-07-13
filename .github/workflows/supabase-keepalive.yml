@@ -7,9 +7,17 @@ name: Supabase keepalive
 # NB (gotcha noto): GitHub disabilita gli schedule dopo 60 giorni senza
 # attivita' sul REPO — se il progetto va in pausa lunga, questo cron si spegne
 # in silenzio e Supabase pausera'. Con sviluppo attivo non succede.
+#
+# Contro proprio QUESTO c'e' il check-in Sentry in coda al job. L'issue automatica
+# qui sotto scatta se il ping FALLISCE; nessuno pero' si accorge se il job non
+# parte affatto — ed e' lo scenario peggiore, perche' e' quello che porta alla
+# pausa del database. Un cron monitor si allarma sull'ASSENZA del check-in: se
+# GitHub spegne lo schedule, Sentry lo segnala come "missed".
 on:
   schedule:
     - cron: "0 5 */3 * *"
+  # Per collaudare il check-in senza aspettare tre giorni.
+  workflow_dispatch:
 
 permissions:
   issues: write # per l'issue automatica on-failure
@@ -37,3 +45,28 @@ jobs:
           gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "Keepalive Supabase fallito ($(date -u +%F)) — rischio pause a 7gg" \
             --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      # Check-in del cron monitor. `monitor_config` fa l'upsert: il monitor nasce
+      # da solo al primo check-in, e la schedule resta qui accanto a quella vera —
+      # se un giorno cambia il cron, si cambiano insieme o Sentry grida "missed".
+      #
+      # La chiave nell'URL e' la public key del DSN: e' pubblica per costruzione
+      # (identifica il progetto, non autentica), la stessa gia' nel codice del sito.
+      #
+      # `|| true` NON e' pigrizia: questo step sorveglia il keepalive, e un guardiano
+      # che uccide cio' che sorveglia e' peggio di nessun guardiano. Se Sentry e' giu'
+      # o l'URL cambia, il ping a Supabase resta comunque andato a buon fine.
+      - name: Check-in Sentry (il cron e' vivo)
+        if: always()
+        env:
+          ESITO: ${{ job.status }}
+        run: |
+          stato=ok
+          [ "$ESITO" = "success" ] || stato=error
+          curl -sS -m 10 -X POST \
+            "https://o4511713634484224.ingest.de.sentry.io/api/4511714029273168/cron/supabase-keepalive/ffcac5d108001982eb70aa431c32af75/" \
+            -H 'Content-Type: application/json' \
+            -d "{\"monitor_config\":{\"schedule\":{\"type\":\"crontab\",\"value\":\"0 5 */3 * *\"},\"timezone\":\"UTC\",\"checkin_margin\":120,\"max_runtime\":10},\"status\":\"$stato\"}" \
+            && echo "check-in Sentry: $stato" \
+            || echo "check-in Sentry non riuscito — il keepalive resta valido"
+          exit 0

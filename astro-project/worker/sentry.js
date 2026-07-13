@@ -4,7 +4,7 @@
 // wrangler.jsonc). Richiede il flag nodejs_compat.
 //
 // Cattura gli errori non gestiti di /api/contact e del redirect lingua — quelli
-// che oggi diventano un 500 muto. Solo errori: tracing a zero, come sul client.
+// che oggi diventano un 500 muto.
 import * as Sentry from '@sentry/cloudflare';
 import handler from './index.js';
 
@@ -16,7 +16,13 @@ globalThis.__SEGNALA_SENTRY__ = (messaggio, extra) =>
 export default Sentry.withSentry(
   () => ({
     dsn: 'https://ffcac5d108001982eb70aa431c32af75@o4511713634484224.ingest.de.sentry.io/4511714029273168',
-    tracesSampleRate: 0,
+    // Tracing SOLO su /api/contact. Con `run_worker_first` ogni asset statico passa
+    // di qui: un tracesSampleRate globale tracerebbe a tappeto il servizio di file
+    // dalla cache edge — rumore che consuma quota e non dice niente. L'unica rotta
+    // dove la latenza può davvero degradare è il form, che parla con due terzi
+    // (Turnstile e Resend): se un giorno il contatto diventa lento, la causa è lì
+    // e questo la fa vedere.
+    tracesSampler: ({ name }) => (String(name).includes('/api/contact') ? 1 : 0),
     sendDefaultPii: false,
   }),
   handler,
