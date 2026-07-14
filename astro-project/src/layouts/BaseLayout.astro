@@ -38,6 +38,37 @@ const alternates = (Object.keys(languages) as Lang[]).map((l) => ({
 }));
 const xDefault = getAbsoluteLocaleUrl(defaultLang, path);
 
+// JSON-LD Person + ProfessionalService: dati statici, tutti già pubblici sul
+// sito (niente telefono né data di nascita — il sito non è un CV). I crawler
+// lo leggono dall'HTML sorgente senza eseguirlo, quindi la CSP nel meta non
+// c'entra. Il serviceType rispecchia le card di Servizi.astro: se cambiano
+// loro, cambia anche lui.
+const siteRoot = new URL('/', Astro.site).href;
+const jsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Person',
+      '@id': `${siteRoot}#person`,
+      name: 'Marco Bellingeri',
+      jobTitle: 'Cloud Platform & Security Engineer',
+      url: siteRoot,
+      sameAs: ['https://github.com/MK023', 'https://www.linkedin.com/in/marco-bellingeri'],
+      knowsAbout: ['Cloud infrastructure', 'DevOps', 'Security', 'AI agents', 'AI Act compliance'],
+      address: { '@type': 'PostalAddress', addressLocality: 'Casale Monferrato', addressCountry: 'IT' },
+    },
+    {
+      '@type': 'ProfessionalService',
+      '@id': `${siteRoot}#service`,
+      name: 'Marco Bellingeri — Cloud & Security',
+      url: siteRoot,
+      provider: { '@id': `${siteRoot}#person` },
+      areaServed: ['IT', 'Remote'],
+      serviceType: ['Security Audit', 'Cloud & DevOps', 'Pair & Advisory', 'Web Development', 'AI Automation', 'AI & Agent Security'],
+    },
+  ],
+});
+
 // Banner-suggerimento lingua (SEO-safe): NESSUN redirect, solo un invito lato
 // client basato su navigator.language. Reso visibile via JS (i crawler vedono
 // `hidden`), la scelta/dismiss scrive il cookie override. Il redirect geo vero
@@ -74,6 +105,7 @@ const suggestTargets = (Object.keys(languages) as Lang[])
         <link rel="alternate" hreflang={a.hreflang} href={a.href} />
       ))}
       <link rel="alternate" hreflang="x-default" href={xDefault} />
+      <script is:inline type="application/ld+json" set:html={jsonLd} />
     </>
   )}
   <meta property="og:title" content={pageTitle} />

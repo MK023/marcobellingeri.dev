@@ -29,8 +29,14 @@ const cspOf = (html) =>
   html.match(/<meta http-equiv="content-security-policy" content="([^"]*)"/i)?.[1] ?? '';
 
 // Solo gli inline: quelli con src= sono coperti da 'self'.
+// Esclusi i data block (application/ld+json): il browser non li esegue mai —
+// "prepare a script" li scarta prima del check CSP — quindi script-src non li
+// tocca e un hash sarebbe solo rumore da mantenere. Qualunque cosa dichiari un
+// type non-JS non può eseguire, per costruzione: l'esenzione non apre nulla.
 const inlineScripts = (html) =>
-  [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+  [...html.matchAll(/<script(?![^>]*\ssrc=)([^>]*)>([\s\S]*?)<\/script>/gi)]
+    .filter((m) => !/type="application\/ld\+json"/i.test(m[1]))
+    .map((m) => m[2]);
 
 for (const page of PAGES) {
   test(`${page}: ogni script inline ha il suo hash in script-src`, () => {
