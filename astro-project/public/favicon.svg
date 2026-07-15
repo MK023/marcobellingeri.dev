@@ -1,23 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!--
-    Il pennino: lo stesso segno del cursore custom (global.css). Colori dalle
-    variabili del sito — paper/ink/orange di giorno, ink/paper/magenta di notte,
-    così la tab segue il tema del browser come fa la pagina.
-  -->
   <style>
     .bg { fill: #FAFAF7; }
-    .nib { fill: #181410; }
-    .slit { stroke: #FAFAF7; }
-    .dot { fill: #FF5A1F; }
+    .mark { fill: #181410; }
     @media (prefers-color-scheme: dark) {
       .bg { fill: #0B0710; }
-      .nib { fill: #F2EDFB; }
-      .slit { stroke: #0B0710; }
-      .dot { fill: #FF2FD6; }
+      .mark { fill: #F2EDFB; }
     }
   </style>
   <rect class="bg" width="32" height="32" rx="4"/>
-  <path class="nib" d="M16 3 L27 16 L16 29 L5 16 Z"/>
-  <line class="slit" x1="16" y1="10" x2="16" y2="24" stroke-width="2"/>
-  <circle class="dot" cx="16" cy="19" r="2.6"/>
+  <g class="mark" transform="translate(4 24.829) scale(0.0100334 -0.0100334) translate(-78 0)">
+    <path d="M78 0V1760H614L762 687L909 1760H1450V0H1128V1268L926 0H610L396 1268V0Z"/>
+    <g transform="translate(1528 0)">
+      <path d="M78 0V1760H555Q747 1760 834.5 1666.5Q922 1573 922 1358V1281Q922 1157 877.5 1080.0Q833 1003 742 979Q861 949 901.5 838.5Q942 728 942 569Q942 398 910.0 270.0Q878 142 794.0 71.0Q710 0 555 0ZM422 1097H494Q543 1097 557.0 1135.0Q571 1173 571 1226V1403Q571 1488 496 1488H422ZM457 310Q594 310 594 440V660Q594 735 571.5 778.5Q549 822 487 822H422V312Q444 310 457 310Z"/>
+    </g>
+  </g>
 </svg>
