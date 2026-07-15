@@ -1,0 +1,143 @@
+---
+// Pila da edicola riusabile: le voci impilate come giornali, sfalsate e ruotate,
+// che si aprono a ventaglio su hover / focus da tastiera / tap (mobile). Usata sia
+// dall'Edicola (firme esterne) sia dalle Certificazioni. Data-driven: una voce =
+// un oggetto in `items`. Solo link in uscita (nuova scheda).
+interface Item { label: string; sub: string; href: string; }
+interface Props { head: string; items: Item[]; newTab: string; }
+const { head, items, newTab } = Astro.props;
+---
+
+<div class="newsstand">
+  <p class="certs-head mono">{head}</p>
+  {/* Stato base (senza JS): riga a capo, ogni link raggiungibile — fallback
+      accessibile. Lo <script> aggiunge .is-enhanced e la collassa in pila. */}
+  <div class="newsstand-stack" data-newsstand>
+    {items.map((b) => (
+      <a
+        class="paper"
+        href={b.href}
+        target="_blank"
+        rel="noopener"
+        aria-label={`${b.label} — ${b.sub} (${newTab})`}
+      >
+        <span class="paper-source mono">{b.sub}</span>
+        <span class="paper-title">{b.label}</span>
+      </a>
+    ))}
+  </div>
+</div>
+
+<script>
+  // Progressive enhancement. querySelectorAll (non querySelector): la pila può
+  // comparire più volte nella pagina (Edicola + Certificazioni) e lo <script> del
+  // componente gira una volta sola — deve potenziarle tutte.
+  document.querySelectorAll<HTMLElement>('[data-newsstand]').forEach((stack) => {
+    stack.classList.add('is-enhanced');
+
+    // Il tipo di puntatore dell'ultima interazione decide se intercettare il tap.
+    // Tastiera/mouse non vengono intercettati: ci pensano :focus-within e :hover.
+    let lastPointerType = '';
+    stack.addEventListener('pointerdown', (e) => { lastPointerType = (e as PointerEvent).pointerType; }, true);
+    stack.addEventListener('keydown', () => { lastPointerType = 'key'; }, true);
+
+    // Su touch il PRIMO tap apre il ventaglio invece di seguire il link: i fogli
+    // sotto diventano raggiungibili. Il secondo tap naviga. Un tap fuori richiude.
+    stack.addEventListener('click', (e) => {
+      if (stack.classList.contains('is-open')) return;
+      if (lastPointerType !== 'touch' && lastPointerType !== 'pen') return;
+      if (!(e.target as HTMLElement).closest('a')) return;
+      e.preventDefault();
+      stack.classList.add('is-open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!stack.contains(e.target as Node)) stack.classList.remove('is-open');
+    });
+  });
+</script>
+
+<style>
+  /* Scoped: Astro ne hasha lo stile nella CSP (niente style="" inline). Tutto su
+     var(--ink/--paper) → giorno e notte. */
+  .newsstand{ margin-top:34px; }
+
+  .newsstand-stack{
+    display:flex; flex-wrap:wrap; align-items:flex-start;
+    gap:14px; padding:6px 4px 12px;
+  }
+
+  .paper{
+    position:relative; display:flex; flex-direction:column; gap:6px;
+    flex:0 0 auto; width:min(240px, 78vw);
+    padding:11px 14px 13px;
+    text-decoration:none; color:var(--ink); background:var(--paper);
+    border:2px solid var(--ink); box-shadow:4px 4px 0 var(--ink);
+    /* Più lento e con easing ease-out morbido: l'apertura respira invece di
+       scattare. margin/transform separati dal resto (colore/ombra restano rapidi). */
+    transition:margin 0.45s cubic-bezier(.22,.61,.36,1),
+               transform 0.45s cubic-bezier(.22,.61,.36,1),
+               box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  .paper-source{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+    opacity:0.62; padding-bottom:5px; border-bottom:1.5px solid var(--ink);
+  }
+  .paper-title{
+    font-family:'Source Serif 4', serif;
+    font-size:16px; font-weight:600; line-height:1.25;
+  }
+  .paper:hover, .paper:focus-visible{
+    background:var(--ink); color:var(--paper);
+    box-shadow:6px 6px 0 var(--orange);
+  }
+  .paper:hover .paper-source, .paper:focus-visible .paper-source{
+    opacity:0.85; border-bottom-color:var(--paper);
+  }
+  .paper:focus-visible{ outline:3px solid var(--orange); outline-offset:3px; }
+
+  /* Pila (JS presente): riga singola che si sovrappone marciando verso destra.
+     Overlap FISSO in px (non %: la % è relativa al contenitore e con molte voci
+     spinge i fogli fuori dallo schermo a sinistra). Ogni foglio mostra ~65px. */
+  .newsstand-stack.is-enhanced{ flex-wrap:nowrap; }
+  .newsstand-stack.is-enhanced .paper:not(:first-child){ margin-left:-176px; }
+  .newsstand-stack.is-enhanced .paper:nth-child(4n+1){ transform:rotate(-2.2deg) translateY(2px); }
+  .newsstand-stack.is-enhanced .paper:nth-child(4n+2){ transform:rotate(1.6deg)  translateY(-1px); }
+  .newsstand-stack.is-enhanced .paper:nth-child(4n+3){ transform:rotate(-1deg)   translateY(1px); }
+  .newsstand-stack.is-enhanced .paper:nth-child(4n+4){ transform:rotate(2deg)    translateY(-2px); }
+
+  /* Ventaglio: si torna alla riga. L'apertura è a CASCATA (transition-delay sui
+     figli successivi) così i fogli si aprono uno dopo l'altro, non tutti insieme:
+     è quello che la fa sembrare naturale. In chiusura il delay non c'è → richiude
+     svelta. */
+  /* Ventaglio: la riga torna a capo (wrap) così tutti i fogli sono raggiungibili
+     anche quando la pila era più larga dello schermo. */
+  .newsstand-stack.is-enhanced:hover,
+  .newsstand-stack.is-enhanced:focus-within,
+  .newsstand-stack.is-enhanced.is-open{ flex-wrap:wrap; }
+  .newsstand-stack.is-enhanced:hover .paper,
+  .newsstand-stack.is-enhanced:focus-within .paper,
+  .newsstand-stack.is-enhanced.is-open .paper{ margin-left:0; transform:rotate(0); }
+
+  .newsstand-stack.is-enhanced:hover .paper:nth-child(2),
+  .newsstand-stack.is-enhanced:focus-within .paper:nth-child(2),
+  .newsstand-stack.is-enhanced.is-open .paper:nth-child(2){ transition-delay:0.04s; }
+  .newsstand-stack.is-enhanced:hover .paper:nth-child(3),
+  .newsstand-stack.is-enhanced:focus-within .paper:nth-child(3),
+  .newsstand-stack.is-enhanced.is-open .paper:nth-child(3){ transition-delay:0.08s; }
+  .newsstand-stack.is-enhanced:hover .paper:nth-child(4),
+  .newsstand-stack.is-enhanced:focus-within .paper:nth-child(4),
+  .newsstand-stack.is-enhanced.is-open .paper:nth-child(4){ transition-delay:0.12s; }
+  .newsstand-stack.is-enhanced:hover .paper:nth-child(5),
+  .newsstand-stack.is-enhanced:focus-within .paper:nth-child(5),
+  .newsstand-stack.is-enhanced.is-open .paper:nth-child(5){ transition-delay:0.16s; }
+  .newsstand-stack.is-enhanced:hover .paper:nth-child(n+6),
+  .newsstand-stack.is-enhanced:focus-within .paper:nth-child(n+6),
+  .newsstand-stack.is-enhanced.is-open .paper:nth-child(n+6){ transition-delay:0.2s; }
+
+  /* Reduced motion: niente pila né rotazioni, resta la riga leggibile. */
+  @media (prefers-reduced-motion: reduce){
+    .paper{ transition:box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease; }
+    .newsstand-stack.is-enhanced .paper{ margin-left:0; transform:none; }
+  }
+</style>

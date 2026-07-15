@@ -1,5 +1,6 @@
 ---
 import { numeroSezione } from '../lib/sections';
+import Newsstand from './Newsstand.astro';
 import { defaultLang, type Lang } from '../i18n/ui';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
@@ -8,6 +9,8 @@ const copy = {
   it: {
     title: 'Stack',
     certsHead: 'Certificazioni · verificabili su Credly',
+    certAnthropic: 'Anthropic · 15 corsi · 2026',
+    newTab: 'si apre in una nuova scheda',
     cards: [
       ['CORE', 'Python & Backend', 'La lingua di casa: backend e API con Clean Architecture e DDD — FastAPI, Flask, Falcon.'],
       ['FRONT', 'Frontend', 'Astro e Vite — questo sito incluso; React e TypeScript quando serve una SPA.'],
@@ -21,6 +24,8 @@ const copy = {
   en: {
     title: 'Stack',
     certsHead: 'Certifications · verifiable on Credly',
+    certAnthropic: 'Anthropic · 15 courses · 2026',
+    newTab: 'opens in a new tab',
     cards: [
       ['CORE', 'Python & Backend', 'Home turf: back-ends and APIs built on Clean Architecture and DDD — FastAPI, Flask, Falcon.'],
       ['FRONT', 'Frontend', 'Astro and Vite — this site included; React and TypeScript when a SPA is called for.'],
@@ -33,18 +38,21 @@ const copy = {
   },
 }[lang];
 
-// Certificazioni curate (5, non tutte: un muro di badge legge "junior"). Rese come
-// chip self-hosted, non immagini Credly esterne — la CSP `img-src 'self'` le
-// bloccherebbe, e i badge a gradiente stonerebbero col design a bordi netti. Il
-// link porta al profilo Credly, dove sono tutte verificabili.
-const certs = [
-  { name: 'GitHub Foundations', org: 'GitHub', year: '2025' },
-  { name: 'Python PCEP', org: 'Python Institute', year: '2024' },
-  { name: 'Containers & Kubernetes', org: 'IBM', year: '2024' },
-  { name: 'Docker Essentials', org: 'IBM', year: '2024' },
-  { name: 'Linux Essential', org: 'LPI', year: '2022' },
-];
+// Certificazioni rese come PILA da edicola (Newsstand): impilate e compatte non
+// fanno "muro di badge junior", e si aprono a ventaglio. Link al profilo Credly,
+// dove le verificabili stanno tutte. L'Anthropic Academy 2026 (15 corsi) sposta
+// il segnale sull'AI attuale.
 const CREDLY = 'https://credly.com/users/marco-bellingeri';
+const certs = [
+  { label: 'IT Specialist – Cybersecurity', sub: 'Cisco Networking Academy · 2022', href: CREDLY },
+  { label: 'Linux Essentials', sub: 'Linux Professional Institute · 2022', href: CREDLY },
+  { label: 'GitHub Foundations', sub: 'GitHub · 2025', href: CREDLY },
+  { label: 'MongoDB Python Developer Path', sub: 'MongoDB · 2024', href: CREDLY },
+  { label: 'Python PCEP [30-02]', sub: 'Python Institute · 2024', href: CREDLY },
+  { label: 'Containers & Kubernetes Essentials', sub: 'IBM · 2024', href: CREDLY },
+  { label: 'Docker Essentials', sub: 'IBM · 2024', href: CREDLY },
+  { label: 'Anthropic Academy', sub: copy.certAnthropic, href: CREDLY },
+];
 ---
 
 <section id="stack" class="reveal">
@@ -61,15 +69,5 @@ const CREDLY = 'https://credly.com/users/marco-bellingeri';
     ))}
   </div>
 
-  <div class="certs">
-    <p class="certs-head mono">{copy.certsHead}</p>
-    <div class="certs-row">
-      {certs.map((c) => (
-        <a class="cert-chip" href={CREDLY} target="_blank" rel="noopener">
-          <span class="cert-name mono">{c.name}</span>
-          <span class="cert-org mono">{c.org} · {c.year}</span>
-        </a>
-      ))}
-    </div>
-  </div>
+  <Newsstand head={copy.certsHead} items={certs} newTab={copy.newTab} />
 </section>
