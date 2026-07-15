@@ -32,11 +32,62 @@ const { head, items, newTab } = Astro.props;
   // Progressive enhancement. querySelectorAll (non querySelector): la pila può
   // comparire più volte nella pagina (Edicola + Certificazioni) e lo <script> del
   // componente gira una volta sola — deve potenziarle tutte.
+  // Riserva solo dove il ventaglio si apre in hover E il layout misurabile è
+  // quello giusto: sotto i 761px la pila è verticale (media query sotto) e lo
+  // stato pre-enhance NON è più l'aperto — lì lo spostamento resta, com'è già
+  // accettato sul touch (l'apertura è un tap voluto).
+  const hoverFine = window.matchMedia('(hover:hover) and (pointer:fine) and (min-width:761px)');
   document.querySelectorAll<HTMLElement>('[data-newsstand]').forEach((stack) => {
-    stack.classList.add('is-enhanced');
+    // Riserva l'altezza del ventaglio APERTO prima di collassare: lo stato senza
+    // .is-enhanced è già il layout aperto (wrap), quindi basta misurarlo. Così
+    // l'hover non sposta la sezione sotto. Su touch riservare le righe vuote
+    // costerebbe schermate bianche. Tutto sincrono nello stesso frame: niente flash.
+    const riserva = () => {
+      stack.classList.add('no-anim');
+      if (hoverFine.matches) {
+        stack.classList.remove('is-enhanced');
+        stack.style.minHeight = '';
+        stack.style.minHeight = `${stack.offsetHeight}px`;
+      } else {
+        // niente misura (e niente doppio reflow) dove non serve: su mobile il
+        // resize scatta a ogni comparsa della barra URL durante lo scroll.
+        stack.style.minHeight = '';
+      }
+      stack.classList.add('is-enhanced');
+      void stack.offsetHeight; // reflow: separa il collasso dalla riattivazione delle transizioni
+      stack.classList.remove('no-anim');
+    };
+    riserva();
+    let raf = 0;
+    const rimisura = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(riserva);
+    };
+    window.addEventListener('resize', rimisura);
+    // La prima misura può avvenire coi font di fallback: al swap le altezze
+    // cambiano. E il mouse può comparire dopo (iPad + trackpad).
+    document.fonts?.ready.then(rimisura);
+    hoverFine.addEventListener?.('change', rimisura);
+
+    // Ventaglio da tastiera: si apre solo col focus VISIBILE (:focus-visible),
+    // riusando .is-open. Niente :focus-within in CSS: dopo un click su un link
+    // target=_blank il focus resta sul foglio e terrebbe la pila aperta per sempre.
+    stack.addEventListener('focusin', (e) => {
+      const t = e.target as HTMLElement;
+      try {
+        if (t.matches(':focus-visible')) stack.classList.add('is-open');
+      } catch {
+        // Safari < 15.4 (niente :focus-visible): meglio il vecchio comportamento
+        // "apri su qualsiasi focus" che una tastiera senza ventaglio.
+        stack.classList.add('is-open');
+      }
+    });
+    stack.addEventListener('focusout', (e) => {
+      if (!stack.contains(e.relatedTarget as Node)) stack.classList.remove('is-open');
+    });
 
     // Il tipo di puntatore dell'ultima interazione decide se intercettare il tap.
-    // Tastiera/mouse non vengono intercettati: ci pensano :focus-within e :hover.
+    // Tastiera/mouse non vengono intercettati: ci pensano .is-open e :hover.
     let lastPointerType = '';
     stack.addEventListener('pointerdown', (e) => { lastPointerType = (e as PointerEvent).pointerType; }, true);
     stack.addEventListener('keydown', () => { lastPointerType = 'key'; }, true);
@@ -87,57 +138,78 @@ const { head, items, newTab } = Astro.props;
     font-family:'Source Serif 4', serif;
     font-size:16px; font-weight:600; line-height:1.25;
   }
-  .paper:hover, .paper:focus-visible{
+  /* :hover e :focus-visible in regole SEPARATE: un browser senza :focus-visible
+     (Safari ≤ 15.3) butta l'intera lista di selettori, e con la virgola
+     perderebbe anche l'hover. */
+  .paper:hover{
     background:var(--ink); color:var(--paper);
     box-shadow:6px 6px 0 var(--orange);
   }
-  .paper:hover .paper-source, .paper:focus-visible .paper-source{
-    opacity:0.85; border-bottom-color:var(--paper);
+  .paper:focus-visible{
+    background:var(--ink); color:var(--paper);
+    box-shadow:6px 6px 0 var(--orange);
   }
+  .paper:hover .paper-source{ opacity:0.85; border-bottom-color:var(--paper); }
+  .paper:focus-visible .paper-source{ opacity:0.85; border-bottom-color:var(--paper); }
   .paper:focus-visible{ outline:3px solid var(--orange); outline-offset:3px; }
 
   /* Pila (JS presente): riga singola che si sovrappone marciando verso destra.
      Overlap FISSO in px (non %: la % è relativa al contenitore e con molte voci
      spinge i fogli fuori dallo schermo a sinistra). Ogni foglio mostra ~65px. */
-  .newsstand-stack.is-enhanced{ flex-wrap:nowrap; }
+  /* fit-content: la zona che apre in hover è la pila, non tutta la riga vuota
+     a destra. Da aperto (wrap) fit-content torna a valere la larghezza piena. */
+  .newsstand-stack.is-enhanced{ flex-wrap:nowrap; width:fit-content; }
   .newsstand-stack.is-enhanced .paper:not(:first-child){ margin-left:-176px; }
   .newsstand-stack.is-enhanced .paper:nth-child(4n+1){ transform:rotate(-2.2deg) translateY(2px); }
   .newsstand-stack.is-enhanced .paper:nth-child(4n+2){ transform:rotate(1.6deg)  translateY(-1px); }
   .newsstand-stack.is-enhanced .paper:nth-child(4n+3){ transform:rotate(-1deg)   translateY(1px); }
   .newsstand-stack.is-enhanced .paper:nth-child(4n+4){ transform:rotate(2deg)    translateY(-2px); }
 
+  /* Durante la misura dell'altezza riservata (script) le transizioni sono spente:
+     il collasso iniziale e le ri-misure su resize scattano senza animare. */
+  .newsstand-stack.no-anim .paper{ transition:none; }
+
   /* Ventaglio: si torna alla riga. L'apertura è a CASCATA (transition-delay sui
      figli successivi) così i fogli si aprono uno dopo l'altro, non tutti insieme:
      è quello che la fa sembrare naturale. In chiusura il delay non c'è → richiude
      svelta. */
   /* Ventaglio: la riga torna a capo (wrap) così tutti i fogli sono raggiungibili
-     anche quando la pila era più larga dello schermo. */
+     anche quando la pila era più larga dello schermo. Niente :focus-within: il
+     focus da click (link target=_blank) terrebbe la pila aperta anche a cursore
+     lontano — il focus da tastiera passa da .is-open, messo dallo script solo
+     su :focus-visible. */
   .newsstand-stack.is-enhanced:hover,
-  .newsstand-stack.is-enhanced:focus-within,
   .newsstand-stack.is-enhanced.is-open{ flex-wrap:wrap; }
   .newsstand-stack.is-enhanced:hover .paper,
-  .newsstand-stack.is-enhanced:focus-within .paper,
   .newsstand-stack.is-enhanced.is-open .paper{ margin-left:0; transform:rotate(0); }
 
   .newsstand-stack.is-enhanced:hover .paper:nth-child(2),
-  .newsstand-stack.is-enhanced:focus-within .paper:nth-child(2),
   .newsstand-stack.is-enhanced.is-open .paper:nth-child(2){ transition-delay:0.04s; }
   .newsstand-stack.is-enhanced:hover .paper:nth-child(3),
-  .newsstand-stack.is-enhanced:focus-within .paper:nth-child(3),
   .newsstand-stack.is-enhanced.is-open .paper:nth-child(3){ transition-delay:0.08s; }
   .newsstand-stack.is-enhanced:hover .paper:nth-child(4),
-  .newsstand-stack.is-enhanced:focus-within .paper:nth-child(4),
   .newsstand-stack.is-enhanced.is-open .paper:nth-child(4){ transition-delay:0.12s; }
   .newsstand-stack.is-enhanced:hover .paper:nth-child(5),
-  .newsstand-stack.is-enhanced:focus-within .paper:nth-child(5),
   .newsstand-stack.is-enhanced.is-open .paper:nth-child(5){ transition-delay:0.16s; }
   .newsstand-stack.is-enhanced:hover .paper:nth-child(n+6),
-  .newsstand-stack.is-enhanced:focus-within .paper:nth-child(n+6),
   .newsstand-stack.is-enhanced.is-open .paper:nth-child(n+6){ transition-delay:0.2s; }
+
+  /* Sotto i 760px la pila orizzontale non ci sta (8 fogli sfalsati ≈ 790px:
+     sbordavano e l'iPhone zoomava fuori l'intera pagina). Si impila in VERTICALE
+     come giornali visti di fronte: resta il taglio da edicola, resta il tap per
+     aprire. ponytail: oltre ~9 voci anche la riga desktop a 760-800px va stretta —
+     se la pila cresce, rivedere l'overlap. */
+  @media (max-width:760px){
+    .newsstand-stack.is-enhanced{ flex-direction:column; flex-wrap:nowrap; }
+    .newsstand-stack.is-enhanced .paper:not(:first-child){ margin-left:0; margin-top:-58px; }
+    .newsstand-stack.is-enhanced:hover .paper,
+    .newsstand-stack.is-enhanced.is-open .paper{ margin-top:0; }
+  }
 
   /* Reduced motion: niente pila né rotazioni, resta la riga leggibile. */
   @media (prefers-reduced-motion: reduce){
     .paper{ transition:box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease; }
-    .newsstand-stack.is-enhanced .paper{ margin-left:0; transform:none; }
+    .newsstand-stack.is-enhanced .paper,
+    .newsstand-stack.is-enhanced .paper:not(:first-child){ margin:0; transform:none; }
   }
 </style>
