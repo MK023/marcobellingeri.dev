@@ -2,7 +2,7 @@
 lang: en
 title: "I made my portfolio site audit its own security headers, live, in front of you"
 date: 2026-07-15
-description: "A portfolio card that runs a same-origin HEAD request to audit its own security headers live — and why the real CSP has to live in two places."
+description: "A portfolio card that runs a same-origin HEAD request to audit its own security headers live, and why the real CSP has to live in two places."
 tags: [security, webdev, astro]
 ---
 
