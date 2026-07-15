@@ -507,18 +507,6 @@
     opacity:0.7; margin:0 0 14px;
   }
   .certs-row{ display:flex; flex-wrap:wrap; gap:10px; }
-  .cert-chip{
-    display:flex; flex-direction:column; gap:3px;
-    text-decoration:none; color:var(--ink);
-    border:2px solid var(--ink);
-    background:var(--paper-dark);
-    padding:9px 13px;
-    transition:background 0.15s ease, color 0.15s ease;
-  }
-  .cert-chip:hover{ background:var(--ink); color:var(--paper); }
-  .cert-name{ font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700; letter-spacing:0.03em; }
-  .cert-org{ font-family:'JetBrains Mono', monospace; font-size:10px; opacity:0.6; letter-spacing:0.05em; }
-  .cert-chip:hover .cert-org{ opacity:0.9; }
 
   /* ---- field notes / case study ---- */
   .case-archive-note{
