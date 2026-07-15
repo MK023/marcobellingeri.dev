@@ -11,9 +11,10 @@ const issues = (await getCollection('magazine', (c) => c.data.lang === lang)).so
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
 );
 
-// Edicola: dove la firma di Marco esce anche fuori dal sito. Chip identici alle
-// certificazioni dello Stack (classi globali .certs/.cert-chip), così restano
-// omogenei e non allungano la pagina. Solo link in uscita.
+// Edicola: dove la firma di Marco esce anche fuori dal sito. Reso come una PILA
+// da edicola (newsstand stack) — le firme impilate come giornali, sfalsate e
+// ruotate. Solo link in uscita (nuova scheda). L'array qui sotto è la fonte:
+// una firma a settimana = una riga in più, il layout regge da 2 a molti.
 const DEVTO = 'https://dev.to/mk023/how-i-shipped-13-prs-in-one-afternoon-pair-programming-with-claude-and-what-i-learned-1274';
 const DEVPUNKS = 'https://devpunks.com';
 
@@ -26,6 +27,7 @@ const copy = {
     edicolaHead: 'Edicola · dove la firma esce anche fuori',
     devto: '13 PR con Claude in un pomeriggio',
     devpunks: 'Nel talent network',
+    newTab: 'si apre in una nuova scheda',
   },
   en: {
     intro: 'One real case a month of AI put to work: the problem, the call made, what changed. A pipeline writes it, checked against the sources. The first one is point zero: ideas get better as you go.',
@@ -35,8 +37,17 @@ const copy = {
     edicolaHead: 'Edicola · where the byline also runs',
     devto: 'Shipping 13 PRs in one afternoon',
     devpunks: 'In the talent network',
+    newTab: 'opens in a new tab',
   },
 }[lang];
+
+// La pila è data-driven: aggiungere una firma = aggiungere un oggetto qui.
+// Il layout regge da 2 a molti (nuova firma ~1/settimana). L'etichetta riusa
+// le stringhe di copy per restare bilingue; sub e href sono neutri di lingua.
+const bylines = [
+  { label: copy.devto, sub: 'dev.to · 2026', href: DEVTO },
+  { label: copy.devpunks, sub: 'Devpunks', href: DEVPUNKS },
+];
 ---
 
 <section id="magazine" class="reveal">
@@ -80,17 +91,25 @@ const copy = {
     ))}
   </div>
 
-  <div class="certs">
+  <div class="newsstand">
     <p class="certs-head mono">{copy.edicolaHead}</p>
-    <div class="certs-row">
-      <a class="cert-chip" href={DEVTO} target="_blank" rel="noopener">
-        <span class="cert-name mono">{copy.devto}</span>
-        <span class="cert-org mono">dev.to · 2026</span>
-      </a>
-      <a class="cert-chip" href={DEVPUNKS} target="_blank" rel="noopener">
-        <span class="cert-name mono">{copy.devpunks}</span>
-        <span class="cert-org mono">Devpunks</span>
-      </a>
+    {/* Pila da edicola. Stato base (senza JS): riga leggibile e a capo, ogni
+        link raggiungibile — è il fallback accessibile. Lo <script> aggiunge
+        .is-enhanced e la collassa in pila; si apre a ventaglio su hover,
+        :focus-within (tastiera) e tap (mobile, gestito nello script). */}
+    <div class="newsstand-stack" data-newsstand>
+      {bylines.map((b) => (
+        <a
+          class="paper"
+          href={b.href}
+          target="_blank"
+          rel="noopener"
+          aria-label={`${b.label} — ${b.sub} (${copy.newTab})`}
+        >
+          <span class="paper-source mono">{b.sub}</span>
+          <span class="paper-title">{b.label}</span>
+        </a>
+      ))}
     </div>
   </div>
 </section>
@@ -131,4 +150,123 @@ const copy = {
     );
     io.observe(el);
   });
+</script>
+
+<style>
+  /* NEWSSTAND STACK — le firme esterne impilate come giornali in edicola.
+     Stile scoped: Astro ne calcola l'hash nella CSP (style-src resta a hash,
+     niente style="" inline). Tutto su var(--ink/--paper) → giorno e notte. */
+  .newsstand{ margin-top:34px; }
+
+  /* Contenitore. Il padding tiene i fogli ruotati lontani dai bordi così la
+     rotazione non taglia nulla e non si sovrappone alla sezione dopo. */
+  .newsstand-stack{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-start;
+    gap:14px;
+    padding:6px 4px 10px;
+  }
+
+  /* Il singolo "giornale": bordo netto, ombra dura neo-brutalista. */
+  .paper{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    flex:0 0 auto;
+    width:min(240px, 78vw);
+    padding:11px 14px 13px;
+    text-decoration:none;
+    color:var(--ink);
+    background:var(--paper);
+    border:2px solid var(--ink);
+    box-shadow:4px 4px 0 var(--ink);
+    transition:margin 0.28s cubic-bezier(.2,.7,.2,1),
+               transform 0.28s cubic-bezier(.2,.7,.2,1),
+               box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  /* Masthead del giornale: la fonte come testata, con la sua riga sotto. */
+  .paper-source{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+    opacity:0.62;
+    padding-bottom:5px;
+    border-bottom:1.5px solid var(--ink);
+  }
+  .paper-title{
+    font-family:'Source Serif 4', serif;
+    font-size:16px; font-weight:600; line-height:1.25;
+  }
+  .paper:hover, .paper:focus-visible{
+    background:var(--ink); color:var(--paper);
+    box-shadow:6px 6px 0 var(--orange);
+  }
+  .paper:hover .paper-source, .paper:focus-visible .paper-source{
+    opacity:0.85; border-bottom-color:var(--paper);
+  }
+  /* Focus da tastiera sempre visibile, anche col foglio in cima alla pila. */
+  .paper:focus-visible{
+    outline:3px solid var(--orange);
+    outline-offset:3px;
+  }
+
+  /* --- STATO POTENZIATO (JS presente): la riga collassa in PILA ---
+     I fogli si sovrappongono con margini negativi e ruotano su un ciclo
+     nth-child (nessuno style="" inline: il pattern vive qui). */
+  .newsstand-stack.is-enhanced .paper:not(:first-child){ margin-left:-52%; }
+  .newsstand-stack.is-enhanced .paper:nth-child(4n+1){ transform:rotate(-3.5deg) translateY(3px); }
+  .newsstand-stack.is-enhanced .paper:nth-child(4n+2){ transform:rotate(2.5deg)  translateY(-2px); }
+  .newsstand-stack.is-enhanced .paper:nth-child(4n+3){ transform:rotate(-1.5deg) translateY(1px); }
+  .newsstand-stack.is-enhanced .paper:nth-child(4n+4){ transform:rotate(3deg)    translateY(-3px); }
+  /* Il foglio in cima alla pila (l'ultimo nel flusso) è pienamente cliccabile;
+     gli altri fanno capolino a sinistra. Il ventaglio li rende tutti raggiungibili. */
+
+  /* --- VENTAGLIO: hover, focus da tastiera, o aperto al tap (.is-open) ---
+     Si torna alla riga a capo: margini a zero, rotazione annullata. */
+  .newsstand-stack.is-enhanced:hover .paper,
+  .newsstand-stack.is-enhanced:focus-within .paper,
+  .newsstand-stack.is-enhanced.is-open .paper{
+    margin-left:0;
+    transform:rotate(0);
+  }
+
+  /* Chi ha chiesto meno movimento: niente rotazioni né transizioni, resta la
+     riga leggibile. La pila è una delizia, non un requisito. */
+  @media (prefers-reduced-motion: reduce){
+    .paper{ transition:box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease; }
+    .newsstand-stack.is-enhanced .paper{ margin-left:0; transform:none; }
+  }
+</style>
+
+<script>
+  // Progressive enhancement della pila da edicola. Senza questo script lo stato
+  // base è una riga a capo con ogni link raggiungibile (fallback accessibile).
+  // Qui la collassiamo in pila e gestiamo l'apertura al tap su mobile.
+  const stack = document.querySelector<HTMLElement>('[data-newsstand]');
+  if (stack) {
+    stack.classList.add('is-enhanced');
+
+    // Il tipo di puntatore dell'ultima interazione decide se intercettare il tap.
+    // Tastiera/mouse non vengono intercettati: ci pensano :focus-within e :hover.
+    let lastPointerType = '';
+    stack.addEventListener('pointerdown', (e) => { lastPointerType = e.pointerType; }, true);
+    stack.addEventListener('keydown', () => { lastPointerType = 'key'; }, true);
+
+    // Su touch il PRIMO tap apre il ventaglio invece di seguire il link: così i
+    // fogli sotto la pila diventano raggiungibili. Il secondo tap naviga.
+    stack.addEventListener('click', (e) => {
+      if (stack.classList.contains('is-open')) return;
+      if (lastPointerType !== 'touch' && lastPointerType !== 'pen') return;
+      const target = e.target as HTMLElement;
+      if (!target.closest('a')) return;
+      e.preventDefault();
+      stack.classList.add('is-open');
+    });
+
+    // Un tap fuori richiude la pila.
+    document.addEventListener('click', (e) => {
+      if (!stack.contains(e.target as Node)) stack.classList.remove('is-open');
+    });
+  }
 </script>
