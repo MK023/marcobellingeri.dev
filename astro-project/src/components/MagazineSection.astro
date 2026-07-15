@@ -1,6 +1,8 @@
 ---
 import { numeroSezione } from '../lib/sections';
 import { getCollection } from 'astro:content';
+import { getRelativeLocaleUrl } from 'astro:i18n';
+import { magazineSlug } from '../lib/magazine';
 import { defaultLang, type Lang } from '../i18n/ui';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
@@ -14,11 +16,13 @@ const copy = {
     intro: "Ogni mese un caso vero di IA applicata sul lavoro: il problema, la scelta fatta, cosa è cambiato. Lo scrive una pipeline, controllato sulle fonti. Il primo è il punto zero: le idee migliorano strada facendo.",
     toggle: 'LEGGI',
     problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA',
+    permalink: 'Apri la pagina →',
   },
   en: {
     intro: 'One real case a month of AI put to work: the problem, the call made, what changed. A pipeline writes it, checked against the sources. The first one is point zero: ideas get better as you go.',
     toggle: 'READ',
     problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED',
+    permalink: 'Open the page →',
   },
 }[lang];
 ---
@@ -58,6 +62,7 @@ const copy = {
           <div class="case-block"><span class="label mono">{copy.approach}</span><p>{issue.data.approach}</p></div>
           <div class="case-block"><span class="label mono">{copy.result}</span><p>{issue.data.result}</p></div>
           <div class="case-block"><span class="label mono">{copy.lesson}</span><p>{issue.data.lesson}</p></div>
+          <a class="mag-permalink mono" href={getRelativeLocaleUrl(lang, `magazine/${magazineSlug(issue)}`)}>{copy.permalink}</a>
         </div>
       </details>
     ))}
