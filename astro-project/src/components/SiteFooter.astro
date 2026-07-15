@@ -7,6 +7,9 @@ const t = useTranslations(lang);
 const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
 
 const EMAIL = 'mkdevpy@proton.me';
+// Verifica-socio live: mostra da sé la validità aggiornata, così la scadenza non
+// viene mai duplicata (e quindi non mente) nell'HTML statico.
+const AIPIA_VERIFY = 'https://aipia.it/attivita-e-progetti/verifica-socio/?token=14b392b';
 
 const links = [
   'https://github.com/MK023',
@@ -41,7 +44,8 @@ const links = [
       <h3>{t('foot.colophon')}</h3>
       {t('foot.setIn')}<br />
       {t('foot.printed')}
-      <div class="ai-seal" title={t('foot.sealTitle')}>
+      <div class="colophon-marks">
+        <div class="ai-seal" title={t('foot.sealTitle')}>
         <div class="ai-seal-ring">
           <svg viewBox="0 0 100 100">
             <path id="badgeCirclePath" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" fill="none"></path>
@@ -53,6 +57,10 @@ const links = [
           </svg>
         </div>
         <div class="ai-seal-core">✳</div>
+        </div>
+        <a class="aipia-mark" href={AIPIA_VERIFY} target="_blank" rel="noopener" aria-label={t('foot.aipia')} title={t('foot.aipia')}>
+          <img src="/aipia-socio.png" alt="" width="84" height="84" loading="lazy" decoding="async" />
+        </a>
       </div>
     </div>
   </div>

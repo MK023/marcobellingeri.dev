@@ -100,6 +100,7 @@ export const ui = {
     'foot.sealTitle': 'Built in pair programming with Claude Code',
     'foot.finePrint':
       '© Marco Bellingeri — Cloud & Security Edition. All rights reserved, no bugs in production (hopefully).',
+    'foot.aipia': 'AIPIA member · L.4/2013',
   },
   it: {
     'site.title': 'Bellingeri — Cloud & Security Edition',
@@ -182,6 +183,7 @@ export const ui = {
     'foot.sealTitle': 'Sviluppato in pair programming con Claude Code',
     'foot.finePrint':
       '© Marco Bellingeri — Cloud & Security Edition. Tutti i diritti, nessun bug in produzione (si spera).',
+    'foot.aipia': 'Socio AIPIA · L.4/2013',
   },
 } as const;
 
