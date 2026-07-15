@@ -11,18 +11,30 @@ const issues = (await getCollection('magazine', (c) => c.data.lang === lang)).so
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
 );
 
+// Edicola: dove la firma di Marco esce anche fuori dal sito. Chip identici alle
+// certificazioni dello Stack (classi globali .certs/.cert-chip), così restano
+// omogenei e non allungano la pagina. Solo link in uscita.
+const DEVTO = 'https://dev.to/mk023/how-i-shipped-13-prs-in-one-afternoon-pair-programming-with-claude-and-what-i-learned-1274';
+const DEVPUNKS = 'https://devpunks.com';
+
 const copy = {
   it: {
     intro: "Ogni mese un caso vero di IA applicata sul lavoro: il problema, la scelta fatta, cosa è cambiato. Lo scrive una pipeline, controllato sulle fonti. Il primo è il punto zero: le idee migliorano strada facendo.",
     toggle: 'LEGGI',
     problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA',
     permalink: 'Apri la pagina →',
+    edicolaHead: 'Edicola · dove la firma esce anche fuori',
+    devto: '13 PR con Claude in un pomeriggio',
+    devpunks: 'Nel talent network',
   },
   en: {
     intro: 'One real case a month of AI put to work: the problem, the call made, what changed. A pipeline writes it, checked against the sources. The first one is point zero: ideas get better as you go.',
     toggle: 'READ',
     problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED',
     permalink: 'Open the page →',
+    edicolaHead: 'Edicola · where the byline also runs',
+    devto: 'Shipping 13 PRs in one afternoon',
+    devpunks: 'In the talent network',
   },
 }[lang];
 ---
@@ -66,6 +78,20 @@ const copy = {
         </div>
       </details>
     ))}
+  </div>
+
+  <div class="certs">
+    <p class="certs-head mono">{copy.edicolaHead}</p>
+    <div class="certs-row">
+      <a class="cert-chip" href={DEVTO} target="_blank" rel="noopener">
+        <span class="cert-name mono">{copy.devto}</span>
+        <span class="cert-org mono">dev.to · 2026</span>
+      </a>
+      <a class="cert-chip" href={DEVPUNKS} target="_blank" rel="noopener">
+        <span class="cert-name mono">{copy.devpunks}</span>
+        <span class="cert-org mono">Devpunks</span>
+      </a>
+    </div>
   </div>
 </section>
 
