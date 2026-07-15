@@ -876,6 +876,23 @@
     padding-top:16px;
     opacity:0.7;
   }
+  /* Pill credenziale: dichiara l'iscrizione L.4/2013 e linka alla verifica live.
+     Stesso idioma di .util-btn (mono, bordo 1px, hover invertito), inline nel
+     fine-print. Niente immagine: i loghi AIPIA su /stampa sono press-only. */
+  /* Sigillo + marchio socio AIPIA, coppia di marchi pari affiancati. Il quadrato
+     blu porta il proprio sfondo: leggibile identico in chiaro e notte, niente
+     variante per tema. Stessa dimensione del sigillo (84px). */
+  .colophon-marks{
+    display:flex; align-items:center; gap:16px;
+    margin-top:14px;
+  }
+  .colophon-marks .ai-seal{ margin-top:0; }
+  .aipia-mark{ display:block; line-height:0; }
+  .aipia-mark img{
+    width:84px; height:84px; display:block;
+    transition:transform 0.15s ease;
+  }
+  .aipia-mark:hover img{ transform:scale(1.04); }
 
   /* ---- command palette ---- */
   .cmdk-overlay{
