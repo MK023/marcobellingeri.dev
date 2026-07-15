@@ -8,6 +8,14 @@ import sentry from '@sentry/astro';
 export default defineConfig({
   site: 'https://marcobellingeri.dev',
   output: 'static',
+  // Syntax highlighting spento: lo Shiki di default di Astro inietta stili inline
+  // su ogni <span> del codice, e la CSP a hash di questo sito (style-src 'self' +
+  // hash, senza unsafe-inline) li bloccherebbe. Disabilitato, i blocchi di codice
+  // Markdown escono come <pre><code> puri, senza attributi style= inline → CSP-safe.
+  // Nessun contenuto esistente ha codice nel body Markdown, quindi non tocca altro.
+  markdown: {
+    syntaxHighlight: false,
+  },
   // CSP: Astro calcola gli hash dei propri script/style bundled e li scrive in un
   // <meta http-equiv>. Lo script anti-FOUC del tema è `is:inline`, quindi Astro NON
   // lo tocca: il suo hash va tenuto a mano qui sotto. Se quello script cambia, il
