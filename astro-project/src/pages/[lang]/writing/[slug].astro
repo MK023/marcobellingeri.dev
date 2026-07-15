@@ -1,0 +1,100 @@
+---
+import { getCollection, render } from 'astro:content';
+import { getRelativeLocaleUrl } from 'astro:i18n';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import UtilityBar from '../../../components/UtilityBar.astro';
+import SiteFooter from '../../../components/SiteFooter.astro';
+import { writingSlug } from '../../../lib/writing';
+import type { Lang } from '../../../i18n/ui';
+
+// Una pagina propria per ogni articolo, in entrambe le lingue: è l'URL stabile a
+// cui l'eventuale canonical del cross-post (dev.to) punta. Il body è Markdown a
+// corpo libero, con blocchi di codice — renderizzato via <Content />.
+export async function getStaticPaths() {
+  const all = await getCollection('writing');
+  return all.map((entry) => ({
+    params: { lang: entry.data.lang, slug: writingSlug(entry) },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const d = entry.data;
+const lang = d.lang as Lang;
+const slug = writingSlug(entry);
+const { Content } = await render(entry);
+
+const copy = {
+  it: { back: 'Torna alla home' },
+  en: { back: 'Back to home' },
+}[lang];
+
+const backHref = getRelativeLocaleUrl(lang, '');
+const dateLabel = d.date.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<BaseLayout lang={lang} title={d.title} description={d.description} path={`writing/${slug}`}>
+  <UtilityBar />
+  <main id="main-content">
+    <article class="wr-article">
+      <p class="wr-cred mono">{dateLabel.toUpperCase()}</p>
+      <h1 class="wr-article-title">{d.title}</h1>
+      <div class="wr-body">
+        <Content />
+      </div>
+      <a class="util-btn wr-back" href={backHref}>← {copy.back}</a>
+    </article>
+  </main>
+  <SiteFooter />
+</BaseLayout>
+
+<style>
+  /* Pagina standalone: layout proprio, non erediti il flusso della home. Lo <style>
+     scoped viene hashato da Astro nella CSP (test:csp) — nessuno style= inline. Il
+     syntaxHighlight è spento (astro.config), quindi i blocchi di codice sono <pre>
+     <code> puri: qui gli diamo solo mono, sfondo tenue e scroll orizzontale. */
+  .wr-article{ max-width:720px; margin:0 auto; padding:56px 24px 48px; }
+  .wr-cred{ font-size:13px; letter-spacing:0.08em; opacity:0.7; margin:0 0 8px; }
+  .wr-article-title{
+    font-family:'Anton', sans-serif; text-transform:uppercase;
+    font-size:clamp(30px, 6vw, 52px); line-height:0.96;
+    margin:0 0 28px; letter-spacing:0.01em;
+  }
+  .wr-body{ font-size:17px; line-height:1.7; }
+  .wr-body :global(h2){
+    font-family:'Anton', sans-serif; text-transform:uppercase;
+    font-size:clamp(22px, 4vw, 30px); line-height:1.05;
+    margin:40px 0 14px; letter-spacing:0.01em;
+  }
+  .wr-body :global(h3){ font-weight:700; font-size:20px; margin:28px 0 10px; }
+  .wr-body :global(p){ margin:0 0 18px; }
+  .wr-body :global(ul), .wr-body :global(ol){ margin:0 0 18px; padding-left:24px; }
+  .wr-body :global(li){ margin:6px 0; }
+  .wr-body :global(a){ color:var(--orange-text); }
+  .wr-body :global(blockquote){
+    margin:0 0 18px; padding:2px 0 2px 18px;
+    border-left:3px solid var(--halftone); opacity:0.85;
+  }
+  /* Codice inline e a blocco: mono, sfondo tenue dalle variabili del sito. */
+  .wr-body :global(code){
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.9em;
+  }
+  .wr-body :global(:not(pre) > code){
+    background:var(--paper-dark); border:1px solid var(--halftone);
+    border-radius:4px; padding:1px 5px;
+  }
+  .wr-body :global(pre){
+    background:var(--paper-dark); border:1px solid var(--halftone);
+    border-radius:8px; padding:16px 18px; margin:0 0 20px;
+    overflow-x:auto; line-height:1.5;
+  }
+  .wr-body :global(pre code){
+    background:none; border:0; padding:0; font-size:0.85em;
+  }
+  .wr-back{ display:inline-block; margin-top:36px; text-decoration:none; }
+</style>

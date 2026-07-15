@@ -45,4 +45,21 @@ const magazine = defineCollection({
   }),
 });
 
-export const collections = { cases, magazine };
+// Writing: articoli long-form a corpo libero (Markdown con blocchi di codice),
+// bilingue it/en. A differenza di `cases`/`magazine` — schema fisso a campi — qui
+// il contenuto è il body Markdown renderizzato. Ogni voce è un file in
+// src/content/writing/<lang>/; lo slug condiviso tra it/ + en/ è l'URL stabile
+// a cui punta l'eventuale canonical del cross-post (es. dev.to).
+const writing = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/writing' }),
+  schema: z.object({
+    lang: z.enum(['it', 'en']),
+    title: z.string(),
+    date: z.coerce.date(),
+    description: z.string(),
+    devtoUrl: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+  }),
+});
+
+export const collections = { cases, magazine, writing };
