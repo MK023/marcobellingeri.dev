@@ -17,10 +17,12 @@ const issues = (await getCollection('magazine', (c) => c.data.lang === lang)).so
 // ruotate. Solo link in uscita (nuova scheda). L'array qui sotto è la fonte:
 // una firma a settimana = una riga in più, il layout regge da 2 a molti.
 const DEVTO = 'https://dev.to/mk023/how-i-shipped-13-prs-in-one-afternoon-pair-programming-with-claude-and-what-i-learned-1274';
-const DEVPUNKS = 'https://devpunks.com';
 // L'articolo "audit di sé" è ospitato sul sito (casa canonical): il giornale
 // punta alla pagina interna, non a dev.to.
 const AUDIT = getRelativeLocaleUrl(lang, 'writing/audit-di-se');
+// Devpunks non è una firma ma un talent network: sta FUORI dalla pila, come chip
+// fisso a fianco dell'edicola.
+const DEVPUNKS = 'https://devpunks.com';
 
 const copy = {
   it: {
@@ -55,7 +57,6 @@ const copy = {
 const bylines = [
   { label: copy.audit, sub: copy.auditSub, href: AUDIT },
   { label: copy.devto, sub: 'dev.to · 2026', href: DEVTO },
-  { label: copy.devpunks, sub: 'Devpunks', href: DEVPUNKS },
 ];
 ---
 
@@ -100,8 +101,20 @@ const bylines = [
     ))}
   </div>
 
-  <Newsstand head={copy.edicolaHead} items={bylines} newTab={copy.newTab} />
+  <div class="edicola-wrap">
+    <Newsstand head={copy.edicolaHead} items={bylines} newTab={copy.newTab} />
+    <a class="cert-chip edicola-devpunks" href={DEVPUNKS} target="_blank" rel="noopener">
+      <span class="cert-name mono">Devpunks</span>
+      <span class="cert-org mono">{copy.devpunks}</span>
+    </a>
+  </div>
 </section>
+
+<style>
+  /* Devpunks: chip FISSO (non nella pila) a fianco dei giornali dell'edicola. */
+  .edicola-wrap{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px 24px; }
+  .edicola-devpunks{ flex:0 0 auto; margin-bottom:12px; }
+</style>
 
 <script>
   // Count-up per la statistica del numero, appena la tile entra in viewport.
