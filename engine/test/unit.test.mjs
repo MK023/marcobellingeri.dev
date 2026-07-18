@@ -97,6 +97,17 @@ test("competitors: --limit 0 -> exit 1", () => {
   assert.equal(r.code, 1);
 });
 
+test("visibility: --limit senza valore -> exit 1", () => {
+  const r = run(["engine/visibility.mjs", "--limit"]);
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /--limit richiede/);
+});
+
+test("visibility: --limit 0 -> exit 1", () => {
+  const r = run(["engine/visibility.mjs", "--limit", "0"]);
+  assert.equal(r.code, 1);
+});
+
 test("retrieve: senza query -> exit 1 con uso", () => {
   const r = run(["engine/retrieve.mjs"]);
   assert.equal(r.code, 1);

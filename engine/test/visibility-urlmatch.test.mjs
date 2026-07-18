@@ -10,6 +10,7 @@ test("normalizeHost: schema, www, path, case, porta", () => {
   assert.equal(normalizeHost("marcobellingeri.dev"), "marcobellingeri.dev");
   assert.equal(normalizeHost("http://marcobellingeri.dev:443/"), "marcobellingeri.dev");
   assert.equal(normalizeHost("Esempio.COM"), "esempio.com");
+  assert.equal(normalizeHost("http://"), "http://"); // URL non parsabile -> fallback catch
   assert.equal(normalizeHost(""), null);
   assert.equal(normalizeHost(null), null);
 });

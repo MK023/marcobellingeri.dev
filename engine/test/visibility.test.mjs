@@ -34,6 +34,22 @@ test("visibility: perplexity (citato + non citato) e gsc, con --limit", () => {
   assert.match(r.stdout, /visibility: fatto/);
 });
 
+test("visibility: una query perplexity fallita non ferma il monitor", () => {
+  const routes = [
+    { match: "visibility_queries", body: [{ id: "Q1", text: "boom", content_ref: null }] },
+    { match: "perplexity.ai", method: "POST", status: 500, body: "boom" },
+    { match: "oauth2.googleapis.com", method: "POST", body: { access_token: "T" } },
+    { match: "searchAnalytics", method: "POST", body: { rows: [] } },
+  ];
+  const r = runEngine(["engine/visibility.mjs"], routes, {
+    PERPLEXITY_API_KEY: "k", GSC_CLIENT_ID: "c", GSC_CLIENT_SECRET: "s",
+    GSC_REFRESH_TOKEN: "t", GSC_SITE_URL: "sc-domain:marcobellingeri.dev",
+  });
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stderr, /perplexity fallita "boom"/);
+  assert.match(r.stdout, /visibility: fatto/);
+});
+
 test("visibility: gsc fallita non ferma l'AEO", () => {
   const routes = [
     { match: "visibility_queries", body: [{ id: "Q1", text: "x", content_ref: null }] },
