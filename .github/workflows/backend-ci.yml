@@ -102,9 +102,9 @@ jobs:
           do $$
           declare n int;
           begin
-            -- 8 tabelle, tutte con RLS
+            -- 10 tabelle, tutte con RLS (8 + visibility_queries/observations, migration 0011)
             select count(*) into n from pg_tables where schemaname='public';
-            if n <> 8 then raise exception 'attese 8 tabelle, trovate %', n; end if;
+            if n <> 10 then raise exception 'attese 10 tabelle, trovate %', n; end if;
             select count(*) into n from pg_tables t
               join pg_class c on c.relname = t.tablename
               where t.schemaname='public' and not c.relrowsecurity;

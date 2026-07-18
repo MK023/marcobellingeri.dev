@@ -50,6 +50,7 @@ doppler run -- node engine/embed.mjs                                   # chunk+e
 doppler run -- node engine/export.mjs [<period YYYY-MM>]               # numero approvato -> Field Notes MD -> published
 doppler run -- node engine/retrieve.mjs "<query>" [it|en]              # healthcheck RAG (gated a published)
 doppler run -- node engine/competitors.mjs [--limit N]                 # Firecrawl -> snapshots -> chunks
+doppler run -- node engine/visibility.mjs [--limit N]                  # monitor discoverability (SEO+AEO)
 node engine/lib/voyage.mjs                                             # self-check del chunker (no rete)
 node engine/lib/guardrails.mjs                                         # self-check barriere di contenuto (no rete)
 node engine/export.mjs --selfcheck                                     # self-check frontmatter/mappatura (no rete)
@@ -67,6 +68,7 @@ node engine/export.mjs --selfcheck                                     # self-ch
 - `generate.mjs` — **stadio 2 GENERATE**: signal `verify` → un caso Field Notes IT+EN (problema/approccio/risultato/lezione) grounded solo sulle fonti → `status=draft`. NON embedda, NON pubblica (gate umano).
 - `export.mjs` — **stadio 5 EXPORT**: numero `approved` → file Markdown Field Notes in `astro-project/src/content/cases/{it,en}/` → `status=published`. Mappatura inversa (application→approach, solution→result, body→lesson), ri-screening prima di scrivere nel repo. NON committa: il contenuto lo merge Marco.
 - `retrieve.mjs` — read-end del RAG (query→match_article_chunks). NON è l'endpoint pubblico C1 (rate-limit/guardrail/AI-Act = roadmap).
+- `visibility.mjs` — monitor discoverability: SEO (Google Search Console) + AEO (Perplexity Sonar), referto prescrittivo, storico su Supabase (`visibility_observations`).
 
 ## Test
 
@@ -77,6 +79,12 @@ doppler run -- npm run test:e2e       # e2e live: dati sintetici 9999-01 + teard
 
 - **Unit**: chunker, registro fonti, guardie CLI. **Integration** (fetch mockato):
   invarianti editoriali della discovery, allowlist, batching Voyage, client.
+- **Visibility** (contratto pipeline/test): unit sul match host/citazione
+  (`lib/urlmatch.mjs`, suffix-attack incluso) e sul ruleset prescrizioni
+  (`lib/referto.mjs`); integration a spawn con `fetch` moccato
+  (`test/visibility.test.mjs`). Il run reale è schedulato settimanale (GitHub
+  Actions), non in CI: query verso Perplexity/GSC costano e non sono
+  deterministiche. Segreti Perplexity/GSC su Doppler, scope GSC read-only.
 - **E2E (gated)**: prova che il **publish gate a DB** (migration 0006) morde a ogni
   anello mancante — niente prova Tier-1/2-indip, niente articolo it+en, niente
   embedding → publish rifiutato; catena completa → passa, draft mai retrievabile.
