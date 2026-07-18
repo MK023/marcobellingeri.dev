@@ -1,7 +1,7 @@
 # marcobellingeri.dev
 
 Sito personale di **Marco Bellingeri** — Cloud Platform & Security Engineer.
-Astro statico, bilingue EN/IT, con un archivio mensile generato da una pipeline RAG.
+Astro statico, bilingue EN/IT, con un magazine mensile alimentato da una pipeline RAG.
 
 [![Site CI](https://github.com/MK023/marcobellingeri.dev/actions/workflows/site-ci.yml/badge.svg)](https://github.com/MK023/marcobellingeri.dev/actions/workflows/site-ci.yml)
 [![Backend CI](https://github.com/MK023/marcobellingeri.dev/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/MK023/marcobellingeri.dev/actions/workflows/backend-ci.yml)
@@ -22,7 +22,7 @@ sorgente.
 | Directory | Cosa contiene |
 | --- | --- |
 | `astro-project/` | Il sito. Astro statico, i18n EN/IT, componenti, CSP, test. **Si parte da qui.** |
-| `engine/` | Pipeline Node del numero mensile: sourcing → verifica → embed → radar competitor. Zero dipendenze esterne. |
+| `engine/` | Pipeline Node del numero mensile: sourcing → verifica → generazione → embed → export → radar competitor. Zero dipendenze esterne. |
 | `supabase/` | Migration, seed e policy RLS del database RAG (Postgres + pgvector). Ricostruibile da zero. |
 | `docs/adr/` | Le decisioni architetturali e il perché. |
 | `mock-html-singolo/` | Il prototipo HTML da cui è nato tutto. Riferimento storico, non si tocca. |
@@ -167,17 +167,17 @@ il tracking dei task vive su Notion, non su GitHub Issues.
 
 - [x] **Foundation** (`v0.1.0`) — Astro statico bilingue, i18n e sitemap, componenti, segreti su Doppler, postura GDPR
 - [x] **Backend e RAG** — due canali su Supabase pgvector ([ADR 0004](docs/adr/0004-sourcing-due-canali.md)): sourcing Valyu → verifica a tre livelli → bozza human-in-the-loop → embed voyage-3.5
-- [x] **Engine nel repo** — `engine/` (ingest, embed, radar competitor), database ricostruibile da migration, tracing Langfuse
+- [x] **Engine nel repo** — `engine/` (ingest, generate, embed, export, radar competitor), database ricostruibile da migration, tracing Langfuse
 - [x] **Sito sbloccato** (`v0.2.0`) — CSP risolta con gli hash, hosting Cloudflare configurato, CI sul frontend, repository pubblico
-- [ ] **Primo numero** — archivio DB-backed e pubblicazione del numero #1. Finché non esiste un numero vero, la sezione Archivio non viene renderizzata: un archivio con dentro un segnaposto vale meno di un archivio assente
+- [x] **Primo numero** (`2026-07-12`) — Magazine DB-backed, numero #1 pubblicato («AI insurance governance», NAIC Model Bulletin). La sezione non si renderizza finché non esiste un numero vero: un magazine con dentro un segnaposto vale meno di un magazine assente
 - [x] **Go-live** (`v1.0.0`, 2026-07-10) — [marcobellingeri.dev](https://marcobellingeri.dev) su Cloudflare, deploy automatico da `main`, www e anti-spoofing email configurati
-- [ ] **Blog** (`v1.x`) — Hashnode in POSSE: la fonte di verità resta qui, il canonical punta qui
+- [x] **Distribuzione canonical-first** — il sito è la casa canonical; dev.to è lo specchio primario (import RSS nativo, `canonical_url` che punta qui). Long-form ospitato sul sito (collection `writing`) ed Edicola delle firme esterne
 - [ ] **Terminale C1** (`v1.x`) — interfaccia RAG reale (`ask`), endpoint con rate-limit, guardrail e disclosure AI Act art. 50
 
 ## Licenza
 
 Il **codice** è [MIT](LICENSE): prendilo, imparaci sopra, riusalo.
 
-I **contenuti** no. Testi, design, tipografia, fotografie e i numeri dell'archivio
+I **contenuti** no. Testi, design, tipografia, fotografie e i numeri del magazine
 restano © 2026 Marco Bellingeri, tutti i diritti riservati. Il codice è un esempio di
 come è fatto; il sito è di una persona sola.
