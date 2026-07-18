@@ -139,7 +139,12 @@ caratteri**: teoricamente ambigue, praticamente innocue. Stessa regola, stessa g
 dichiarata, rischio opposto: a distinguerle è stato il grafo dei chiamanti, non la
 severità dell'analizzatore. Sono state comunque rese non ambigue.
 
-### I-1 — Engine fuori dalla copertura Dependabot (Info)
+### I-1 — Engine fuori dalla copertura Dependabot (Info) — ✅ RISOLTO
+
+> **Risolto** (2026-07-18): aggiunta la voce `npm` con `directory: "/engine"` in
+> `dependabot.yml`. Oggi non produce nulla (zero dipendenze), ma la prima dipendenza
+> futura nasce già coperta — il promemoria era il punto debole. *(Descrizione originale sotto.)*
+
 **File:** `.github/dependabot.yml`, `engine/package.json`
 `dependabot.yml` monitora `npm` solo in `/astro-project` e le `github-actions`.
 L'engine **oggi non ha dipendenze** (solo built-in Node + `fetch` nativo, nessun
