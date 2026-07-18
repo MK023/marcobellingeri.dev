@@ -381,7 +381,8 @@ test('/api/contact è instradato dal fetch del Worker, non solo chiamato diretto
 
 const realFetch = globalThis.fetch;
 function stubFetch(router) { globalThis.fetch = async (url, init) => router(String(url), init); }
-function jresp(body, _ok = true, status = 200) {
+function jresp(body, status = 200) {
+  // Response.ok deriva dallo status: basta passare un non-2xx per simulare un errore.
   return new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
 }
 const askReq = (payload, extra = {}) => new Request('https://marcobellingeri.dev/api/ask', {
@@ -401,7 +402,7 @@ test('ask: happy — embed, match, citazioni, generate', async (t) => {
     if (url.includes('/rpc/match_article_chunks')) return jresp([{ article_id: '11111111-1111-1111-1111-111111111111', locale: 'it', content: 'Il NAIC ha pubblicato un model bulletin.', similarity: 0.8 }]);
     if (url.includes('/article_translations')) return jresp([{ title: 'AI insurance governance', article_id: '11111111-1111-1111-1111-111111111111', articles: { slug: 'ai-insurance-governance' } }]);
     if (url.includes('/v1/messages')) return jresp({ content: [{ type: 'text', text: 'Il NAIC ha emesso linee guida.' }] });
-    return jresp('unexpected', false, 500);
+    return jresp('unexpected', 500);
   });
   const r = await gestisciAsk(askReq({ q: 'cosa dice il NAIC?', turnstile: 'x', locale: 'it' }), askEnv);
   assert.equal(r.status, 200);
@@ -419,7 +420,7 @@ test('ask: zero match -> risposta gentile, NIENTE modello', async (t) => {
     if (url.includes('voyageai')) return jresp({ data: [{ index: 0, embedding: Array(1024).fill(0.1) }] });
     if (url.includes('/rpc/match_article_chunks')) return jresp([]);
     if (url.includes('/v1/messages')) { calledAnthropic = true; return jresp({ content: [{ type: 'text', text: 'x' }] }); }
-    return jresp('unexpected', false, 500);
+    return jresp('unexpected', 500);
   });
   const r = await gestisciAsk(askReq({ q: 'ricetta della carbonara', turnstile: 'x', locale: 'it' }), askEnv);
   assert.equal(r.status, 200);

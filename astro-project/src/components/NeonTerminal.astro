@@ -126,10 +126,10 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
         printLine('<span class="dim">primo confronto sempre gratuito.</span>');
       },
       contact() {
-        printLine('email:    <a href="mailto:mkdevpy@proton.me" style="color:#0ff;">mkdevpy@proton.me</a>');
-        printLine('github:   <a href="https://github.com/MK023" target="_blank" rel="noopener" style="color:#0ff;">github.com/MK023</a>');
-        printLine('linkedin: <a href="https://linkedin.com/in/marco-bellingeri" target="_blank" rel="noopener" style="color:#0ff;">linkedin.com/in/marco-bellingeri</a>');
-        printLine('credly:   <a href="https://credly.com/users/marco-bellingeri" target="_blank" rel="noopener" style="color:#0ff;">credly.com/users/marco-bellingeri</a>');
+        printLine('email:    <a href="mailto:mkdevpy@proton.me">mkdevpy@proton.me</a>');
+        printLine('github:   <a href="https://github.com/MK023" target="_blank" rel="noopener">github.com/MK023</a>');
+        printLine('linkedin: <a href="https://linkedin.com/in/marco-bellingeri" target="_blank" rel="noopener">linkedin.com/in/marco-bellingeri</a>');
+        printLine('credly:   <a href="https://credly.com/users/marco-bellingeri" target="_blank" rel="noopener">credly.com/users/marco-bellingeri</a>');
       },
       ask() {
         // Nessun argomento: solo l'uso. La variante con domanda passa da
@@ -165,7 +165,10 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
     // Turnstile richiama i callback per nome (data-callback/data-error-callback sul
     // widget): li traduco in una singola Promise per poter fare `await` dentro
     // runAsk(), come una normale chiamata di rete.
-    let askInCorso = false;
+    // askAttivo copre l'INTERO runAsk (turnstile + fetch), non solo l'execute:
+    // un secondo `ask` a metà volo sovrascriverebbe askResolve/askReject e la
+    // prima richiesta resterebbe orfana — mai risolta, finally mai eseguito.
+    let askAttivo = false;
     let askResolve: ((token: string) => void) | null = null;
     let askReject: ((err: Error) => void) | null = null;
 
@@ -179,22 +182,23 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
         }
         askResolve = resolve;
         askReject = reject;
-        askInCorso = true;
         window.turnstile.execute(askTsEl ?? undefined);
       });
     }
+    // I callback si azzerano dopo l'uso: un callback spurio doppio è un no-op.
     window.askTurnstileOk = (token: string) => {
-      if (!askInCorso) return;
-      askInCorso = false;
       askResolve?.(token);
+      askResolve = null; askReject = null;
     };
     window.askTurnstileErr = () => {
-      askInCorso = false;
       askReject?.(new Error('turnstile-fallito'));
+      askResolve = null; askReject = null;
     };
 
     async function runAsk(domanda: string) {
       if (!domanda) { COMMANDS.ask(); return; }
+      if (askAttivo) { printLine("c'è già una domanda in corso.", 'dim'); return; }
+      askAttivo = true;
       printLine('pensando…', 'dim');
       try {
         const token = await eseguiAskTurnstile();
@@ -219,13 +223,16 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
           // attributo href costruito con template string.
           const href = esc(String(c?.url ?? ''));
           const titolo = esc(String(c?.title ?? ''));
-          printLine('→ <a href="' + href + '" style="color:#0ff;">' + titolo + '</a>');
+          // Niente style= inline: la CSP (style-src a hash) lo bloccherebbe a
+          // runtime. Il colore vive in global.css (.crt-output a).
+          printLine('→ <a href="' + href + '">' + titolo + '</a>');
         });
 
         if (data.disclosure) printLine(esc(String(data.disclosure)), 'dim');
       } catch {
         printLine('non riesco a rispondere ora. <span class="dim">riprova tra un minuto.</span>', 'magenta');
       } finally {
+        askAttivo = false;
         window.turnstile?.reset?.(askTsEl ?? undefined);
       }
     }
