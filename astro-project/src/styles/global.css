@@ -991,6 +991,7 @@
   .crt-output .yellow{ color:#ffe94d; text-shadow:0 0 4px rgba(255,233,77,0.6); }
   .crt-output .dim{ color:#5fd6d6; opacity:0.65; }
   .crt-output .line{ margin:0 0 2px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .crt-output a{ color:#0ff; } /* citazioni di `ask`: qui e non inline — la CSP blocca style= */
   .crt-inputline{
     display:flex; align-items:center; gap:8px;
     border-top:1px solid rgba(15,255,255,0.3);
