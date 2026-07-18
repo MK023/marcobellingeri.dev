@@ -158,7 +158,12 @@ const { head, items, newTab } = Astro.props;
      spinge i fogli fuori dallo schermo a sinistra). Ogni foglio mostra ~65px. */
   /* fit-content: la zona che apre in hover è la pila, non tutta la riga vuota
      a destra. Da aperto (wrap) fit-content torna a valere la larghezza piena. */
-  .newsstand-stack.is-enhanced{ flex-wrap:nowrap; width:fit-content; }
+  /* contain:layout — il ventaglio anima `margin` (proprietà di LAYOUT) su fino a 8
+     fogli per ~0.65s: senza confine ogni frame fa risalire il reflow a tutto il
+     documento (è lo scatto). Qui lo isola al sottoalbero della pila; l'altezza è già
+     riservata (minHeight via script) quindi conterla non muove nulla intorno. Solo
+     `layout`: `paint` cliperebbe rotazioni e ombre dei fogli. */
+  .newsstand-stack.is-enhanced{ flex-wrap:nowrap; width:fit-content; contain:layout; }
   .newsstand-stack.is-enhanced .paper:not(:first-child){ margin-left:-176px; }
   .newsstand-stack.is-enhanced .paper:nth-child(4n+1){ transform:rotate(-2.2deg) translateY(2px); }
   .newsstand-stack.is-enhanced .paper:nth-child(4n+2){ transform:rotate(1.6deg)  translateY(-1px); }
