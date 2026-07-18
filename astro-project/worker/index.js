@@ -252,12 +252,19 @@ export async function gestisciAsk(request, env) {
     });
   }
 
-  const ids = [...new Set(matches.map((m) => m.article_id))];
-  const inList = ids.map((x) => `"${x}"`).join(',');
-  const cr = await sb(`article_translations?article_id=in.(${encodeURIComponent(inList)})&locale=eq.${locale}&select=title,article_id,articles(slug)`);
-  const trans = cr.ok ? await cr.json() : [];
-  const byId = new Map(trans.map((tr) => [tr.article_id, { title: tr.title, url: `/${locale}/magazine/${tr.articles?.slug ?? ''}` }]));
-  const citations = ids.map((id) => byId.get(id)).filter(Boolean);
+  // Gli article_id arrivano dalla risposta della RPC (dato di rete): prima di
+  // interpolarli nella query PostgREST delle citazioni si validano come UUID. Una
+  // risposta malformata/compromessa non può così alterare il filtro (né fare SSRF).
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const ids = [...new Set(matches.map((m) => m.article_id))].filter((x) => UUID.test(String(x)));
+  let citations = [];
+  if (ids.length) {
+    const inList = ids.map((x) => `"${x}"`).join(',');
+    const cr = await sb(`article_translations?article_id=in.(${encodeURIComponent(inList)})&locale=eq.${locale}&select=title,article_id,articles(slug)`);
+    const trans = cr.ok ? await cr.json() : [];
+    const byId = new Map(trans.map((tr) => [tr.article_id, { title: tr.title, url: `/${locale}/magazine/${tr.articles?.slug ?? ''}` }]));
+    citations = ids.map((id) => byId.get(id)).filter(Boolean);
+  }
 
   const contesto = matches.map((m, i) => `[${i + 1}] ${m.content}`).join('\n\n').slice(0, 6000);
   const system = locale === 'en'
