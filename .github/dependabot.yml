@@ -9,6 +9,17 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
+  # engine: oggi zero dipendenze (fetch nativo Node), quindi zero rumore — la voce
+  # esiste perché la PRIMA dipendenza futura nasca già coperta, invece di affidarsi
+  # a un promemoria (SECURITY_AUDIT I-1: il gap era proprio il "quando servirà").
+  - package-ecosystem: "npm"
+    directory: "/engine"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+
   # pin/aggiornamento delle GitHub Actions usate nei workflow
   # (directory "/" = .github/workflows alla root, dove vivono da quando
   # monthly-issue fu spostato dalla vecchia posizione in astro-project)
