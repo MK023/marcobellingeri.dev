@@ -39,7 +39,7 @@ for (const q of queries) {
     perplexity.push({ queryText: q.text, contentRef: q.content_ref, present: hit.present, rank: hit.rank });
     console.log(`visibility: perplexity "${logsafe(q.text)}" — ${hit.present ? "citato" : "non citato"}.`);
   } catch (e) {
-    console.error(`visibility: perplexity fallita "${logsafe(q.text)}": ${e.message}`);
+    console.error(`visibility: perplexity fallita "${logsafe(q.text)}": ${logsafe(e.message)}`);
     continue; // una query rotta non ferma il monitor
   }
 }
@@ -57,7 +57,7 @@ try {
   if (obs.length) await insert("visibility_observations", obs);
   console.log(`visibility: gsc — ${logsafe(rows.length)} righe.`);
 } catch (e) {
-  console.error(`visibility: gsc fallita: ${e.message}`); // il segnale SEO manca, l'AEO resta
+  console.error(`visibility: gsc fallita: ${logsafe(e.message)}`); // il segnale SEO manca, l'AEO resta
 }
 
 console.log("\n" + renderReferto({ runAt, perplexity, gsc }));
