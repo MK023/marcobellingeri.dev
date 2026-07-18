@@ -5,7 +5,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { scegliLingua, gestisciContatto } from '../worker/index.js';
+import worker, { scegliLingua, gestisciContatto, gestisciAsk } from '../worker/index.js';
 
 const asset = { ASSETS: { fetch: async () => new Response('asset') } };
 const richiesta = (url, paese) => Object.assign(new Request(url), { cf: { country: paese } });
@@ -375,4 +375,72 @@ test('/api/contact è instradato dal fetch del Worker, non solo chiamato diretto
     asset,
   );
   assert.equal(r.status, 405, 'GET instradato a gestisciContatto = 405');
+});
+
+// ---- endpoint RAG (/api/ask) ----
+
+const realFetch = globalThis.fetch;
+function stubFetch(router) { globalThis.fetch = async (url, init) => router(String(url), init); }
+function jresp(body, _ok = true, status = 200) {
+  return new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
+}
+const askReq = (payload, extra = {}) => new Request('https://marcobellingeri.dev/api/ask', {
+  method: 'POST', headers: { Origin: 'https://marcobellingeri.dev' }, body: JSON.stringify(payload), ...extra,
+});
+const askEnv = {
+  EMBEDDING_API_KEY: 'e', ANTHROPIC_API_KEY: 'a',
+  SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k',
+  TURNSTILE_SECRET_KEY: 't',
+};
+
+test('ask: happy — embed, match, citazioni, generate', async (t) => {
+  t.after(() => { globalThis.fetch = realFetch; });
+  stubFetch((url) => {
+    if (url.includes('siteverify')) return jresp({ success: true });
+    if (url.includes('voyageai')) return jresp({ data: [{ index: 0, embedding: Array(1024).fill(0.1) }] });
+    if (url.includes('/rpc/match_article_chunks')) return jresp([{ article_id: '11111111-1111-1111-1111-111111111111', locale: 'it', content: 'Il NAIC ha pubblicato un model bulletin.', similarity: 0.8 }]);
+    if (url.includes('/article_translations')) return jresp([{ title: 'AI insurance governance', article_id: '11111111-1111-1111-1111-111111111111', articles: { slug: 'ai-insurance-governance' } }]);
+    if (url.includes('/v1/messages')) return jresp({ content: [{ type: 'text', text: 'Il NAIC ha emesso linee guida.' }] });
+    return jresp('unexpected', false, 500);
+  });
+  const r = await gestisciAsk(askReq({ q: 'cosa dice il NAIC?', turnstile: 'x', locale: 'it' }), askEnv);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.match(j.answer, /NAIC/);
+  assert.equal(j.citations[0].url, '/it/magazine/ai-insurance-governance');
+  assert.match(j.disclosure, /IA|AI Act|art\. 50/i);
+});
+
+test('ask: zero match -> risposta gentile, NIENTE modello', async (t) => {
+  t.after(() => { globalThis.fetch = realFetch; });
+  let calledAnthropic = false;
+  stubFetch((url) => {
+    if (url.includes('siteverify')) return jresp({ success: true });
+    if (url.includes('voyageai')) return jresp({ data: [{ index: 0, embedding: Array(1024).fill(0.1) }] });
+    if (url.includes('/rpc/match_article_chunks')) return jresp([]);
+    if (url.includes('/v1/messages')) { calledAnthropic = true; return jresp({ content: [{ type: 'text', text: 'x' }] }); }
+    return jresp('unexpected', false, 500);
+  });
+  const r = await gestisciAsk(askReq({ q: 'ricetta della carbonara', turnstile: 'x', locale: 'it' }), askEnv);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.equal(calledAnthropic, false);
+  assert.match(j.answer, /magazine/i);
+  assert.deepEqual(j.citations, []);
+});
+
+test('ask: metodo, origin, body, query, turnstile', async (t) => {
+  t.after(() => { globalThis.fetch = realFetch; });
+  stubFetch((url) => url.includes('siteverify') ? jresp({ success: false }) : jresp('x'));
+  assert.equal((await gestisciAsk(new Request('https://marcobellingeri.dev/api/ask'), askEnv)).status, 405);
+  assert.equal((await gestisciAsk(askReq({ q: 'ciao domanda valida', turnstile: 'x' }, { headers: { Origin: 'https://evil.com' } }), askEnv)).status, 403);
+  assert.equal((await gestisciAsk(askReq({ q: 'ab', turnstile: 'x' }), askEnv)).status, 422);
+  assert.equal((await gestisciAsk(askReq({ q: 'una domanda valida sul magazine', turnstile: 'bad' }), askEnv)).status, 403);
+});
+
+test('ask: config mancante -> 503', async (t) => {
+  t.after(() => { globalThis.fetch = realFetch; });
+  stubFetch((url) => url.includes('siteverify') ? jresp({ success: true }) : jresp('x'));
+  const r = await gestisciAsk(askReq({ q: 'una domanda valida sul magazine', turnstile: 'x' }), { TURNSTILE_SECRET_KEY: 't' });
+  assert.equal(r.status, 503);
 });
