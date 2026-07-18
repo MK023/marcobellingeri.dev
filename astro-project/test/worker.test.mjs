@@ -400,7 +400,7 @@ test('ask: happy — embed, match, citazioni, generate', async (t) => {
     if (url.includes('voyageai')) return jresp({ data: [{ index: 0, embedding: Array(1024).fill(0.1) }] });
     if (url.includes('/rpc/match_article_chunks')) return jresp([{ article_id: '11111111-1111-1111-1111-111111111111', locale: 'it', content: 'Il NAIC ha pubblicato un model bulletin.', similarity: 0.8 }]);
     if (url.includes('/article_translations')) return jresp([{ title: 'AI insurance governance', article_id: '11111111-1111-1111-1111-111111111111', articles: { slug: 'ai-insurance-governance' } }]);
-    if (url.includes('api.anthropic.com')) return jresp({ content: [{ type: 'text', text: 'Il NAIC ha emesso linee guida.' }] });
+    if (url.includes('/v1/messages')) return jresp({ content: [{ type: 'text', text: 'Il NAIC ha emesso linee guida.' }] });
     return jresp('unexpected', false, 500);
   });
   const r = await gestisciAsk(askReq({ q: 'cosa dice il NAIC?', turnstile: 'x', locale: 'it' }), askEnv);
@@ -418,7 +418,7 @@ test('ask: zero match -> risposta gentile, NIENTE modello', async (t) => {
     if (url.includes('siteverify')) return jresp({ success: true });
     if (url.includes('voyageai')) return jresp({ data: [{ index: 0, embedding: Array(1024).fill(0.1) }] });
     if (url.includes('/rpc/match_article_chunks')) return jresp([]);
-    if (url.includes('api.anthropic.com')) { calledAnthropic = true; return jresp({ content: [{ type: 'text', text: 'x' }] }); }
+    if (url.includes('/v1/messages')) { calledAnthropic = true; return jresp({ content: [{ type: 'text', text: 'x' }] }); }
     return jresp('unexpected', false, 500);
   });
   const r = await gestisciAsk(askReq({ q: 'ricetta della carbonara', turnstile: 'x', locale: 'it' }), askEnv);
