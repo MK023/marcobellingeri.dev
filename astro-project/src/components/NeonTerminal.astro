@@ -24,6 +24,20 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
       <input class="crt-input" id="crt-input" type="text" autocomplete="off" spellcheck="false" aria-label="Terminale interattivo" />
     </div>
   </div>
+  {/* Turnstile invisibile per `ask`: stesso pattern e sitekey di Servizi.astro
+      (data-execution="execute" → non parte al caricamento, solo al comando),
+      ma container e callback dedicati — un secondo widget sulla stessa pagina,
+      non quello del form contatti. Lo script cf-turnstile/api.js è già caricato
+      da Servizi.astro (stessa pagina): duplicarlo qui non aggiungerebbe nulla. */}
+  <div
+    class="cf-turnstile"
+    id="ask-turnstile"
+    data-sitekey="0x4AAAAAADzdR4ih-HswrLQJ"
+    data-execution="execute"
+    data-callback="askTurnstileOk"
+    data-error-callback="askTurnstileErr"
+    data-action="turnstile-spin-v1"
+  ></div>
 </div>
 
 <script>
@@ -71,6 +85,7 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
           ['projects', 'i progetti attivi'],
           ['servizi', 'come lavoriamo insieme'],
           ['contact', 'come contattarmi'],
+          ['ask <domanda>', 'interroga il magazine (IA, con citazioni)'],
           ['neon', 'più neon. sempre più neon.'],
           ['matrix', 'per i nostalgici'],
           ['clear', 'pulisci lo schermo'],
@@ -116,6 +131,12 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
         printLine('linkedin: <a href="https://linkedin.com/in/marco-bellingeri" target="_blank" rel="noopener" style="color:#0ff;">linkedin.com/in/marco-bellingeri</a>');
         printLine('credly:   <a href="https://credly.com/users/marco-bellingeri" target="_blank" rel="noopener" style="color:#0ff;">credly.com/users/marco-bellingeri</a>');
       },
+      ask() {
+        // Nessun argomento: solo l'uso. La variante con domanda passa da
+        // runAsk(), fuori dal registro — qui serve testo dinamico e async,
+        // cose che COMMANDS (dispatch a chiave esatta) non gestisce.
+        printLine('uso: ask &lt;domanda&gt;', 'dim');
+      },
       neon() {
         document.documentElement.style.setProperty('filter', 'saturate(1.6)');
         printLine('saturazione neon: massima. (ricarica la pagina per tornare normale)', 'magenta');
@@ -137,6 +158,77 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
         printLine("Permission denied. <span class=\"dim\">(principio del privilegio minimo — chiedilo per bene.)</span>", 'magenta');
       },
     };
+
+    // ---- ask: RAG dal vivo sul magazine, via /api/ask (Worker), gated da Turnstile ----
+    const askTsEl = document.getElementById('ask-turnstile');
+
+    // Turnstile richiama i callback per nome (data-callback/data-error-callback sul
+    // widget): li traduco in una singola Promise per poter fare `await` dentro
+    // runAsk(), come una normale chiamata di rete.
+    let askInCorso = false;
+    let askResolve: ((token: string) => void) | null = null;
+    let askReject: ((err: Error) => void) | null = null;
+
+    function eseguiAskTurnstile(): Promise<string> {
+      return new Promise((resolve, reject) => {
+        if (!window.turnstile?.execute) {
+          // Script Turnstile non ancora arrivato (async) o bloccato: niente
+          // callback in arrivo, quindi non resto in attesa all'infinito.
+          reject(new Error('turnstile-assente'));
+          return;
+        }
+        askResolve = resolve;
+        askReject = reject;
+        askInCorso = true;
+        window.turnstile.execute(askTsEl ?? undefined);
+      });
+    }
+    window.askTurnstileOk = (token: string) => {
+      if (!askInCorso) return;
+      askInCorso = false;
+      askResolve?.(token);
+    };
+    window.askTurnstileErr = () => {
+      askInCorso = false;
+      askReject?.(new Error('turnstile-fallito'));
+    };
+
+    async function runAsk(domanda: string) {
+      if (!domanda) { COMMANDS.ask(); return; }
+      printLine('pensando…', 'dim');
+      try {
+        const token = await eseguiAskTurnstile();
+        const locale = document.documentElement.lang === 'en' ? 'en' : 'it';
+        const r = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q: domanda, turnstile: token, locale }),
+        });
+        if (!r.ok) throw new Error(String(r.status));
+        const data = await r.json();
+
+        // La risposta è output del modello: input non fidato. Passa SEMPRE da
+        // esc(), mai innerHTML col testo grezzo — stesso principio di ogni
+        // altra riga che arriva da fuori (vedi il commento su esc() più sopra).
+        printLine(esc(String(data.answer ?? '')));
+
+        const citations = Array.isArray(data.citations) ? data.citations : [];
+        citations.forEach((c: { title?: string; url?: string }) => {
+          // url è interno (/it/magazine/... o /en/magazine/...), generato dal
+          // Worker: comunque esc() anche lui, per non fidarsi ciecamente di un
+          // attributo href costruito con template string.
+          const href = esc(String(c?.url ?? ''));
+          const titolo = esc(String(c?.title ?? ''));
+          printLine('→ <a href="' + href + '" style="color:#0ff;">' + titolo + '</a>');
+        });
+
+        if (data.disclosure) printLine(esc(String(data.disclosure)), 'dim');
+      } catch {
+        printLine('non riesco a rispondere ora. <span class="dim">riprova tra un minuto.</span>', 'magenta');
+      } finally {
+        window.turnstile?.reset?.(askTsEl ?? undefined);
+      }
+    }
 
     function runMatrixRain(duration: number) {
       const chars = 'アカサタナ01アイウエオABCDEFGHIJK';
@@ -207,7 +299,13 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
       input!.value = '';
 
       if (!cmd) return;
-      if (COMMANDS[cmd]) {
+      if (cmd.startsWith('ask ')) {
+        // Unico comando con argomento libero: gli altri sono chiavi fisse nel
+        // registro (es. 'cat redis.log'), qui la domanda è testo arbitrario
+        // dell'utente e va tenuta fuori da COMMANDS. slice(4) su `raw`, non su
+        // `cmd`, per non spedire la domanda tutta minuscola al modello.
+        runAsk(raw.trim().slice(4).trim());
+      } else if (COMMANDS[cmd]) {
         COMMANDS[cmd]();
       } else {
         printLine('comando non trovato: ' + esc(cmd) + " <span class=\"dim\">— prova 'help'</span>", 'magenta');

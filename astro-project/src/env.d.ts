@@ -25,6 +25,12 @@ interface Window {
   };
   svcTurnstileOk?: (token: string) => void;
   svcTurnstileErr?: () => void;
+
+  // Secondo widget Turnstile, dedicato al comando `ask` del terminale: stesso
+  // script globale di Cloudflare, container e callback distinti da quelli del
+  // form (Turnstile supporta più istanze in pagina via render espliciti).
+  askTurnstileOk?: (token: string) => void;
+  askTurnstileErr?: () => void;
 }
 
 interface Navigator {
