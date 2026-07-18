@@ -37,3 +37,6 @@ npm-debug.log*
 
 # local claude settings (tutta la dir: copre anche duplicati tipo "settings.local 2.json")
 .claude/
+
+# spec/piani di processo (superpowers): utili in sessione, non si versionano
+docs/superpowers/

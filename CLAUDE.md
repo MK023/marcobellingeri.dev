@@ -21,7 +21,7 @@ Supabase pgvector → export). Security-by-design è il **posizionamento**, non 
 - `astro-project/` — il sito **e** il `worker/`. **Si parte da qui.**
 - `engine/` — pipeline Node zero-dipendenze (`fetch` nativo): `ingest`, `generate`, `embed`, `export`, `competitors`, `retrieve`, `visibility`.
 - `supabase/` — migration sequenziali (`000N_*.sql`), RLS ovunque, DB ricostruibile da zero.
-- `docs/adr/` (decisioni) · `docs/superpowers/` (spec + piani).
+- `docs/adr/` — decisioni architetturali (ADR). *(Le spec/piani di processo non si versionano: vivono nella sessione e restano in git history.)*
 
 ## Comandi
 
@@ -36,7 +36,7 @@ Sempre `lint` + `check` + `test` verdi prima di dire "fatto".
 - **Ogni modifica in branch + PR, mai su `main`** (nemmeno in locale). Il **codice** lo mergio io a gate verdi; i **contenuti** (articoli) li merge Marco.
 - **`main` è la produzione**: deploy automatico a ogni push. L'autonomia si ferma alla produzione — migration sul DB vero, segreti, azioni verso l'esterno solo su ok esplicito di Marco (verificando prima il target di ogni DDL).
 - **Verificare in browser, non fidarsi della lettura**: ogni bug serio è uscito eseguendo. Servi la build, misura.
-- Quali skill usare su questo repo: `.claude/session-skills.md` (graphify prima di ogni edit non triviale, verify/run prima di "fatto", TDD, web-perf).
+- **Skill che usiamo** (invocale al momento giusto, senza aspettare che Marco le chieda): **graphify** (query dei chiamanti prima di ogni edit non triviale, update del grafo dopo i merge) · **verify**/**run** (esegui prima di dire "fatto") · **test-driven-development** (test prima del codice, i due modelli MUST) · **web-perf** (ogni task di performance/CWV) · **ponytail** (diff minimo, la scala YAGNI→riuso→stdlib→una riga) · **prompt-master** (ogni prompt non banale, es. il system prompt di `ask`) · **humanizer** (ogni testo pubblico — articoli, copy, bio; **mai** i CV) · **code-review** (prima del merge). Nota proattiva in `.claude/session-skills.md`.
 
 ## Convenzioni di codice
 
