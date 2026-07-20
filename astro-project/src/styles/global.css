@@ -500,13 +500,11 @@
 
   /* certificazioni: chip in stile sito (mono, bordo netto, hover invertito), non i
      badge colorati di Credly che stonerebbero. Il link porta al profilo per la verifica. */
-  .certs{ margin-top:34px; }
   .certs-head{
     font-family:'JetBrains Mono', monospace;
     font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
     opacity:0.7; margin:0 0 14px;
   }
-  .certs-row{ display:flex; flex-wrap:wrap; gap:10px; }
 
   /* ---- field notes / case study ---- */
   .case-archive-note{
