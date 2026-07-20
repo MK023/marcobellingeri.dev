@@ -61,8 +61,14 @@ jobs:
   # cambiare. Sul push a main non si ripete — quel commit lo rianalizza il workflow
   # Deploy, dove il gate blocca la pubblicazione. Qui niente `qualitygate.wait`: sulla
   # PR il blocco lo fa il check di Sonar, non un job che muore.
+  # Escluso Dependabot: GitHub non passa i secret del repository alle sue PR (difesa
+  # contro una PR di dipendenze che tenti di esfiltrare i token), quindi SONAR_TOKEN
+  # arriva vuoto e lo scan muore con "Not authorized" — su ogni bump, per progettazione.
+  # Non è un gate indebolito, è un gate che su quelle PR non può tornare verde.
+  # Stesso trattamento già dato a gitleaks e CodeQL; un bump non tocca il sorgente,
+  # e il merge resta coperto dal Deploy come descritto sopra.
   sonar:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
