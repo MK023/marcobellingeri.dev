@@ -95,7 +95,7 @@ const bylines = [
           <div class="case-block"><span class="label mono">{copy.approach}</span><p>{issue.data.approach}</p></div>
           <div class="case-block"><span class="label mono">{copy.result}</span><p>{issue.data.result}</p></div>
           <div class="case-block"><span class="label mono">{copy.lesson}</span><p>{issue.data.lesson}</p></div>
-          <a class="mag-permalink mono" href={getRelativeLocaleUrl(lang, `magazine/${magazineSlug(issue)}`)}>{copy.permalink}</a>
+          <a class="mono" href={getRelativeLocaleUrl(lang, `magazine/${magazineSlug(issue)}`)}>{copy.permalink}</a>
         </div>
       </details>
     ))}
