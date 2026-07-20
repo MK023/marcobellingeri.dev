@@ -26,6 +26,25 @@ const conLimite = limit ? ` (--limit ${logsafe(limit)})` : "";
 console.log(`visibility: ${logsafe(queries.length)} query attive${conLimite}.`);
 const trace = startTrace("visibility-monitor", { metadata: { queries: queries.length } });
 
+// Run precedente (per il trend del referto): best-effort, un primo run o una
+// lettura fallita non fermano il monitor — semplicemente niente trend.
+const prevAeo = new Map(); // query_id -> present
+const prevGsc = new Map(); // query GSC -> position
+try {
+  const [ultimo] = await select(pg`visibility_observations?select=run_at&order=run_at.desc&limit=1`);
+  if (ultimo) {
+    const prev = await select(
+      pg`visibility_observations?select=engine,query_id,present,rank,detail&run_at=eq.${ultimo.run_at}`,
+    );
+    for (const o of prev) {
+      if (o.engine === "perplexity") prevAeo.set(o.query_id, o.present);
+      if (o.engine === "gsc" && o.detail?.query) prevGsc.set(o.detail.query, o.rank);
+    }
+  }
+} catch (e) {
+  console.error(`visibility: run precedente non leggibile (niente trend): ${logsafe(e.message)}`);
+}
+
 // --- AEO: Perplexity, una query alla volta ---
 const perplexity = [];
 for (const q of queries) {
@@ -36,7 +55,10 @@ for (const q of queries) {
       present: hit.present, rank: hit.rank,
       detail: { matched_url: hit.matchedUrl }, raw: hit.raw,
     }]);
-    perplexity.push({ queryText: q.text, contentRef: q.content_ref, present: hit.present, rank: hit.rank });
+    perplexity.push({
+      queryText: q.text, contentRef: q.content_ref, present: hit.present, rank: hit.rank,
+      prevPresent: prevAeo.get(q.id),
+    });
     console.log(`visibility: perplexity "${logsafe(q.text)}" — ${hit.present ? "citato" : "non citato"}.`);
   } catch (e) {
     console.error(`visibility: perplexity fallita "${logsafe(q.text)}": ${logsafe(e.message)}`);
@@ -48,7 +70,7 @@ for (const q of queries) {
 let gsc = [];
 try {
   const rows = await querySearchAnalytics(defaultWindow());
-  gsc = rows.map((r) => ({ query: r.query, position: r.position }));
+  gsc = rows.map((r) => ({ query: r.query, position: r.position, prevPosition: prevGsc.get(r.query) }));
   const obs = rows.map((r) => ({
     run_at: runAt, engine: "gsc", query_id: null, present: true, rank: r.position,
     detail: { query: r.query, page: r.page, impressions: r.impressions, clicks: r.clicks, ctr: r.ctr },
