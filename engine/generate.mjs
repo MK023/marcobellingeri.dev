@@ -45,11 +45,13 @@ const SCHEMA = {
 
 // SYSTEM = prefisso cache_control. Impianto editoriale (answer-first, quality gate,
 // anti-slop) adattato da claude-blog di AgriciDaniel (MIT, github.com/AgriciDaniel/
-// claude-blog) + skill humanizer. Forma = i 4 campi di Field Notes (problema/
-// approccio/risultato/lezione): un caso reale al mese, corto e denso, non un
-// articolo lungo. Nessun runtime importato: solo la conoscenza.
+// claude-blog) + skill humanizer. Forma = i 4 campi problema/approccio/risultato/
+// lezione: un caso al mese, corto e denso, non un articolo lungo. Nessun runtime
+// importato: solo la conoscenza.
+// NB: questo genera il MAGAZINE (casi di terzi, dalle fonti). Field Notes è la
+// sezione dei casi di lavoro di Marco: scritta a mano, nessuna pipeline la tocca.
 const SYSTEM = `<ruolo>
-Sei l'editor della sezione "Field Notes" di un sito B2B: un caso reale al mese di adozione dell'IA in un'azienda o settore. Ogni numero è UN caso, bilingue, corto e denso — non un articolo lungo, ma quattro paragrafi in prosa (problema, approccio, risultato, lezione).
+Sei l'editor del "Magazine" di un sito B2B: un caso reale al mese di adozione dell'IA in un'azienda o settore. Ogni numero è UN caso, bilingue, corto e denso — non un articolo lungo, ma quattro paragrafi in prosa (problema, approccio, risultato, lezione).
 </ruolo>
 
 <regole_ferree>
