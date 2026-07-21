@@ -1,5 +1,6 @@
 ---
 import type { Lang } from '../../i18n/ui';
+import { getRelativeLocaleUrl } from 'astro:i18n';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
 export function getStaticPaths() {
@@ -11,7 +12,7 @@ const { lang } = Astro.params as { lang: Lang };
 // Niente P.IVA: Marco non ne ha una (2026-07-10). Quando l'aprirà, si aggiunge qui.
 const TITOLARE = 'Marco Bellingeri';
 const CONTATTO = 'mkdevpy@proton.me';
-const UPDATED = '2026-07-11';
+const UPDATED = '2026-07-21';
 const TURNSTILE_POLICY = 'https://www.cloudflare.com/turnstile-privacy-policy/';
 
 // Body per-lingua (il resto del sito segue lo stesso pattern: body nei componenti).
@@ -35,9 +36,11 @@ const copy = {
       `Cloudflare Turnstile (contact form anti-spam): the form is protected against bots by Cloudflare Turnstile, which processes your IP address and browser signals. It is privacy-preserving (no cross-site tracking, no advertising data) and strictly necessary for security, so no consent is required. Details: ${TURNSTILE_POLICY}`,
       'Sentry (error monitoring): if the site hits a technical error, the technical details (error trace, browser type) are sent to Sentry for diagnosis. Data is processed in the EU (German region), IP collection is disabled, and nothing is used for tracking or advertising.',
       'Monthly issue pipeline (server-side, not in your browser): Firecrawl scrapes public sources, Anthropic (Claude) drafts content, Supabase stores it. Sources are public pages only; no personal data is retained.',
+      'Terminal "ask" command (RAG): if you ask the terminal a question, the text you type is turned into a vector by Voyage AI, matched against the published magazine content on Supabase, and passed to Anthropic (Claude) to generate the answer. The question is not stored by this site. The form is protected by Cloudflare Turnstile and a per-IP rate limit.',
     ],
     aiH: 'AI-generated content',
     ai: 'The archive’s “monthly issue” is generated with AI assistance (Anthropic/Claude) and always reviewed by a human before publishing. Source material is limited to public pages, respecting robots.txt and terms of service.',
+    aiMore: 'Full details on every AI system this site runs, and the art. 50 disclosures, are on the AI transparency page.',
     transferH: 'Non-EU transfers',
     transfer:
       'Some providers (Anthropic, Cloudflare, Resend/AWS) are US-based. Transfers rely on their respective safeguards (Standard Contractual Clauses / adequacy frameworks).',
@@ -64,9 +67,11 @@ const copy = {
       `Cloudflare Turnstile (anti-spam del form): il modulo è protetto dai bot tramite Cloudflare Turnstile, che tratta il tuo indirizzo IP e i segnali del browser. È rispettoso della privacy (nessun tracciamento cross-site, nessun dato pubblicitario) e strettamente necessario alla sicurezza, quindi non richiede consenso. Dettagli: ${TURNSTILE_POLICY}`,
       'Sentry (monitoraggio errori): se il sito incontra un errore tecnico, i dettagli tecnici (traccia dell’errore, tipo di browser) vengono inviati a Sentry per la diagnosi. I dati sono trattati in UE (region tedesca), la raccolta dell’IP è disattivata e nulla è usato per tracciamento o pubblicità.',
       'Pipeline del numero mensile (lato server, non nel tuo browser): Firecrawl fa scraping di fonti pubbliche, Anthropic (Claude) redige le bozze, Supabase le archivia. Le fonti sono solo pagine pubbliche; nessun dato personale viene conservato.',
+      'Comando "ask" del terminale (RAG): se fai una domanda al terminale, il testo che digiti viene trasformato in vettore da Voyage AI, confrontato con i contenuti pubblicati del magazine su Supabase e passato ad Anthropic (Claude) per generare la risposta. La domanda non viene salvata da questo sito. Il form è protetto da Cloudflare Turnstile e da un limite di richieste per IP.',
     ],
     aiH: 'Contenuti generati con AI',
     ai: 'Il “numero mensile” dell’archivio è generato con assistenza AI (Anthropic/Claude) e sempre revisionato da una persona prima della pubblicazione. Le fonti sono limitate a pagine pubbliche, nel rispetto di robots.txt e termini di servizio.',
+    aiMore: 'Il dettaglio completo di ogni sistema di IA che il sito usa, con le disclosure dell’art. 50, è nella pagina di trasparenza AI.',
     transferH: 'Trasferimenti extra-UE',
     transfer:
       'Alcuni fornitori (Anthropic, Cloudflare, Resend/AWS) hanno sede negli USA. I trasferimenti si basano sulle rispettive garanzie (Clausole Contrattuali Standard / framework di adeguatezza).',
@@ -98,6 +103,7 @@ const copy = {
 
     <h2>{copy.aiH}</h2>
     <p>{copy.ai}</p>
+    <p><a href={getRelativeLocaleUrl(lang, 'ai')}>{copy.aiMore}</a></p>
 
     <h2>{copy.transferH}</h2>
     <p>{copy.transfer}</p>

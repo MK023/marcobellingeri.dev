@@ -5,6 +5,7 @@ import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 const t = useTranslations(lang);
 const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
+const aiUrl = getRelativeLocaleUrl(lang, 'ai');
 
 const EMAIL = 'mkdevpy@proton.me';
 // Verifica-socio live: mostra da sé la validità aggiornata, così la scadenza non
@@ -64,7 +65,7 @@ const links = [
       </div>
     </div>
   </div>
-  <p class="fine-print">{t('foot.finePrint')} · <a href={privacyUrl}>Privacy</a></p>
+  <p class="fine-print">{t('foot.finePrint')} · <a href={privacyUrl}>Privacy</a> · <a href={aiUrl}>{lang === 'it' ? 'Trasparenza AI' : 'AI transparency'}</a></p>
 </footer>
 
 <script>

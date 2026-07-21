@@ -22,10 +22,14 @@ const d = entry.data;
 const lang = d.lang as Lang;
 const slug = magazineSlug(entry);
 
+// Etichetta art. 50 AI Act: il numero è scritto da una pipeline e revisionato
+// da una persona prima del publish (gate in DB) — la pagina lo dice, con link
+// alla pagina di trasparenza.
 const copy = {
-  it: { problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA', back: 'Torna al magazine' },
-  en: { problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED', back: 'Back to the magazine' },
+  it: { problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA', back: 'Torna al magazine', aiLabel: 'Generato con IA, revisionato da una persona' },
+  en: { problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED', back: 'Back to the magazine', aiLabel: 'AI-generated, human-reviewed' },
 }[lang];
+const aiUrl = getRelativeLocaleUrl(lang, 'ai');
 
 // Meta description: incipit del problema, troncato pulito.
 const description = d.problem.length > 155 ? d.problem.slice(0, 152).trimEnd() + '…' : d.problem;
@@ -38,6 +42,7 @@ const backHref = getRelativeLocaleUrl(lang, '') + '#magazine';
     <article class="mag-article">
       <p class="mag-cred mono">MAGAZINE · N.{String(d.number).padStart(2, '0')} · {d.month.toUpperCase()} · {d.sector}</p>
       <h1 class="mag-article-title">{d.title}</h1>
+      <p class="mag-ai-label mono"><a href={aiUrl}>{copy.aiLabel} ✳</a></p>
       <div class="mag-body">
         <div class="case-block"><span class="label mono">{copy.problem}</span><p>{d.problem}</p></div>
         <div class="case-block"><span class="label mono">{copy.approach}</span><p>{d.approach}</p></div>
@@ -61,4 +66,6 @@ const backHref = getRelativeLocaleUrl(lang, '') + '#magazine';
     margin:8px 0 28px; letter-spacing:0.01em;
   }
   .mag-back{ display:inline-block; margin-top:36px; text-decoration:none; }
+  .mag-ai-label{ font-size:11px; letter-spacing:0.1em; text-transform:uppercase; opacity:0.65; margin:-16px 0 24px; }
+  .mag-ai-label a{ color:inherit; }
 </style>
