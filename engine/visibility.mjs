@@ -8,6 +8,10 @@ import { querySearchAnalytics, defaultWindow } from "./lib/gsc.mjs";
 import { renderReferto } from "./lib/referto.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
+import { catchTopLevel } from "./lib/sentry.mjs";
+
+// Errore non gestito -> Sentry (fail-open) -> exit 1: vedi lib/sentry.mjs.
+catchTopLevel("visibility");
 
 // --limit N: interroga solo le prime N query attive (test/ops, controllo costo).
 const limIdx = process.argv.indexOf("--limit");
