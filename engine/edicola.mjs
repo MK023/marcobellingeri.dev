@@ -8,6 +8,10 @@ import { readFile, writeFile } from "node:fs/promises";
 import { parseArticle, publishedArticles } from "./lib/devto.mjs";
 import { mergeCards, slugFromCanonical } from "./lib/edicola.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
+import { catchTopLevel } from "./lib/sentry.mjs";
+
+// Errore non gestito -> Sentry (fail-open) -> exit 1: vedi lib/sentry.mjs.
+catchTopLevel("edicola");
 
 const FILE = new URL("../astro-project/src/data/edicola.json", import.meta.url);
 const cards = JSON.parse(await readFile(FILE, "utf8"));

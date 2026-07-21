@@ -5,6 +5,10 @@
 import { readFile } from "node:fs/promises";
 import { parseArticle, upsertArticle } from "./lib/devto.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
+import { catchTopLevel } from "./lib/sentry.mjs";
+
+// Errore non gestito -> Sentry (fail-open) -> exit 1: vedi lib/sentry.mjs.
+catchTopLevel("devto");
 
 const args = process.argv.slice(2);
 const publish = args.includes("--publish");

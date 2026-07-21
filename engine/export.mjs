@@ -17,6 +17,10 @@ import { fileURLToPath } from "node:url";
 import { select, update, pg } from "./lib/supabase.mjs";
 import { screen } from "./lib/guardrails.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
+import { catchTopLevel } from "./lib/sentry.mjs";
+
+// Errore non gestito -> Sentry (fail-open) -> exit 1: vedi lib/sentry.mjs.
+catchTopLevel("export");
 
 const MAGAZINE_DIR = fileURLToPath(new URL("../astro-project/src/content/magazine", import.meta.url));
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;

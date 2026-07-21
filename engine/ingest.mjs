@@ -17,6 +17,10 @@ import { select, insert, pg } from "./lib/supabase.mjs";
 import { search } from "./lib/valyu.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
+import { catchTopLevel } from "./lib/sentry.mjs";
+
+// Errore non gestito -> Sentry (fail-open) -> exit 1: vedi lib/sentry.mjs.
+catchTopLevel("ingest");
 
 // L'angolo del magazine: IA utile APPLICATA sul lavoro (adozione, pratica,
 // risultati concreti), non governance/regolamentazione — che aveva reso il #1

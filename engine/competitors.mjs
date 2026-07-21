@@ -9,6 +9,10 @@ import { select, insert, pg } from "./lib/supabase.mjs";
 import { chunk, embed, toVector } from "./lib/voyage.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
+import { catchTopLevel } from "./lib/sentry.mjs";
+
+// Errore non gestito -> Sentry (fail-open) -> exit 1: vedi lib/sentry.mjs.
+catchTopLevel("competitors");
 
 const { FIRECRAWL_API_KEY } = process.env;
 

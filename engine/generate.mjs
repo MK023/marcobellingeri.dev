@@ -13,6 +13,10 @@ import { select, insert, remove, pg } from "./lib/supabase.mjs";
 import { generateJson, countTokens } from "./lib/anthropic.mjs";
 import { sanitizeSource, sourceIsPoisoned, validateArticle, slugify } from "./lib/guardrails.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
+import { catchTopLevel } from "./lib/sentry.mjs";
+
+// Errore non gestito -> Sentry (fail-open) -> exit 1: vedi lib/sentry.mjs.
+catchTopLevel("generate");
 
 const MODEL = "claude-sonnet-5";
 const MAX_TOKENS = 16_000;
