@@ -1,6 +1,7 @@
 // engine/lib/referto.mjs
 // Ruleset statico: dato lo stato di un'osservazione, una riga d'azione (o null).
 // Volutamente piccolo: la prescrizione generata da LLM è Fase 2 (sconfina nell'adapter).
+import { logsafe } from "./logsafe.mjs";
 
 export function prescription(o) {
   if (o.engine === "perplexity") {
@@ -14,7 +15,7 @@ export function prescription(o) {
   if (o.engine === "gsc") {
     // deltaRank positivo = posizione peggiorata (numero più alto = più in basso).
     if (typeof o.deltaRank === "number" && o.deltaRank >= 1) {
-      return `Perdi posizione su «${o.queryText}»: controlla title/description e freschezza.`;
+      return `Perdi posizione su «${logsafe(o.queryText)}»: controlla title/description e freschezza.`;
     }
     return null;
   }
@@ -33,7 +34,7 @@ export function renderReferto({ runAt, perplexity = [], gsc = [] }) {
     const trend = p.prevPresent === undefined ? "" :
       p.present && !p.prevPresent ? " 🆕" :
       !p.present && p.prevPresent ? " ⚠️ perso" : "";
-    lines.push(`- **${p.queryText}** — ${stato}${trend}`);
+    lines.push(`- **${logsafe(p.queryText)}** — ${stato}${trend}`);
     const rx = prescription({ engine: "perplexity", present: p.present, contentRef: p.contentRef });
     if (rx) lines.push(`  - → ${rx}`);
   }
@@ -42,7 +43,7 @@ export function renderReferto({ runAt, perplexity = [], gsc = [] }) {
   for (const g of gsc) {
     const delta = typeof g.prevPosition === "number" ? g.position - g.prevPosition : null;
     const deltaTxt = delta === null ? "" : ` (Δ ${delta > 0 ? "+" : ""}${delta.toFixed(1)})`;
-    lines.push(`- **${g.query}** — pos ${g.position.toFixed(1)}${deltaTxt}`);
+    lines.push(`- **${logsafe(g.query)}** — pos ${g.position.toFixed(1)}${deltaTxt}`);
     const rx = prescription({ engine: "gsc", present: true, deltaRank: delta ?? 0, queryText: g.query });
     if (rx) lines.push(`  - → ${rx}`);
   }

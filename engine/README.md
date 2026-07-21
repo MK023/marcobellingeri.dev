@@ -70,7 +70,7 @@ node engine/export.mjs --selfcheck                                     # self-ch
 - `generate.mjs` — **stadio 2 GENERATE**: signal `verify` → un caso Field Notes IT+EN (problema/approccio/risultato/lezione) grounded solo sulle fonti → `status=draft`. NON embedda, NON pubblica (gate umano).
 - `export.mjs` — **stadio 5 EXPORT**: numero `approved` → file Markdown Field Notes in `astro-project/src/content/cases/{it,en}/` → `status=published`. Mappatura inversa (application→approach, solution→result, body→lesson), ri-screening prima di scrivere nel repo. NON committa: il contenuto lo merge Marco.
 - `retrieve.mjs` — read-end del RAG (query→match_article_chunks). NON è l'endpoint pubblico C1 (rate-limit/guardrail/AI-Act = roadmap).
-- `visibility.mjs` — monitor discoverability: SEO (Google Search Console) + AEO (Perplexity Sonar), referto prescrittivo, storico su Supabase (`visibility_observations`).
+- `visibility.mjs` — monitor discoverability: SEO (Google Search Console) + AEO (Perplexity Sonar), referto prescrittivo con trend vs run precedente, storico su Supabase (`visibility_observations`). Descope dichiarato: le righe GSC hanno `query_id` null (nessun legame best-effort con `visibility_queries`) e il referto è due liste piatte, non raggruppato per `content_ref` — si riapre se il volume lo giustifica.
 - `devto.mjs` — cross-post canonical-first della writing collection su dev.to (`lib/devto.mjs`): idempotente per `canonical_url` (re-run = update), draft di default, live solo con `--publish`; un re-run senza flag non spubblica mai un pezzo già uscito. Il trigger resta umano: si pubblica quando Marco decide, lo script toglie solo il copia-incolla.
 
 ## Test

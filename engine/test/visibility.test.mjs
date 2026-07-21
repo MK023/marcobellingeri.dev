@@ -34,6 +34,35 @@ test("visibility: perplexity (citato + non citato) e gsc, con --limit", () => {
   assert.match(r.stdout, /visibility: fatto/);
 });
 
+test("visibility: trend dal run precedente — 🆕, delta e prescrizione GSC", () => {
+  const routes = [
+    { match: "visibility_queries", body: [
+      { id: "Q1", text: "self audit discipline", content_ref: "audit-di-se" },
+    ] },
+    { match: "order=run_at.desc&limit=1", body: [{ run_at: "2026-07-14T00:00:00+00:00" }] },
+    { match: "run_at=eq.", body: [
+      { engine: "perplexity", query_id: "Q1", present: false, rank: null, detail: {} },
+      { engine: "gsc", query_id: null, present: true, rank: 10, detail: { query: "cloud security engineer" } },
+    ] },
+    { match: "perplexity.ai", method: "POST", body: {
+      citations: ["https://www.marcobellingeri.dev/en/writing/audit-di-se"],
+    } },
+    { match: "visibility_observations", method: "POST" },
+    { match: "oauth2.googleapis.com", method: "POST", body: { access_token: "T" } },
+    { match: "searchAnalytics", method: "POST", body: { rows: [
+      { keys: ["cloud security engineer", "https://marcobellingeri.dev/en"], clicks: 1, impressions: 30, ctr: 0.03, position: 12.3 },
+    ] } },
+  ];
+  const r = runEngine(["engine/visibility.mjs"], routes, {
+    PERPLEXITY_API_KEY: "k", GSC_CLIENT_ID: "c", GSC_CLIENT_SECRET: "s",
+    GSC_REFRESH_TOKEN: "t", GSC_SITE_URL: "sc-domain:marcobellingeri.dev",
+  });
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /🆕/);                                  // Q1: citato ora, non nel run precedente
+  assert.match(r.stdout, /Δ \+2\.3/);                            // gsc: 12.3 - 10
+  assert.match(r.stdout, /Perdi posizione su «cloud security engineer»/);
+});
+
 test("visibility: una query perplexity fallita non ferma il monitor", () => {
   const routes = [
     { match: "visibility_queries", body: [{ id: "Q1", text: "boom", content_ref: null }] },

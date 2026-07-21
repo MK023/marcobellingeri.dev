@@ -31,6 +31,18 @@ test("prescription: engine sconosciuto -> null (fallback difensivo)", () => {
   assert.equal(prescription({ engine: "boh", present: false }), null);
 });
 
+test("renderReferto: caratteri di controllo nelle query -> neutralizzati (S5145)", () => {
+  const md = renderReferto({
+    runAt: "2026-07-21",
+    perplexity: [{ queryText: "riga\nfalsa", contentRef: null, present: false, rank: null }],
+    gsc: [{ query: "a\nb", position: 12, prevPosition: 5 }],
+  });
+  assert.doesNotMatch(md, /riga\nfalsa/);
+  assert.doesNotMatch(md, /a\nb/);
+  assert.match(md, /riga falsa/);
+  assert.match(md, /Perdi posizione su «a b»/);
+});
+
 test("renderReferto: trend 🆕/perso e delta posizione", () => {
   const md = renderReferto({
     runAt: "2026-07-18",
