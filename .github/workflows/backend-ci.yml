@@ -19,15 +19,11 @@ on:
   # `pull_request`: il workflow le lancia via dispatch sul branch della card.
   workflow_dispatch: {}
 
+# Default per tutti i job; il permesso in più di gitleaks sta SUL SUO job
+# (modello pipeline-cicd: permissions per job, non per workflow — un permesso a
+# livello workflow è concesso anche ai job che non ne hanno bisogno).
 permissions:
   contents: read
-  # gitleaks-action, sugli eventi pull_request, chiama
-  # GET /repos/{owner}/{repo}/pulls/{n}/commits per sapere cosa scansionare.
-  # Con `contents: read` da solo quella chiamata torna 403 "Resource not
-  # accessible by integration" e il job muore su OGNI PR, non solo su quelle di
-  # Dependabot: era questa la vera causa dello skip qui sotto, non il token
-  # ristretto di Dependabot.
-  pull-requests: read
 
 # un solo run alla volta per ref: l'e2e usa un namespace sintetico fisso
 # (9999-01) sul DB live — run concorrenti si pesterebbero i piedi
@@ -48,6 +44,13 @@ jobs:
         run: npm test
 
   gitleaks:
+    # gitleaks-action, sugli eventi pull_request, chiama
+    # GET /repos/{owner}/{repo}/pulls/{n}/commits per sapere cosa scansionare.
+    # Senza `pull-requests: read` quella chiamata torna 403 e il job muore su
+    # OGNI PR (era la vera causa storica dello skip, non il token di Dependabot).
+    permissions:
+      contents: read
+      pull-requests: read
     # Lo skip resta finché non è verificato su una PR reale di Dependabot: lì il
     # GITHUB_TOKEN e' comunque piu' ristretto per policy GitHub. Ma la causa del
     # fallimento storico era il permesso `pull-requests: read` mancante (vedi

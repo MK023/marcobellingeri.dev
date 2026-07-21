@@ -76,6 +76,12 @@ jobs:
   deploy:
     needs: qualita
     runs-on: ubuntu-latest
+    # Permessi SUL job (modello pipeline-cicd): id-token+attestations servono
+    # solo alla provenance qui sotto, il job qualita non li vede.
+    permissions:
+      contents: read
+      id-token: write # firma keyless dell'attestation (identità OIDC del workflow)
+      attestations: write
     environment:
       name: produzione
       url: https://marcobellingeri.dev
@@ -114,6 +120,34 @@ jobs:
       - name: CSP + sezioni (sulla dist/ che sto per pubblicare)
         working-directory: astro-project
         run: npm run test:csp
+
+      # Supply chain (modello pipeline-cicd v2 + CRA): l'inventario di cosa c'è
+      # nell'artefatto (SBOM, npm nativo: zero dipendenze in più) e la prova
+      # firmata che QUESTA dist esce da QUESTO workflow e QUESTO commit.
+      - name: SBOM della build (CycloneDX)
+        working-directory: astro-project
+        run: npm sbom --sbom-format cyclonedx --omit dev > ../sbom.cdx.json
+      - name: Impacchetta la dist per l'attestation
+        run: tar -czf dist.tar.gz -C astro-project dist
+      - name: Attestation di provenance (firma keyless via OIDC)
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: dist.tar.gz
+      # ponytail: verifica nello stesso job — dimostrativa (l'artefatto non cambia
+      # mano tra build e deploy: girano nello stesso job). Diventa un gate vero
+      # il giorno in cui build e deploy si separano con passaggio d'artefatto.
+      - name: Verifica l'attestation prima di pubblicare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh attestation verify dist.tar.gz --repo "$GITHUB_REPOSITORY"
+      - name: Archivia SBOM + dist attestata (90 giorni)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-${{ github.sha }}
+          path: |
+            sbom.cdx.json
+            dist.tar.gz
+          retention-days: 90
 
       - name: Deploy su Cloudflare
         working-directory: astro-project

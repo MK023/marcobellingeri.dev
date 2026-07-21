@@ -94,6 +94,27 @@ Altre reti:
   la prova delle fonti.
 - Segreti su **Doppler**, mai nel repository. `.env` è ignorato.
 
+### Il livello di pipeline, dichiarato
+
+La pipeline si ferma a un **Livello 3 su misura** (gate bloccanti applicativi *e* di
+filiera), e ogni fermata ha un perché:
+
+- **Niente approval gate umano sulla produzione**: `main` *è* la produzione per
+  scelta — il costo di un errore è basso, il rollback Cloudflare è immediato, e i
+  gate automatici (Sonar, CSP su dist, gitleaks, ruleset) stanno tutti sulla strada
+  del deploy.
+- **Niente OIDC verso Cloudflare**: non per pigrizia — Cloudflare non espone
+  federazione OIDC per i token API. Il compenso è un token con scope minimo. È un
+  ceiling dichiarato, non un debito.
+- **Niente canary/progressive delivery**: su questo traffico un canary al 5% non
+  raggiunge significatività statistica prima della fine del rollout. Teatro, non gate.
+- **Supply chain attiva**: action pinnate a SHA (aggiornate da Dependabot), SBOM
+  CycloneDX a ogni deploy, **attestation di provenance firmata** (keyless, OIDC) e
+  verificata, SAST dei workflow stessi (zizmor, blocca su High), permessi del
+  `GITHUB_TOKEN` minimi per job.
+- **Politica dei gate**: ogni gate dichiara cosa blocca nel commento accanto — un
+  gate senza politica scritta è un futuro `continue-on-error`.
+
 Vulnerabilità: **non aprire una issue pubblica**, vedi [SECURITY.md](SECURITY.md).
 
 Attiva l'hook anti-segreti una volta per clone:
