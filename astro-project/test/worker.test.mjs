@@ -472,6 +472,24 @@ test('ask: rate limit -> 429, con chiave = IP', async (t) => {
   assert.equal(chiave, '203.0.113.9');
 });
 
+test('ask: Anthropic giù (crediti finiti, 429, outage) -> 200 degradato con le citazioni', async (t) => {
+  t.after(() => { globalThis.fetch = realFetch; });
+  stubFetch((url) => {
+    if (url.includes('siteverify')) return jresp({ success: true });
+    if (url.includes('voyageai')) return jresp({ data: [{ index: 0, embedding: Array(1024).fill(0.1) }] });
+    if (url.includes('/rpc/match_article_chunks')) return jresp([{ article_id: '11111111-1111-1111-1111-111111111111', locale: 'it', content: 'Il NAIC ha pubblicato un model bulletin.', similarity: 0.8 }]);
+    if (url.includes('/article_translations')) return jresp([{ title: 'AI insurance governance', article_id: '11111111-1111-1111-1111-111111111111', articles: { slug: 'ai-insurance-governance' } }]);
+    if (url.includes('/v1/messages')) return jresp({ error: { type: 'invalid_request_error', message: 'credit balance is too low' } }, 400);
+    return jresp('unexpected', 500);
+  });
+  const r = await gestisciAsk(askReq({ q: 'cosa dice il NAIC?', turnstile: 'x', locale: 'it' }), askEnv);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.match(j.answer, /fonti/i);              // risposta di ripiego, non un errore secco
+  assert.equal(j.citations[0].url, '/it/magazine/ai-insurance-governance'); // le fonti si salvano
+  assert.match(j.disclosure, /IA|AI Act/i);
+});
+
 test('ask: config mancante -> 503', async (t) => {
   t.after(() => { globalThis.fetch = realFetch; });
   stubFetch((url) => url.includes('siteverify') ? jresp({ success: true }) : jresp('x'));

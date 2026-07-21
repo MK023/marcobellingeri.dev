@@ -94,8 +94,10 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
         // larghezza colonna = comando più lungo + margine di 2 spazi (niente numero magico)
         const width = Math.max(...rows.map(([c]) => c.length)) + 2;
         // padding con &nbsp;: innerHTML + white-space non garantiscono la resa degli spazi ripetuti
+        // esc(c): 'ask <domanda>' passa da innerHTML — senza escape il browser
+        // mangia '<domanda>' come tag e la colonna si disallinea.
         rows.forEach(([c, d]) =>
-          printLine('  <span class="yellow">' + c + '</span>' + '&nbsp;'.repeat(width - c.length) + d)
+          printLine('  <span class="yellow">' + esc(c) + '</span>' + '&nbsp;'.repeat(width - c.length) + d)
         );
       },
       whoami() {
