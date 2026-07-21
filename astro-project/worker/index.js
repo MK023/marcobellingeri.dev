@@ -303,7 +303,20 @@ Regole, in ordine di priorità:
       }),
     }),
   ]);
-  if (!ar.ok) { segnala('ask: anthropic ' + ar.status, { status: ar.status }); return rispostaJson({ error: 'generate' }, 502); }
+  // Modello giù (crediti finiti, 429, outage): le fonti trovate valgono da sole.
+  // Si degrada a 200 con le citazioni invece di buttare tutto con un 502 — Sentry
+  // viene comunque avvisato, l'utente riceve i passaggi del magazine.
+  if (!ar.ok) {
+    segnala('ask: anthropic ' + ar.status, { status: ar.status });
+    const ripiego = citations.length
+      ? (locale === 'en'
+        ? 'The model is unavailable right now. Here are the magazine sources closest to your question:'
+        : 'Il modello non è disponibile in questo momento. Ecco le fonti del magazine più vicine alla tua domanda:')
+      : (locale === 'en'
+        ? 'The model is unavailable right now. Try again in a few minutes.'
+        : 'Il modello non è disponibile in questo momento. Riprova tra qualche minuto.');
+    return rispostaJson({ answer: ripiego, citations, disclosure });
+  }
   const aj = await ar.json();
   const answer = (aj.content ?? []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
   return rispostaJson({ answer, citations, disclosure });
