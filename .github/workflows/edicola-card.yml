@@ -40,6 +40,7 @@ jobs:
       - name: Genera le card mancanti
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: node engine/edicola.mjs # zero dipendenze npm: nessun install
       - name: PR, gate verdi, merge, deploy
         env:

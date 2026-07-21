@@ -37,6 +37,7 @@ jobs:
       - name: Draft su dev.to degli articoli toccati
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
           set -euo pipefail
           git diff --name-only HEAD^ HEAD -- 'astro-project/src/content/writing/en/*.md' \
