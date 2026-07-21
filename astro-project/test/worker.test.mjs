@@ -390,16 +390,17 @@ const askReq = (payload, extra = {}) => new Request('https://marcobellingeri.dev
 });
 const askEnv = {
   EMBEDDING_API_KEY: 'e', ANTHROPIC_API_KEY: 'a',
-  SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k',
+  SUPABASE_URL: 'https://db.example', SUPABASE_ANON_KEY: 'k',
   TURNSTILE_SECRET_KEY: 't',
 };
 
 test('ask: happy — embed, match, citazioni, generate', async (t) => {
   t.after(() => { globalThis.fetch = realFetch; });
-  stubFetch((url) => {
+  let apikeyUsata;
+  stubFetch((url, init) => {
     if (url.includes('siteverify')) return jresp({ success: true });
     if (url.includes('voyageai')) return jresp({ data: [{ index: 0, embedding: Array(1024).fill(0.1) }] });
-    if (url.includes('/rpc/match_article_chunks')) return jresp([{ article_id: '11111111-1111-1111-1111-111111111111', locale: 'it', content: 'Il NAIC ha pubblicato un model bulletin.', similarity: 0.8 }]);
+    if (url.includes('/rpc/match_article_chunks')) { apikeyUsata = init?.headers?.apikey; return jresp([{ article_id: '11111111-1111-1111-1111-111111111111', locale: 'it', content: 'Il NAIC ha pubblicato un model bulletin.', similarity: 0.8 }]); }
     if (url.includes('/article_translations')) return jresp([{ title: 'AI insurance governance', article_id: '11111111-1111-1111-1111-111111111111', articles: { slug: 'ai-insurance-governance' } }]);
     if (url.includes('/v1/messages')) return jresp({ content: [{ type: 'text', text: 'Il NAIC ha emesso linee guida.' }] });
     return jresp('unexpected', 500);
@@ -410,6 +411,9 @@ test('ask: happy — embed, match, citazioni, generate', async (t) => {
   assert.match(j.answer, /NAIC/);
   assert.equal(j.citations[0].url, '/it/magazine/ai-insurance-governance');
   assert.match(j.disclosure, /IA|AI Act|art\. 50/i);
+  // Least privilege: l'endpoint pubblico legge con l'anon key (RLS published),
+  // mai con la service role — la RPC è grantata ad anon (migration 0003).
+  assert.equal(apikeyUsata, 'k');
 });
 
 test('ask: zero match -> risposta gentile, NIENTE modello', async (t) => {
@@ -437,6 +441,35 @@ test('ask: metodo, origin, body, query, turnstile', async (t) => {
   assert.equal((await gestisciAsk(askReq({ q: 'ciao domanda valida', turnstile: 'x' }, { headers: { Origin: 'https://evil.com' } }), askEnv)).status, 403);
   assert.equal((await gestisciAsk(askReq({ q: 'ab', turnstile: 'x' }), askEnv)).status, 422);
   assert.equal((await gestisciAsk(askReq({ q: 'una domanda valida sul magazine', turnstile: 'bad' }), askEnv)).status, 403);
+});
+
+test('ask: JSON rotto -> 400; token Turnstile massimo -> NON 413; oltre 8KB -> 413', async (t) => {
+  t.after(() => { globalThis.fetch = realFetch; });
+  stubFetch((url) => url.includes('siteverify') ? jresp({ success: false }) : jresp('x'));
+  const rotto = new Request('https://marcobellingeri.dev/api/ask', {
+    method: 'POST', headers: { Origin: 'https://marcobellingeri.dev' }, body: '{non-json',
+  });
+  assert.equal((await gestisciAsk(rotto, askEnv)).status, 400);
+  // Il solo token Turnstile può arrivare a 2048 caratteri (doc Cloudflare):
+  // token massimo + domanda lunga devono superare il cap (413 solo oltre 8 KB).
+  const rTokenMax = await gestisciAsk(askReq({ q: 'a'.repeat(600), turnstile: 'x'.repeat(2048) }), askEnv);
+  assert.equal(rTokenMax.status, 403); // arriva fino a Turnstile (che qui rifiuta), non muore in 413
+  const enorme = new Request('https://marcobellingeri.dev/api/ask', {
+    method: 'POST', headers: { Origin: 'https://marcobellingeri.dev' }, body: 'x'.repeat(9000),
+  });
+  assert.equal((await gestisciAsk(enorme, askEnv)).status, 413);
+});
+
+test('ask: rate limit -> 429, con chiave = IP', async (t) => {
+  t.after(() => { globalThis.fetch = realFetch; });
+  stubFetch(() => jresp('mai chiamata', 500));
+  let chiave;
+  const env = { ...askEnv, ASK_LIMITER: { limit: async ({ key }) => { chiave = key; return { success: false }; } } };
+  const r = await gestisciAsk(askReq({ q: 'una domanda valida sul magazine', turnstile: 'x' }, {
+    headers: { Origin: 'https://marcobellingeri.dev', 'CF-Connecting-IP': '203.0.113.9' },
+  }), env);
+  assert.equal(r.status, 429);
+  assert.equal(chiave, '203.0.113.9');
 });
 
 test('ask: config mancante -> 503', async (t) => {
