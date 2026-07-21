@@ -5,6 +5,7 @@ import { getRelativeLocaleUrl } from 'astro:i18n';
 import { magazineSlug } from '../lib/magazine';
 import Newsstand from './Newsstand.astro';
 import { defaultLang, type Lang } from '../i18n/ui';
+import edicola from '../data/edicola.json';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 
@@ -14,13 +15,9 @@ const issues = (await getCollection('magazine', (c) => c.data.lang === lang)).so
 
 // Edicola: dove la firma di Marco esce anche fuori dal sito. Reso come una PILA
 // da edicola (newsstand stack) — le firme impilate come giornali, sfalsate e
-// ruotate. Solo link in uscita (nuova scheda). L'array qui sotto è la fonte:
-// una firma a settimana = una riga in più, il layout regge da 2 a molti.
-const DEVTO = 'https://dev.to/mk023/how-i-shipped-13-prs-in-one-afternoon-pair-programming-with-claude-and-what-i-learned-1274';
-const TOOLUSE = 'https://dev.to/mk023/from-text-json-parsing-to-claude-tool-use-in-jobsearch-3cjg';
-// L'articolo "audit di sé" è ospitato sul sito (casa canonical): il giornale
-// punta alla pagina interna, non a dev.to.
-const AUDIT = getRelativeLocaleUrl(lang, 'writing/audit-di-se');
+// ruotate. Solo link in uscita (nuova scheda). La fonte è src/data/edicola.json:
+// le card dev.to le aggiunge da solo il cron Edicola card (engine/edicola.mjs),
+// una card interna si aggiunge a mano con `path` al posto di `href`.
 // Devpunks non è una firma ma un talent network: sta FUORI dalla pila, come chip
 // fisso a fianco dell'edicola.
 const DEVPUNKS = 'https://devpunks.com';
@@ -32,10 +29,6 @@ const copy = {
     problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA',
     permalink: 'Apri la pagina →',
     edicolaHead: 'Edicola · dove la firma esce anche fuori',
-    audit: 'Il sito che si audita da solo',
-    auditSub: 'Sul sito · 2026',
-    toolUse: 'Tool-use in JobSearch',
-    devto: '13 PR con Claude in un pomeriggio',
     devpunks: 'Nel talent network',
     newTab: 'si apre in una nuova scheda',
   },
@@ -45,23 +38,26 @@ const copy = {
     problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED',
     permalink: 'Open the page →',
     edicolaHead: 'Edicola · where the byline also runs',
-    audit: 'The site that audits itself',
-    auditSub: 'On the site · 2026',
-    toolUse: 'Tool-use in JobSearch',
-    devto: 'Shipping 13 PRs in one afternoon',
     devpunks: 'In the talent network',
     newTab: 'opens in a new tab',
   },
 }[lang];
 
-// La pila è data-driven: aggiungere una firma = aggiungere un oggetto qui.
-// Il layout regge da 2 a molti (nuova firma ~1/settimana). L'etichetta riusa
-// le stringhe di copy per restare bilingue; sub e href sono neutri di lingua.
-const bylines = [
-  { label: copy.toolUse, sub: 'dev.to · 2026', href: TOOLUSE },
-  { label: copy.audit, sub: copy.auditSub, href: AUDIT },
-  { label: copy.devto, sub: 'dev.to · 2026', href: DEVTO },
-];
+// La pila è data-driven da edicola.json; il layout regge da 2 a molti (nuova
+// firma ~1/settimana). `href` assoluto = firma esterna; `path` = pagina interna
+// (es. audit-di-sé, casa canonical sul sito) risolta nella lingua corrente.
+type Card = {
+  slug?: string;
+  label: Record<Lang, string>;
+  sub: Record<Lang, string>;
+  href?: string;
+  path?: string;
+};
+const bylines = (edicola as Card[]).map((c) => ({
+  label: c.label[lang],
+  sub: c.sub[lang],
+  href: c.href ?? getRelativeLocaleUrl(lang, c.path),
+}));
 ---
 
 <section id="magazine" class="reveal">
