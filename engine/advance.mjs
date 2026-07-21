@@ -7,6 +7,7 @@
 // Run: doppler run -- node engine/advance.mjs
 import { select, pg } from "./lib/supabase.mjs";
 import { decidi } from "./lib/advance.mjs";
+import { logsafe } from "./lib/logsafe.mjs";
 import { catchTopLevel } from "./lib/sentry.mjs";
 
 // Errore non gestito -> Sentry (fail-open) -> exit 1: vedi lib/sentry.mjs.
@@ -34,6 +35,8 @@ if (boz) {
   bozza = { sector: boz.sector, conArticolo: Boolean(art), conSegnaliVerificati: Boolean(sig) };
 }
 
+// period/sector arrivano dal DB: nei log (e nello stdout che il workflow parsa)
+// solo via logsafe — S5145, come ovunque nell'engine.
 const d = decidi({ approvato, bozza });
-console.log([d.stage, d.arg].filter(Boolean).join(" "));
-if (d.motivo) console.error(`advance: ${d.motivo}`);
+console.log(logsafe([d.stage, d.arg].filter(Boolean).join(" ")));
+if (d.motivo) console.error(`advance: ${logsafe(d.motivo)}`);
