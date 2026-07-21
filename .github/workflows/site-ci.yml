@@ -60,6 +60,19 @@ jobs:
         working-directory: astro-project
         run: npm run test:csp
 
+  # La pipeline è superficie d'attacco (modello Atlas pipeline-cicd v2): zizmor fa
+  # SAST sui workflow stessi — template injection, trigger pericolosi, permessi
+  # larghi. POLITICA DEL GATE: blocca su finding HIGH (exit 14); sotto, silenzio.
+  # Versione pinnata: un linter che cambia regole da solo è un gate non deterministico.
+  workflow-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - name: zizmor sui workflow (blocca su HIGH)
+        run: |
+          pip install --quiet zizmor==1.25.0
+          zizmor --min-severity=high .github/workflows/
+
   # Analisi Sonar sulle sole PR: il commento arriva mentre la modifica si può ancora
   # cambiare. Sul push a main non si ripete — quel commit lo rianalizza il workflow
   # Deploy, dove il gate blocca la pubblicazione. Qui niente `qualitygate.wait`: sulla
