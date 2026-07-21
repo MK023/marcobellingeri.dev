@@ -18,6 +18,8 @@ const attr = (key, value) => ({
   key,
   value: { stringValue: typeof value === "string" ? value : JSON.stringify(value) },
 });
+// OTLP vuole gli interi come intValue (string-encoded), non come stringValue JSON.
+const attrInt = (key, value) => ({ key, value: { intValue: String(value) } });
 
 // Crea una trace con span annidati sotto una root. `metadata` = coppie piatte
 // (finiscono in langfuse.trace.metadata.*). Input/output degli span: passare
@@ -34,7 +36,10 @@ export function startTrace(name, { tags = [], metadata = {} } = {}) {
     // Esegue fn dentro uno span. `input` = riassunto (opzionale);
     // `summarize(result)` = output piccolo (opzionale). Gli errori di fn si
     // propagano al chiamante, ma lo span li registra come ERROR prima.
-    async span(spanName, { input, summarize } = {}, fn) {
+    // `generation: { model, parameters }` marca lo span come generation
+    // (langfuse.observation.type) e `usage(result)` mappa i token della
+    // risposta sugli attributi gen_ai.usage.* — costi calcolati da Langfuse.
+    async span(spanName, { input, summarize, generation, usage } = {}, fn) {
       const s = {
         traceId,
         spanId: hex(8),
@@ -46,9 +51,23 @@ export function startTrace(name, { tags = [], metadata = {} } = {}) {
         status: { code: 1 },
       };
       if (input !== undefined) s.attributes.push(attr("langfuse.observation.input", input));
+      if (generation) {
+        s.attributes.push(attr("langfuse.observation.type", "generation"));
+        if (generation.model) s.attributes.push(attr("gen_ai.request.model", generation.model));
+        if (generation.parameters) s.attributes.push(attr("langfuse.observation.model.parameters", generation.parameters));
+      }
       try {
         const result = await fn();
         if (summarize) s.attributes.push(attr("langfuse.observation.output", summarize(result)));
+        // usage è telemetria: se esplode o rende sporco, lo span parte senza
+        // token — mai rompere la pipeline per un contatore.
+        if (usage) {
+          try {
+            for (const [k, v] of Object.entries(usage(result) ?? {})) {
+              if (Number.isFinite(v)) s.attributes.push(attrInt(`gen_ai.usage.${k}`, v));
+            }
+          } catch { /* fail-open */ }
+        }
         return result;
       } catch (e) {
         s.status = { code: 2, message: String(e?.message ?? e).slice(0, 200) };
