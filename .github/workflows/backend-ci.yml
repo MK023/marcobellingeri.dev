@@ -15,6 +15,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Le PR create col GITHUB_TOKEN (cron Edicola card) non triggerano
+  # `pull_request`: il workflow le lancia via dispatch sul branch della card.
+  workflow_dispatch: {}
 
 permissions:
   contents: read

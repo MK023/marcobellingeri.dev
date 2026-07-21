@@ -57,6 +57,9 @@ const writing = defineCollection({
     title: z.string(),
     date: z.coerce.date(),
     description: z.string(),
+    // Etichetta corta per la card dell'Edicola (il titolo intero non ci sta su
+    // un foglio da 240px); senza, il cron della card ripiega sul titolo.
+    edicola: z.string().optional(),
   }),
 });
 

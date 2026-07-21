@@ -16,7 +16,18 @@ export function parseArticle(md) {
   if (!title || !description) throw new Error("frontmatter incompleto: servono title e description");
   const tags = (fm.match(/^tags:\s*\[(.*)\]\s*$/m)?.[1] ?? "")
     .split(",").map((t) => t.trim()).filter(Boolean);
-  return { title, description, tags, body: md.slice(m[0].length).trim() };
+  // `edicola` (opzionale): l'etichetta corta per la card della pila — il titolo
+  // intero non ci sta su un foglio da 240px.
+  return { title, description, tags, edicola: campo("edicola"), body: md.slice(m[0].length).trim() };
+}
+
+// Gli articoli pubblicati dell'account (per le card automatiche dell'Edicola).
+export async function publishedArticles() {
+  const { DEVTO_API_KEY } = process.env;
+  if (!DEVTO_API_KEY) throw new Error("missing env: DEVTO_API_KEY (usa `doppler run`)");
+  const r = await fetch(`${API}/articles/me/published?per_page=100`, { headers: { "api-key": DEVTO_API_KEY } });
+  if (!r.ok) throw new Error(`devto me/published ${r.status}: ${await r.text()}`);
+  return r.json();
 }
 
 // Crea o aggiorna l'articolo con quel canonical_url. Draft di default: `published`

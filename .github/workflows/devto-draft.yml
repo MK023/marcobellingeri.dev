@@ -1,0 +1,54 @@
+name: Devto draft
+
+# Il cross-post su dev.to partiva a mano dal portatile: qui, al merge su main di
+# un articolo della writing collection (EN), il draft si crea/aggiorna da solo.
+# SEMPRE draft, mai --publish: il publish resta un gesto umano di Marco su
+# dev.to (è il suo unico ruolo nel giro — reviewer finale del post).
+# L'upsert è idempotente per canonical_url: un edit ri-mergiato aggiorna il
+# draft e non tocca mai lo stato live di un pezzo già pubblicato.
+#
+# Nessun dato dell'evento entra in un `run:`: i path vengono da `git diff` sul
+# contenuto del repo, e lo slug è comunque validato da engine/devto.mjs
+# (^[a-z0-9-]+$) prima di toccare qualsiasi path o API.
+on:
+  push:
+    branches: [main]
+    paths: ["astro-project/src/content/writing/en/**"]
+
+permissions:
+  contents: read
+  issues: write # per l'issue automatica on-failure
+
+concurrency:
+  group: devto-draft
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      # pin per SHA (supply-chain): il tag e' mobile, il commit no
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-depth: 2 # serve HEAD^ per il diff del merge
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Draft su dev.to degli articoli toccati
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+        run: |
+          set -euo pipefail
+          git diff --name-only HEAD^ HEAD -- 'astro-project/src/content/writing/en/*.md' \
+          | while read -r f; do
+            [ -f "$f" ] || continue # articolo rimosso: niente draft
+            node engine/devto.mjs "$(basename "$f" .md)"
+          done
+      - name: Apri issue se il draft fallisce
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Devto draft fallito ($(date -u +%F))" \
+            --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

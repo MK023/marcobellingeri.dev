@@ -1,0 +1,92 @@
+name: Edicola card
+
+# La card dell'Edicola nasce da sola: quando un articolo della writing collection
+# risulta PUBBLICATO su dev.to (il publish è il gesto umano di Marco, lì), questo
+# cron aggiunge la card a src/data/edicola.json e porta la PR fino in produzione.
+#
+# Perché la catena è "a mano" invece del solo auto-merge: GitHub non fa partire
+# workflow da eventi generati col GITHUB_TOKEN (anti-ricorsione) — una PR creata
+# qui non triggererebbe i CI `pull_request`, e il merge del bot non triggererebbe
+# il Deploy `push`. L'eccezione documentata è workflow_dispatch: quindi i CI sul
+# branch e il Deploy su main si lanciano esplicitamente da qui, e il merge parte
+# solo quando i tre check richiesti dal ruleset di main sono verdi sul commit.
+#
+# Nessun dato dell'evento entra in un `run:`: branch e contenuti sono generati qui.
+on:
+  schedule:
+    - cron: "30 7 * * *" # ogni giorno alle 07:30 UTC
+  workflow_dispatch: {} # run manuale on-demand
+
+permissions:
+  contents: write # push del branch card
+  pull-requests: write # apertura e merge della PR
+  actions: write # dispatch dei CI sul branch e del Deploy su main
+  issues: write # per l'issue automatica on-failure
+
+concurrency:
+  group: edicola-card
+  cancel-in-progress: false
+
+jobs:
+  card:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # pin per SHA (supply-chain): il tag e' mobile, il commit no
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Genera le card mancanti
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+        run: node engine/edicola.mjs # zero dipendenze npm: nessun install
+      - name: PR, gate verdi, merge, deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- astro-project/src/data/edicola.json; then
+            echo "nessuna card nuova: finito qui"
+            exit 0
+          fi
+          branch="edicola/card-$(date -u +%Y%m%d%H%M)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -am "feat(edicola): card automatica dagli articoli pubblicati su dev.to"
+          git push -u origin "$branch"
+          pr=$(gh pr create --title "feat(edicola): card automatica da dev.to" \
+            --body "Card generate da engine/edicola.mjs (cron Edicola card): articoli pubblicati su dev.to con canonical sul sito. Merge automatico a gate verdi, deploy in coda.")
+
+          # I CI non partono da soli su una PR del bot (vedi testata): si lanciano qui.
+          gh workflow run site-ci.yml --ref "$branch"
+          gh workflow run backend-ci.yml --ref "$branch"
+
+          # Attesa dei 3 check richiesti dal ruleset (test, build-e-csp, db-rebuild)
+          # sul commit di testa: verdi -> merge; uno rosso -> job rosso -> issue.
+          sha=$(git rev-parse HEAD)
+          esito=""
+          for i in $(seq 1 60); do
+            sleep 20
+            json=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/check-runs?per_page=100" \
+              --jq '[.check_runs[] | select(.name=="test" or .name=="build-e-csp" or .name=="db-rebuild")]')
+            verdi=$(echo "$json" | jq '[.[] | select(.status=="completed" and .conclusion=="success")] | length')
+            rossi=$(echo "$json" | jq '[.[] | select(.status=="completed" and .conclusion!="success")] | length')
+            echo "check richiesti: $verdi/3 verdi, $rossi rossi"
+            [ "$rossi" -gt 0 ] && { esito=rosso; break; }
+            [ "$verdi" -eq 3 ] && { esito=verde; break; }
+          done
+          [ "$esito" = "verde" ] || { echo "gate non verdi: niente merge"; exit 1; }
+
+          gh pr merge "$pr" --squash --delete-branch
+          # Il push su main del bot non triggera il Deploy: si lancia qui.
+          gh workflow run deploy.yml --ref main
+      - name: Apri issue se la card fallisce
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Edicola card fallita ($(date -u +%F))" \
+            --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID — la card resta in PR se creata."

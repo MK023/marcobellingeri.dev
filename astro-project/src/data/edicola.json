@@ -1,0 +1,37 @@
+[
+  {
+    "slug": "tool-use-jobsearch",
+    "label": {
+      "it": "Tool-use in JobSearch",
+      "en": "Tool-use in JobSearch"
+    },
+    "sub": {
+      "it": "dev.to · 2026",
+      "en": "dev.to · 2026"
+    },
+    "href": "https://dev.to/mk023/from-text-json-parsing-to-claude-tool-use-in-jobsearch-3cjg"
+  },
+  {
+    "slug": "audit-di-se",
+    "label": {
+      "it": "Il sito che si audita da solo",
+      "en": "The site that audits itself"
+    },
+    "sub": {
+      "it": "Sul sito · 2026",
+      "en": "On the site · 2026"
+    },
+    "path": "writing/audit-di-se"
+  },
+  {
+    "label": {
+      "it": "13 PR con Claude in un pomeriggio",
+      "en": "Shipping 13 PRs in one afternoon"
+    },
+    "sub": {
+      "it": "dev.to · 2026",
+      "en": "dev.to · 2026"
+    },
+    "href": "https://dev.to/mk023/how-i-shipped-13-prs-in-one-afternoon-pair-programming-with-claude-and-what-i-learned-1274"
+  }
+]
