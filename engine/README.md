@@ -4,6 +4,14 @@ Backend del sito — pipeline **ingest → embed → (regole editoriali) → pub
 radar competitor del Canale 2. Node/TS, una sola toolchain col sito (ADR-0004).
 **Zero dipendenze npm**: usa `fetch` globale di Node ≥20.
 
+> **Cosa produce questo engine, e cosa no.** L'engine scrive **solo** il *magazine*
+> (`content/magazine/`): casi di adozione dell'IA in aziende terze, ricavati dalle
+> fonti. Le altre due sezioni editoriali del sito non hanno pipeline e non ne
+> vogliono una: **Field Notes** (`content/cases/`) sono i casi di lavoro di Marco e
+> **Edicola** (`content/writing/`) sono i pezzi sui suoi progetti — entrambe scritte
+> a mano, perché la fonte è lui. Di `writing` l'engine automatizza la sola
+> *distribuzione* (`devto.mjs`, `edicola.mjs`), mai la scrittura.
+
 ## Principio: human-in-the-loop
 
 L'engine raccoglie, verifica e struttura i dati. La **scrittura e l'approvazione**
@@ -62,9 +70,9 @@ onesto: errore → Sentry → Seer analizza → fix in PR.
 
 ```bash
 doppler run -- node engine/ingest.mjs <vertical> [--angle "<focus>"]  # Valyu proof pass -> signals
-doppler run -- node engine/generate.mjs <settore> [--angle "<focus>"] # signal verify -> caso Field Notes IT+EN (status=draft)
+doppler run -- node engine/generate.mjs <settore> [--angle "<focus>"] # signal verify -> caso del magazine IT+EN (status=draft)
 doppler run -- node engine/embed.mjs                                   # chunk+embed article_chunks
-doppler run -- node engine/export.mjs [<period YYYY-MM>]               # numero approvato -> Field Notes MD -> published
+doppler run -- node engine/export.mjs [<period YYYY-MM>]               # numero approvato -> MD del magazine -> published
 doppler run -- node engine/retrieve.mjs "<query>" [it|en]              # healthcheck RAG (gated a published)
 doppler run -- node engine/competitors.mjs [--limit N]                 # Firecrawl -> snapshots -> chunks
 doppler run -- node engine/visibility.mjs [--limit N]                  # monitor discoverability (SEO+AEO)
@@ -85,8 +93,8 @@ node engine/export.mjs --selfcheck                                     # self-ch
 - `lib/guardrails.mjs` — barriere di contenuto SEMPRE attive: `sanitizeSource`/`sourceIsPoisoned` (input di terzi), `screen`/`validateArticle` (output prima del DB), `slugify`.
 - `primary-sources.json` — registro allowlist fonti primarie (proof pass); curato a mano.
 - `blocklist.json` — blacklist editoriale (termini/regex) curata a mano; livello aggiuntivo sopra i `DENY_PATTERNS` anti-injection di `guardrails.mjs`.
-- `generate.mjs` — **stadio 2 GENERATE**: signal `verify` → un caso Field Notes IT+EN (problema/approccio/risultato/lezione) grounded solo sulle fonti → `status=draft`. NON embedda, NON pubblica (gate umano).
-- `export.mjs` — **stadio 5 EXPORT**: numero `approved` → file Markdown Field Notes in `astro-project/src/content/cases/{it,en}/` → `status=published`. Mappatura inversa (application→approach, solution→result, body→lesson), ri-screening prima di scrivere nel repo. NON committa: il contenuto lo merge Marco.
+- `generate.mjs` — **stadio 2 GENERATE**: signal `verify` → un caso del magazine IT+EN (problema/approccio/risultato/lezione) grounded solo sulle fonti → `status=draft`. NON embedda, NON pubblica (gate umano).
+- `export.mjs` — **stadio 5 EXPORT**: numero `approved` → file Markdown in `astro-project/src/content/magazine/{it,en}/` → `status=published`. Mappatura inversa (application→approach, solution→result, body→lesson), ri-screening prima di scrivere nel repo. NON committa: il contenuto lo merge Marco.
 - `retrieve.mjs` — read-end del RAG (query→match_article_chunks). NON è l'endpoint pubblico C1 (rate-limit/guardrail/AI-Act = roadmap).
 - `visibility.mjs` — monitor discoverability: SEO (Google Search Console) + AEO (Perplexity Sonar), referto prescrittivo con trend vs run precedente, storico su Supabase (`visibility_observations`). Descope dichiarato: le righe GSC hanno `query_id` null (nessun legame best-effort con `visibility_queries`) e il referto è due liste piatte, non raggruppato per `content_ref` — si riapre se il volume lo giustifica.
 - `devto.mjs` — cross-post canonical-first della writing collection su dev.to (`lib/devto.mjs`): idempotente per `canonical_url` (re-run = update), draft di default, live solo con `--publish`; un re-run senza flag non spubblica mai un pezzo già uscito. Il draft parte da solo in CI al merge di un articolo (`devto-draft.yml`); il **publish** resta un gesto umano di Marco su dev.to.
