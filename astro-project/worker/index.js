@@ -208,7 +208,9 @@ export async function gestisciAsk(request, env) {
   const origin = request.headers.get('Origin');
   if (origin && origin !== 'https://marcobellingeri.dev') return rispostaJson({ error: 'origin' }, 403);
 
-  const grezzo = await leggiBodyLimitato(request, 2048);
+  // 8 KB: il solo token Turnstile può arrivare a 2048 caratteri (doc Cloudflare),
+  // più domanda fino a 500 char anche multibyte — 2 KB respingeva richieste legittime.
+  const grezzo = await leggiBodyLimitato(request, 8192);
   if (grezzo === null) return rispostaJson({ error: 'too-large' }, 413);
   let dati;
   try { dati = JSON.parse(grezzo); } catch { return rispostaJson({ error: 'body' }, 400); }
@@ -220,7 +222,7 @@ export async function gestisciAsk(request, env) {
   const errTurnstile = await verificaTurnstile(env, String(dati.turnstile ?? ''), 'ask');
   if (errTurnstile) return errTurnstile;
 
-  if (!env.EMBEDDING_API_KEY || !env.ANTHROPIC_API_KEY || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!env.EMBEDDING_API_KEY || !env.ANTHROPIC_API_KEY || !env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
     segnala('ask: config RAG mancante in produzione');
     return rispostaJson({ error: 'unconfigured' }, 503);
   }
@@ -237,8 +239,10 @@ export async function gestisciAsk(request, env) {
   const embedding = (await ve.json()).data?.[0]?.embedding;
   if (!Array.isArray(embedding)) return rispostaJson({ error: 'embed' }, 502);
 
+  // Anon key, mai service role: endpoint pubblico di sola lettura — la RPC è
+  // grantata ad anon (migration 0003) e le citazioni passano dalla RLS published.
   const sb = (path, init) => fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
-    ...init, headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', ...(init?.headers) },
+    ...init, headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', ...(init?.headers) },
   });
   const mr = await sb('rpc/match_article_chunks', {
     method: 'POST',
