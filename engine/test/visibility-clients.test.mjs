@@ -49,6 +49,14 @@ test("perplexity: fallback su search_results quando manca citations", async () =
   assert.equal(hit.matchedUrl, "https://marcobellingeri.dev/en/x");
 });
 
+test("perplexity: citations vuoto -> fallback su search_results", async () => {
+  process.env.PERPLEXITY_API_KEY = "k";
+  stubFetch([res({ citations: [], search_results: [{ url: "https://marcobellingeri.dev/en/x" }] })]);
+  const hit = await checkCitation("q");
+  assert.equal(hit.present, true);
+  assert.equal(hit.matchedUrl, "https://marcobellingeri.dev/en/x");
+});
+
 test("perplexity: risposta non-ok -> throw con status e corpo", async () => {
   process.env.PERPLEXITY_API_KEY = "k";
   stubFetch([res("boom", { ok: false, status: 500 })]);

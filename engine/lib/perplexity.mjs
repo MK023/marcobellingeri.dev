@@ -18,7 +18,9 @@ export async function checkCitation(question) {
   });
   if (!r.ok) throw new Error(`perplexity ${r.status}: ${await r.text()}`);
   const j = await r.json();
-  const citations = j.citations ?? (j.search_results ?? []).map((s) => s?.url).filter(Boolean);
+  const citations = j.citations?.length
+    ? j.citations
+    : (j.search_results ?? []).map((s) => s?.url).filter(Boolean);
   const hit = findCitation(citations, DOMAIN);
   return { ...hit, raw: JSON.stringify(j).slice(0, 30_000) };
 }
