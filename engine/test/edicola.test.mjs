@@ -64,6 +64,15 @@ test("mergeCards: slug già in pila -> nessun doppione (anche se la card è inte
   assert.equal(out, CARDS); // stesso riferimento: nessuna modifica da scrivere
 });
 
+test("mergeCards: card a mano senza slug ma con lo stesso href -> nessun doppione", () => {
+  // Finding Seer (PR #97): una card aggiunta a mano con href di un articolo
+  // canonical nostro ma senza slug non deve essere duplicata dal cron.
+  const out = mergeCards(CARDS, [
+    { slug: "tredici-pr", url: "https://dev.to/mk023/13-pr-1274", anno: "2026", label: { it: "x", en: "x" } },
+  ]);
+  assert.equal(out, CARDS);
+});
+
 test("mergeCards: più articoli nuovi -> tutti in testa, ordine preservato", () => {
   const out = mergeCards(CARDS, [
     { slug: "a", url: "https://dev.to/mk023/a", anno: "2026", label: { it: "A", en: "A" } },

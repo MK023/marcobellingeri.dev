@@ -20,8 +20,10 @@ const chiave = (c) => c.slug ?? c.href;
 // sapere se scrivere.
 export function mergeCards(cards, pubblicati) {
   const note = new Set(cards.map(chiave));
+  // Doppio controllo slug+url: una card a mano può essere chiavata solo
+  // dall'href (finding Seer, PR #97).
   const nuove = pubblicati
-    .filter((p) => !note.has(p.slug))
+    .filter((p) => !note.has(p.slug) && !note.has(p.url))
     .map((p) => ({
       slug: p.slug,
       label: p.label,
