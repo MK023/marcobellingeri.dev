@@ -21,6 +21,7 @@ Ogni comando gira sotto `doppler run --`. Env attesi:
 | `EMBEDDING_API_KEY` | Voyage voyage-3.5 (embedding 1024-dim) |
 | `VALYU_API_KEY` | sourcing Canale 1 |
 | `FIRECRAWL_API_KEY` | scraping competitor Canale 2 |
+| `DEVTO_API_KEY` | cross-post writing collection su dev.to (`devto.mjs`) |
 | `LANGFUSE_BASE_URL/_PUBLIC_KEY/_SECRET_KEY` | tracing (opzionali: senza, il tracing è no-op) |
 
 ## Osservabilità
@@ -51,6 +52,7 @@ doppler run -- node engine/export.mjs [<period YYYY-MM>]               # numero 
 doppler run -- node engine/retrieve.mjs "<query>" [it|en]              # healthcheck RAG (gated a published)
 doppler run -- node engine/competitors.mjs [--limit N]                 # Firecrawl -> snapshots -> chunks
 doppler run -- node engine/visibility.mjs [--limit N]                  # monitor discoverability (SEO+AEO)
+doppler run -- node engine/devto.mjs <slug> [--publish]                # cross-post writing -> dev.to (draft di default)
 node engine/lib/voyage.mjs                                             # self-check del chunker (no rete)
 node engine/lib/guardrails.mjs                                         # self-check barriere di contenuto (no rete)
 node engine/export.mjs --selfcheck                                     # self-check frontmatter/mappatura (no rete)
@@ -69,6 +71,7 @@ node engine/export.mjs --selfcheck                                     # self-ch
 - `export.mjs` — **stadio 5 EXPORT**: numero `approved` → file Markdown Field Notes in `astro-project/src/content/cases/{it,en}/` → `status=published`. Mappatura inversa (application→approach, solution→result, body→lesson), ri-screening prima di scrivere nel repo. NON committa: il contenuto lo merge Marco.
 - `retrieve.mjs` — read-end del RAG (query→match_article_chunks). NON è l'endpoint pubblico C1 (rate-limit/guardrail/AI-Act = roadmap).
 - `visibility.mjs` — monitor discoverability: SEO (Google Search Console) + AEO (Perplexity Sonar), referto prescrittivo con trend vs run precedente, storico su Supabase (`visibility_observations`). Descope dichiarato: le righe GSC hanno `query_id` null (nessun legame best-effort con `visibility_queries`) e il referto è due liste piatte, non raggruppato per `content_ref` — si riapre se il volume lo giustifica.
+- `devto.mjs` — cross-post canonical-first della writing collection su dev.to (`lib/devto.mjs`): idempotente per `canonical_url` (re-run = update), draft di default, live solo con `--publish`; un re-run senza flag non spubblica mai un pezzo già uscito. Il trigger resta umano: si pubblica quando Marco decide, lo script toglie solo il copia-incolla.
 
 ## Test
 
