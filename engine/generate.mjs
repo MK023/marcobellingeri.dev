@@ -164,7 +164,13 @@ async function main() {
     // 4) generazione
     const { data, usage: use } = await trace.span(
       "claude-generate",
-      { input: { sector, sources: clean.length, inTokens }, summarize: (r) => r.usage },
+      {
+        input: { sector, sources: clean.length, inTokens },
+        summarize: (r) => r.usage,
+        // generation observation: modello+token su Langfuse, costi calcolati lì
+        generation: { model: MODEL, parameters: { maxTokens: MAX_TOKENS } },
+        usage: (r) => r.usage,
+      },
       () => generateJson({ model: MODEL, system, messages, schema: SCHEMA, maxTokens: MAX_TOKENS }),
     );
 

@@ -159,6 +159,40 @@ test("langfuse: OTLP shape corretta — root+span, stessa traceId, auth Basic, a
   assert.ok(child.attributes.some((a) => a.key === "langfuse.observation.output" && a.value.stringValue === '{"n":42}'));
 });
 
+test("langfuse: span generation -> observation.type, modello, parametri e gen_ai.usage.* interi", async () => {
+  const calls = mockFetch(() => ({}));
+  const trace = startTrace("test-gen");
+  await trace.span(
+    "claude-generate",
+    {
+      generation: { model: "claude-sonnet-5", parameters: { maxTokens: 16000 } },
+      usage: (r) => r.usage,
+    },
+    async () => ({ data: {}, usage: { input_tokens: 1234, output_tokens: 567 } }),
+  );
+  await trace.flush();
+  const attrs = JSON.parse(calls[0].init.body).resourceSpans[0].scopeSpans[0].spans[1].attributes;
+  const by = (k) => attrs.find((a) => a.key === k)?.value;
+  assert.equal(by("langfuse.observation.type")?.stringValue, "generation");
+  assert.equal(by("gen_ai.request.model")?.stringValue, "claude-sonnet-5");
+  assert.equal(by("langfuse.observation.model.parameters")?.stringValue, '{"maxTokens":16000}');
+  // token come intValue (OTLP li vuole interi, non stringhe JSON)
+  assert.equal(by("gen_ai.usage.input_tokens")?.intValue, "1234");
+  assert.equal(by("gen_ai.usage.output_tokens")?.intValue, "567");
+});
+
+test("langfuse: usage() che esplode o rende sporco NON rompe lo span (fail-open)", async () => {
+  mockFetch(() => ({}));
+  const trace = startTrace("test-gen-failopen");
+  const out = await trace.span(
+    "g",
+    { generation: { model: "m" }, usage: () => { throw new Error("usage rotto"); } },
+    async () => "ok",
+  );
+  assert.equal(out, "ok", "il valore della fn passa comunque");
+  await assert.doesNotReject(() => trace.flush());
+});
+
 test("langfuse: errore di fn -> span ERROR, errore RIPROPAGATO, root status error", async () => {
   const calls = mockFetch(() => ({}));
   const trace = startTrace("test-err");
