@@ -394,6 +394,64 @@ const askEnv = {
   TURNSTILE_SECRET_KEY: 't',
 };
 
+test('ask: telemetria Langfuse — session id, gen_ai.usage, e MAI i contenuti', async (t) => {
+  t.after(() => { globalThis.fetch = realFetch; });
+  const corpi = [];
+  stubFetch((url, init) => {
+    if (url.includes('siteverify')) return jresp({ success: true });
+    if (url.includes('voyageai')) return jresp({ data: [{ index: 0, embedding: [0.1] }] });
+    if (url.includes('/rpc/match_article_chunks')) return jresp([{ article_id: '11111111-1111-1111-1111-111111111111', locale: 'it', content: 'chunk', similarity: 0.8 }]);
+    if (url.includes('/article_translations')) return jresp([]);
+    if (url.includes('/v1/messages')) return jresp({ content: [{ type: 'text', text: 'niagara-risposta-modello' }], usage: { input_tokens: 111, output_tokens: 22 } });
+    if (url.includes('/otel/v1/traces')) { corpi.push(String(init?.body)); return jresp({}); }
+    return jresp('unexpected', 500);
+  });
+  const attese = [];
+  const ctx = { waitUntil: (p) => attese.push(p) };
+  const envLf = { ...askEnv, LANGFUSE_BASE_URL: 'https://lf.example', LANGFUSE_PUBLIC_KEY: 'pk', LANGFUSE_SECRET_KEY: 'sk' };
+  const sid = '22222222-2222-4222-8222-222222222222';
+  const r = await gestisciAsk(askReq({ q: 'zanzibar-domanda-privata', turnstile: 'x', locale: 'it', sid }), envLf, ctx);
+  assert.equal(r.status, 200);
+  await Promise.all(attese);
+  assert.equal(corpi.length, 1, 'una trace, via waitUntil (fuori dal percorso di risposta)');
+  const body = corpi[0];
+  assert.match(body, /langfuse\.session\.id/);
+  assert.ok(body.includes(sid), 'session id del client presente');
+  assert.match(body, /gen_ai\.usage\.input_tokens/);
+  // Il guardiano della privacy: la pagina /privacy dice che la domanda non
+  // viene salvata — quindi né domanda né risposta possono partire verso Langfuse.
+  assert.ok(!body.includes('zanzibar'), 'la domanda NON parte mai');
+  assert.ok(!body.includes('niagara'), 'la risposta NON parte mai');
+});
+
+test('ask: sid malformato -> trace senza session id; senza chiavi Langfuse -> zero telemetria', async (t) => {
+  t.after(() => { globalThis.fetch = realFetch; });
+  const corpi = [];
+  const router = (url, init) => {
+    if (url.includes('siteverify')) return jresp({ success: true });
+    if (url.includes('voyageai')) return jresp({ data: [{ index: 0, embedding: [0.1] }] });
+    if (url.includes('/rpc/match_article_chunks')) return jresp([]);
+    if (url.includes('/otel/v1/traces')) { corpi.push(String(init?.body)); return jresp({}); }
+    return jresp('unexpected', 500);
+  };
+  stubFetch(router);
+  const attese = [];
+  const ctx = { waitUntil: (p) => attese.push(p) };
+  const envLf = { ...askEnv, LANGFUSE_BASE_URL: 'https://lf.example', LANGFUSE_PUBLIC_KEY: 'pk', LANGFUSE_SECRET_KEY: 'sk' };
+  // sid sporco (path traversal / non-UUID): scartato, la trace parte senza session
+  const r1 = await gestisciAsk(askReq({ q: 'query lunga tre', turnstile: 'x', sid: '../etc/passwd' }), envLf, ctx);
+  assert.equal(r1.status, 200);
+  await Promise.all(attese);
+  assert.equal(corpi.length, 1);
+  assert.ok(!corpi[0].includes('langfuse.session.id'), 'niente session id sporco');
+  assert.ok(!corpi[0].includes('passwd'));
+  // senza chiavi: nessuna chiamata otel, nessun crash (anche senza ctx)
+  corpi.length = 0;
+  const r2 = await gestisciAsk(askReq({ q: 'query lunga tre', turnstile: 'x' }), askEnv);
+  assert.equal(r2.status, 200);
+  assert.equal(corpi.length, 0, 'no-op senza chiavi');
+});
+
 test('ask: happy — embed, match, citazioni, generate', async (t) => {
   t.after(() => { globalThis.fetch = realFetch; });
   let apikeyUsata;

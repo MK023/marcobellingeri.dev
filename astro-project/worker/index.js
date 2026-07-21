@@ -1,5 +1,6 @@
 // Worker davanti agli asset statici, per la sola root `/` (vedi run_worker_first
 // in wrangler.jsonc). Tutto il resto lo serve l'Asset Worker senza passare di qui.
+import { inviaTracciaAsk } from './langfuse.js';
 //
 // ADR-0001 §4: la scelta della lingua su `/` è demandata all'edge.
 // Italia → italiano, resto del mondo → inglese. Il paese lo dà Cloudflare in
@@ -23,6 +24,10 @@ export function scegliLingua(paese, cookie = null) {
 // (JSON dell'API, 302 sulla root) non ci passano e vanno messe a mano. Valore
 // allineato a public/_headers, che resta la fonte di verità per gli asset.
 const HSTS = 'max-age=63072000; includeSubDomains; preload';
+
+// Forma UUID: valida sia gli article_id dalla RPC sia il session id del client
+// prima che tocchino query o telemetria.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const rispostaJson = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
@@ -195,8 +200,10 @@ export async function gestisciContatto(request, env) {
  * testo; query e chunk sono input non fidato (il controllo è qui, non nel prompt).
  * @param {Request} request
  * @param {Record<string, any>} env
+ * @param {{ waitUntil?: (p: Promise<any>) => void }} [ctx] - executionContext (telemetria fuori dal percorso di risposta)
  */
-export async function gestisciAsk(request, env) {
+export async function gestisciAsk(request, env, ctx) {
+  const t0 = Date.now();
   if (request.method !== 'POST') return rispostaJson({ error: 'method' }, 405);
 
   if (env.ASK_LIMITER) {
@@ -218,6 +225,12 @@ export async function gestisciAsk(request, env) {
   const q = rigaPulita(dati.q, 500);
   const locale = dati.locale === 'en' ? 'en' : 'it';
   if (q.length < 3) return rispostaJson({ error: 'invalid' }, 422);
+  // Session id del terminale (una conversazione = una session Langfuse): input
+  // del client, quindi non fidato — o è un UUID o non esiste.
+  const sid = UUID.test(String(dati.sid ?? '')) ? String(dati.sid) : null;
+  // Telemetria SENZA contenuti (vedi worker/langfuse.js): parte via waitUntil,
+  // mai sul percorso della risposta; senza ctx (test) o chiavi è un no-op.
+  const traccia = (campi) => ctx?.waitUntil?.(inviaTracciaAsk(env, { sid, locale, t0, t1: Date.now(), ...campi }));
 
   const errTurnstile = await verificaTurnstile(env, String(dati.turnstile ?? ''), 'ask');
   if (errTurnstile) return errTurnstile;
@@ -252,6 +265,7 @@ export async function gestisciAsk(request, env) {
   const matches = await mr.json();
 
   if (!Array.isArray(matches) || matches.length === 0) {
+    traccia({ matches: 0, citations: 0, degradato: false, usage: null, model: null, tModel0: null });
     return rispostaJson({
       answer: locale === 'en' ? "I couldn't find anything on this in the magazine." : 'Non trovo nulla su questo nel magazine.',
       citations: [], disclosure,
@@ -261,7 +275,6 @@ export async function gestisciAsk(request, env) {
   // Gli article_id arrivano dalla risposta della RPC (dato di rete): prima di
   // interpolarli nella query PostgREST delle citazioni si validano come UUID. Una
   // risposta malformata/compromessa non può così alterare il filtro (né fare SSRF).
-  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const ids = [...new Set(matches.map((m) => m.article_id))].filter((x) => UUID.test(String(x)));
   // Citazioni e generazione dipendono entrambe solo da `matches`: partono insieme.
   // In sequenza il round-trip PostgREST si sommerebbe alla latenza del modello
@@ -292,6 +305,7 @@ Regole, in ordine di priorità:
 2. Ogni affermazione poggia su un passaggio: citala con [n]. MAI inventare fatti, numeri o citazioni assenti dal CONTESTO.
 3. Se il CONTESTO non risponde, dillo in una riga, senza aggiungere conoscenza esterna.
 4. Massimo 120 parole, solo testo semplice senza markdown: la risposta appare in un terminale.`;
+  const tModel0 = Date.now();
   const [citations, ar] = await Promise.all([
     citationsPromise,
     fetch('https://api.anthropic.com/v1/messages', {
@@ -308,6 +322,7 @@ Regole, in ordine di priorità:
   // viene comunque avvisato, l'utente riceve i passaggi del magazine.
   if (!ar.ok) {
     segnala('ask: anthropic ' + ar.status, { status: ar.status });
+    traccia({ matches: matches.length, citations: citations.length, degradato: true, usage: null, model: 'claude-haiku-4-5-20251001', tModel0 });
     const ripiego = citations.length
       ? (locale === 'en'
         ? 'The model is unavailable right now. Here are the magazine sources closest to your question:'
@@ -319,6 +334,7 @@ Regole, in ordine di priorità:
   }
   const aj = await ar.json();
   const answer = (aj.content ?? []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+  traccia({ matches: matches.length, citations: citations.length, degradato: false, usage: aj.usage ?? null, model: 'claude-haiku-4-5-20251001', tModel0 });
   return rispostaJson({ answer, citations, disclosure });
 }
 
@@ -327,11 +343,11 @@ export default {
    * @param {Request & { cf?: { country?: string } }} request
    * @param {{ ASSETS: { fetch: (r: Request) => Promise<Response> } }} env
    */
-  fetch(request, env) {
+  fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/contact') return gestisciContatto(request, env);
-    if (url.pathname === '/api/ask') return gestisciAsk(request, env);
+    if (url.pathname === '/api/ask') return gestisciAsk(request, env, ctx);
     if (url.pathname !== '/') return env.ASSETS.fetch(request);
 
     const lingua = scegliLingua(request.cf?.country, request.headers.get('cookie'));
