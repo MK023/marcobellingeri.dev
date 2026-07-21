@@ -197,6 +197,11 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
       askResolve = null; askReject = null;
     };
 
+    // Una apertura del terminale = una conversazione = una session Langfuse.
+    // Random, mai persistito: non identifica nessuno, lega solo le domande
+    // della stessa visita (la telemetria non contiene i testi).
+    const askSessionId = crypto.randomUUID();
+
     async function runAsk(domanda: string) {
       if (!domanda) { COMMANDS.ask(); return; }
       if (askAttivo) { printLine("c'è già una domanda in corso.", 'dim'); return; }
@@ -208,7 +213,7 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
         const r = await fetch('/api/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q: domanda, turnstile: token, locale }),
+          body: JSON.stringify({ q: domanda, turnstile: token, locale, sid: askSessionId }),
         });
         if (!r.ok) throw new Error(String(r.status));
         const data = await r.json();
