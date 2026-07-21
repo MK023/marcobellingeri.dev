@@ -1,0 +1,108 @@
+name: Magazine advance
+
+# Il cron giornaliero che spinge avanti il magazine di UNO stadio, quando un
+# gesto di Marco in Studio l'ha sbloccato: signal verificati -> generate
+# (bozza a DB + issue "approva"); numero approvato -> embed, poi export ->
+# PR di CONTENUTO. La decisione sta in engine/advance.mjs (testata a secco);
+# qui solo l'esecuzione. I due gate umani (verify e approvazione in Studio)
+# e il merge della PR contenuto restano di Marco: il publish gate a DB non
+# si tocca.
+#
+# Le PR create col GITHUB_TOKEN non triggerano i CI `pull_request`
+# (anti-ricorsione GitHub): i check richiesti dal ruleset si lanciano da qui
+# via workflow_dispatch, così Marco trova la PR già verde. Nessun auto-merge:
+# il contenuto lo merge lui.
+#
+# Nessun dato dell'evento entra in un `run:`; sector e period arrivano dal DB
+# e sono validati con regex prima di toccare la shell.
+on:
+  schedule:
+    - cron: "30 6 * * *" # ogni giorno alle 06:30 UTC
+  workflow_dispatch: {} # run manuale on-demand
+
+permissions:
+  contents: write # push del branch contenuto
+  pull-requests: write # apertura della PR contenuto
+  actions: write # dispatch dei CI sul branch della PR
+  issues: write # notifiche "tocca a te" e issue on-failure
+
+concurrency:
+  group: magazine-advance
+  cancel-in-progress: false
+
+jobs:
+  advance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # pin per SHA (supply-chain): il tag e' mobile, il commit no
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Decidi ed esegui lo stadio sbloccato
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          stage=$(node engine/advance.mjs)
+          echo "advance dice: $stage"
+          case "$stage" in
+            niente)
+              exit 0
+              ;;
+            embed)
+              node engine/embed.mjs
+              ;;
+            generate\ *)
+              sector="${stage#generate }"
+              [[ "$sector" =~ ^[a-z0-9-]+$ ]] || { echo "sector non valido"; exit 1; }
+              node engine/generate.mjs "$sector"
+              gh issue create --repo "$GITHUB_REPOSITORY" \
+                --title "Magazine ($sector): bozza generata — tocca a te" \
+                --body "La bozza IT+EN è a DB (status draft). Prossimo gate umano: leggila e approvala in Supabase Studio. Appena approvata, il cron advance embedda ed esporta da solo, e apre la PR di contenuto. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+              ;;
+            export\ *)
+              period="${stage#export }"
+              [[ "$period" =~ ^[0-9]{4}-[0-9]{2}$ ]] || { echo "period non valido"; exit 1; }
+              node engine/export.mjs "$period"
+              # status --porcelain, non diff: i file di un numero NUOVO sono
+              # untracked e `git diff` non li vede.
+              if [ -z "$(git status --porcelain -- astro-project/src/content/magazine/)" ]; then
+                echo "export idempotente: nessun file nuovo"
+                exit 0
+              fi
+              branch="magazine/$period"
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git checkout -b "$branch"
+              git add astro-project/src/content/magazine/
+              git commit -m "content(magazine): numero $period dalla pipeline (gate umani passati)"
+              git push -u origin "$branch"
+              pr=$(gh pr create --title "content(magazine): numero $period" \
+                --body "Numero esportato dalla pipeline dopo i due gate umani in Studio (verify dei signal, approvazione della bozza). Contenuto: la merge è di Marco. I CI sono lanciati dal workflow (le PR del bot non li triggerano da sole).")
+              gh workflow run site-ci.yml --ref "$branch"
+              gh workflow run backend-ci.yml --ref "$branch"
+              echo "PR contenuto aperta: $pr"
+              ;;
+            *)
+              echo "stadio sconosciuto: $stage"
+              exit 1
+              ;;
+          esac
+      - name: Apri issue se l'advance fallisce
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Magazine advance fallito ($(date -u +%F))" \
+            --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID — errore su Sentry (script: advance/generate/embed/export)."

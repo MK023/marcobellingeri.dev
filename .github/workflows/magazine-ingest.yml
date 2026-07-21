@@ -1,0 +1,65 @@
+name: Magazine ingest
+
+# Il primo del mese la pipeline apre il numero nuovo da sola: sceglie il
+# verticale a rotazione deterministica sul registro delle fonti primarie,
+# lancia l'ingest (signals stage=discovery + numero draft a DB) e apre una
+# issue a Marco: il verify dei signal (tier in Studio) resta umano — è il
+# primo dei due gate che il magazine automatico NON tocca.
+#
+# Nessun dato dell'evento entra in un `run:`; il verticale esce dal registro
+# nel repo ed è validato prima di toccare la shell.
+on:
+  schedule:
+    - cron: "0 6 1 * *" # il 1° del mese alle 06:00 UTC
+  workflow_dispatch: {} # run manuale on-demand
+
+permissions:
+  contents: read
+  issues: write # la notifica "tocca a te" e l'issue on-failure
+
+concurrency:
+  group: magazine-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # pin per SHA (supply-chain): il tag e' mobile, il commit no
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Ingest del numero nuovo (verticale a rotazione)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VALYU_API_KEY: ${{ secrets.VALYU_API_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          vertical=$(node -e '
+            const reg = Object.keys(require("./engine/primary-sources.json"))
+              .filter((k) => k !== "_doc" && k !== "core");
+            const now = new Date();
+            console.log(reg[(now.getUTCFullYear() * 12 + now.getUTCMonth()) % reg.length]);
+          ')
+          [[ "$vertical" =~ ^[a-z0-9-]+$ ]] || { echo "verticale non valido: $vertical"; exit 1; }
+          echo "verticale del mese: $vertical"
+          node engine/ingest.mjs "$vertical"
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Magazine $(date -u +%Y-%m) ($vertical): signal ingeriti — tocca a te" \
+            --body "L'ingest del numero nuovo è passato. Prossimo gate umano: verifica i signal in Supabase Studio (tier 1 / tier 2 indipendente). Appena i tier ci sono, il cron advance genera la bozza da solo. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+      - name: Apri issue se l'ingest fallisce
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Magazine ingest fallito ($(date -u +%F))" \
+            --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID — trace su Langfuse, errore su Sentry (script: ingest)."
