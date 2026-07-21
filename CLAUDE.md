@@ -19,7 +19,7 @@ Supabase pgvector → export). Security-by-design è il **posizionamento**, non 
 ## Struttura
 
 - `astro-project/` — il sito **e** il `worker/`. **Si parte da qui.**
-- `engine/` — pipeline Node zero-dipendenze (`fetch` nativo): `ingest`, `generate`, `embed`, `export`, `competitors`, `retrieve`, `visibility`.
+- `engine/` — pipeline Node zero-dipendenze (`fetch` nativo): `ingest`, `generate`, `embed`, `export`, `competitors`, `retrieve`, `visibility`, `devto`, `edicola`, `advance` (magazine in autopilot: i cron eseguono lo stadio sbloccato dai gate umani in Studio).
 - `supabase/` — migration sequenziali (`000N_*.sql`), RLS ovunque, DB ricostruibile da zero.
 - `docs/adr/` — decisioni architetturali (ADR). *(Le spec/piani di processo non si versionano: vivono nella sessione e restano in git history.)*
 

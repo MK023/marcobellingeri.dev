@@ -11,6 +11,12 @@ del numero restano un gate umano (Marco): un numero non passa a `published` senz
 approvazione. `match_article_chunks` è gated a `published` → un draft non è mai
 retrievabile né pubblico.
 
+Dal 2026-07-21 il ciclo è in **autopilot** (workflow `magazine-ingest` mensile +
+`magazine-advance` giornaliero): l'automazione esegue solo lo stadio che l'ultimo
+gesto umano in Studio ha sbloccato — verify dei signal → `generate`, approvazione
+→ `embed`+`export` → PR di contenuto. I gate non si spostano: si spostano i
+copia-incolla.
+
 ## Segreti (via Doppler — mai in chiaro nel repo)
 
 Ogni comando gira sotto `doppler run --`. Env attesi:
@@ -21,8 +27,10 @@ Ogni comando gira sotto `doppler run --`. Env attesi:
 | `EMBEDDING_API_KEY` | Voyage voyage-3.5 (embedding 1024-dim) |
 | `VALYU_API_KEY` | sourcing Canale 1 |
 | `FIRECRAWL_API_KEY` | scraping competitor Canale 2 |
-| `DEVTO_API_KEY` | cross-post writing collection su dev.to (`devto.mjs`) |
+| `DEVTO_API_KEY` | cross-post writing collection su dev.to (`devto.mjs`, `edicola.mjs`) |
+| `PERPLEXITY_API_KEY`, `GSC_CLIENT_ID/SECRET/REFRESH_TOKEN`, `GSC_SITE_URL` | monitor discoverability (`visibility.mjs`) |
 | `LANGFUSE_BASE_URL/_PUBLIC_KEY/_SECRET_KEY` | tracing (opzionali: senza, il tracing è no-op) |
+| `SENTRY_DSN` | error tracking (opzionale: senza, `lib/sentry.mjs` è no-op) |
 
 ## Osservabilità
 
@@ -42,6 +50,14 @@ l'assenza che manda in pausa il database. Per questo il keepalive fa anche un
 da GitHub: un guardiano dentro lo stesso dominio di guasto che sorveglia non è un
 guardiano. Il check-in non può far fallire il ping.
 
+Gli **errori** vanno a Sentry: ogni script ha un catch top-level
+(`lib/sentry.mjs`, envelope API via fetch, zero deps) che manda stack, nome
+dello script ed environment `engine` prima di uscire con exit 1 — stessa
+semantica esterna di un crash nudo, la CI e le issue automatiche non vedono
+differenza. Fail-open come Langfuse: senza `SENTRY_DSN` è un no-op, e un invio
+fallito non aggiunge mai danno a uno script già in errore. Da lì il flusso
+onesto: errore → Sentry → Seer analizza → fix in PR.
+
 ## Comandi
 
 ```bash
@@ -53,6 +69,8 @@ doppler run -- node engine/retrieve.mjs "<query>" [it|en]              # healthc
 doppler run -- node engine/competitors.mjs [--limit N]                 # Firecrawl -> snapshots -> chunks
 doppler run -- node engine/visibility.mjs [--limit N]                  # monitor discoverability (SEO+AEO)
 doppler run -- node engine/devto.mjs <slug> [--publish]                # cross-post writing -> dev.to (draft di default)
+doppler run -- node engine/edicola.mjs                                 # card Edicola dagli articoli pubblicati su dev.to
+doppler run -- node engine/advance.mjs                                 # decide lo stadio del magazine da eseguire (stampa e basta)
 node engine/lib/voyage.mjs                                             # self-check del chunker (no rete)
 node engine/lib/guardrails.mjs                                         # self-check barriere di contenuto (no rete)
 node engine/export.mjs --selfcheck                                     # self-check frontmatter/mappatura (no rete)
@@ -71,7 +89,9 @@ node engine/export.mjs --selfcheck                                     # self-ch
 - `export.mjs` — **stadio 5 EXPORT**: numero `approved` → file Markdown Field Notes in `astro-project/src/content/cases/{it,en}/` → `status=published`. Mappatura inversa (application→approach, solution→result, body→lesson), ri-screening prima di scrivere nel repo. NON committa: il contenuto lo merge Marco.
 - `retrieve.mjs` — read-end del RAG (query→match_article_chunks). NON è l'endpoint pubblico C1 (rate-limit/guardrail/AI-Act = roadmap).
 - `visibility.mjs` — monitor discoverability: SEO (Google Search Console) + AEO (Perplexity Sonar), referto prescrittivo con trend vs run precedente, storico su Supabase (`visibility_observations`). Descope dichiarato: le righe GSC hanno `query_id` null (nessun legame best-effort con `visibility_queries`) e il referto è due liste piatte, non raggruppato per `content_ref` — si riapre se il volume lo giustifica.
-- `devto.mjs` — cross-post canonical-first della writing collection su dev.to (`lib/devto.mjs`): idempotente per `canonical_url` (re-run = update), draft di default, live solo con `--publish`; un re-run senza flag non spubblica mai un pezzo già uscito. Il trigger resta umano: si pubblica quando Marco decide, lo script toglie solo il copia-incolla.
+- `devto.mjs` — cross-post canonical-first della writing collection su dev.to (`lib/devto.mjs`): idempotente per `canonical_url` (re-run = update), draft di default, live solo con `--publish`; un re-run senza flag non spubblica mai un pezzo già uscito. Il draft parte da solo in CI al merge di un articolo (`devto-draft.yml`); il **publish** resta un gesto umano di Marco su dev.to.
+- `edicola.mjs` — card automatiche dell'Edicola: interroga dev.to (articoli **pubblicati** con canonical sul sito) e aggiunge le card mancanti a `src/data/edicola.json` (merge puro in `lib/edicola.mjs`, dedupe per slug e per url; etichetta dal frontmatter `edicola` o dal titolo). Il cron `edicola-card.yml` apre la PR e la porta in produzione a gate verdi.
+- `advance.mjs` — il decisore del magazine automatico: legge lo stato a DB e stampa lo stadio da eseguire (`export <period>` | `embed` | `generate <sector>` | `niente`). Decisione pura in `lib/advance.mjs` (testata a secco); l'esecuzione sta nel workflow `magazine-advance.yml`. Stati anomali → «serve un occhio umano», mai loop.
 
 ## Test
 

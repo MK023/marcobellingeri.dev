@@ -136,7 +136,10 @@ il Worker senza secret si ottengono i due eventi attesi in Sentry. Vale la pena 
 perché per settimane quel percorso è esistito senza che nessuno lo avesse mai visto
 funzionare.
 
-Sul motore, il tracing è Langfuse (vedi [engine/README.md](engine/README.md)).
+Sul motore, il tracing è Langfuse e gli errori vanno a Sentry con una lib
+zero-dep fail-open — ogni script ha un catch top-level che racconta il crash
+(stack, script, environment `engine`) senza cambiarne la semantica esterna
+(vedi [engine/README.md](engine/README.md)).
 
 ## Contribuire
 
@@ -172,7 +175,8 @@ il tracking dei task vive su Notion, non su GitHub Issues.
 - [x] **Primo numero** (`2026-07-12`) — Magazine DB-backed, numero #1 pubblicato («AI insurance governance», NAIC Model Bulletin). La sezione non si renderizza finché non esiste un numero vero: un magazine con dentro un segnaposto vale meno di un magazine assente
 - [x] **Go-live** (`v1.0.0`, 2026-07-10) — [marcobellingeri.dev](https://marcobellingeri.dev) su Cloudflare, deploy automatico da `main`, www e anti-spoofing email configurati
 - [x] **Distribuzione canonical-first** — il sito è la casa canonical; dev.to è lo specchio primario (import RSS nativo, `canonical_url` che punta qui). Long-form ospitato sul sito (collection `writing`) ed Edicola delle firme esterne
-- [ ] **Terminale C1** (`v1.x`) — interfaccia RAG reale (`ask`), endpoint con rate-limit, guardrail e disclosure AI Act art. 50
+- [x] **Terminale C1** (`2026-07-21`) — interfaccia RAG reale (`ask`): endpoint `/api/ask` con Turnstile, rate-limit per IP, cap sul body, anon key gated a `published`, citazioni e disclosure AI Act art. 50 nel payload
+- [x] **Automazioni editoriali** (`2026-07-21`) — il ciclo editoriale gira da solo, i gate umani restano: draft dev.to in CI al merge di un articolo (`devto-draft.yml`), card Edicola dal cron che interroga dev.to e porta la PR in produzione a gate verdi (`edicola-card.yml`), magazine in autopilot (ingest mensile a rotazione + advance giornaliero che esegue lo stadio sbloccato dall'ultimo gesto umano in Studio; la PR di contenuto la merge Marco). Errori dell'engine su Sentry (`lib/sentry.mjs`, zero-dep, fail-open)
 
 ## Licenza
 
