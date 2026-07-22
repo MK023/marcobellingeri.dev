@@ -100,9 +100,17 @@ h2{{font-family:JB;font-size:8.2pt;letter-spacing:.15em;text-transform:uppercase
    color:#B8420F;break-after:avoid;}}
 p{{margin:0 0 2.6pt;orphans:2;widows:2;}}
 b{{font-weight:600;}}
-ul{{margin:0 0 4pt;padding-left:10pt;}}
+/* UN solo linguaggio di lista, a qualunque profondità il docx la annidi:
+   marker quadrato arancione, indent fisso. `ul ul` a padding zero SPEGNE la
+   cascata verso destra (ogni progetto scivolava più a destra del precedente). */
+ul{{margin:0 0 4pt;padding-left:10pt;list-style:square;}}
+ul ul{{margin:0;padding-left:0;}}
 li{{margin:0 0 1.5pt;break-inside:avoid;}}
 li::marker{{color:#FF5A1F;}}
+/* La riga dell'azienda respira: separa i blocchi di esperienza senza righelli. */
+.azienda{{margin-top:7pt;break-after:avoid;}}
+/* Patente + GDPR: piè di pagina, non contenuto. */
+.footer-legale{{margin-top:8pt;font-family:JB;font-size:6.6pt;color:#6d665c;}}
 """
 
 
@@ -141,6 +149,39 @@ def costruisci(lingua: str) -> Path:
     corpo = re.sub(
         r"<p>(?:<b>)?([A-ZÀ-Ü&;\s/,\.\-]{4,})(?:</b>)?</p>",
         lambda m: f"<h2>{m.group(1).strip()}</h2>",
+        corpo,
+    )
+
+    # ELENCHI PUNTATI, UN SOLO LINGUAGGIO (audit CV 22-07): nel docx alcune
+    # esperienze usano "•" LETTERALI dentro paragrafi — sulla pagina diventano
+    # un terzo stile di lista, nero e disallineato. Ogni RUN contiguo di
+    # paragrafi-puntato diventa una <ul> vera in un colpo solo: le liste già
+    # vere non vengono toccate, quindi niente doppio wrapping.
+    def _run_in_lista(m: "re.Match[str]") -> str:
+        voci = re.findall(r"<p>\s*(?:•|·|●)\s*([\s\S]*?)</p>", m.group(0))
+        return "<ul>" + "".join(f"<li>{v}</li>" for v in voci) + "</ul>"
+
+    # il docx mette il bullet DENTRO il grassetto (<p><b>• Etichetta:</b>):
+    # lo si porta fuori, così il run qui sotto lo riconosce e il <b> resta
+    corpo = re.sub(r"<p>\s*<b>\s*([•·●])\s*", r"<p>\1 <b>", corpo)
+    corpo = re.sub(r"(?:<p>\s*(?:•|·|●)[\s\S]*?</p>\s*)+", _run_in_lista, corpo)
+
+    # La riga dell'azienda (bold tutto maiuscolo) prende aria sopra: i blocchi
+    # di esperienza erano incollati l'uno all'altro.
+    def _azienda(m: "re.Match[str]") -> str:
+        testo = m.group(1)
+        senza_tag = re.sub(r"<[^>]+>", "", testo)
+        lettere = [c for c in senza_tag if c.isalpha()]
+        if len(lettere) >= 5 and sum(c.isupper() for c in lettere) / len(lettere) > 0.8:
+            return f'<p class="azienda"><b>{testo}</b>'
+        return m.group(0)
+
+    corpo = re.sub(r"<p><b>([\s\S]*?)</b>", _azienda, corpo)
+
+    # Patente + autorizzazione GDPR: piè di pagina discreto, non un capoverso.
+    corpo = re.sub(
+        r"<p>((?:(?!</p>).)*?(?:Autorizzo il trattamento|I authorize the processing)[\s\S]*?)</p>",
+        r'<p class="footer-legale">\1</p>',
         corpo,
     )
 
