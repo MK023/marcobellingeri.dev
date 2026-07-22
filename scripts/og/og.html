@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- Il template della card social (og.png). Prima era un'immagine orfana: al
+     cambio di titolo andava rifatta a mano da chissà dove. Ora si rigenera:
+
+       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+         --headless --disable-gpu --window-size=2400,1260 --force-device-scale-factor=1 \
+         --screenshot=astro-project/public/og.png "file://$PWD/scripts/og/og.html"
+
+     Font: i woff2 self-hosted della build (servono in astro-project/dist/_astro,
+     quindi `npm run build` prima se mancano). Palette = i token del tema giorno. -->
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:Anton;src:url("../../astro-project/dist/_astro/anton-latin-400-normal.Byf51wtH.woff2") format("woff2");}
+  @font-face{font-family:JB;src:url("../../astro-project/dist/_astro/jetbrains-mono-latin-400-normal.V6pRDFza.woff2") format("woff2");}
+  @font-face{font-family:Serif;src:url("../../astro-project/dist/_astro/source-serif-4-latin-400-normal.DJ5YJwmz.woff2") format("woff2");}
+  *{margin:0;box-sizing:border-box}
+  body{width:2400px;height:1260px;background:#FAFAF7;color:#181410;position:relative;overflow:hidden;font-family:Serif;}
+  .banda{position:absolute;top:0;left:0;width:100%;height:170px;background:#FF5A1F;
+         clip-path:polygon(0 0,100% 0,100% 55%,0 78%);}
+  .contenuto{position:absolute;left:140px;top:150px;}
+  .chip-ed{display:inline-block;background:#181410;color:#FAFAF7;font-family:JB;
+           font-size:40px;letter-spacing:.22em;padding:18px 34px;}
+  h1{font-family:Anton;line-height:.88;letter-spacing:.01em;margin-top:48px;}
+  .nome{font-size:150px;display:block;}
+  .cognome{font-size:268px;display:block;}
+  .chip-ruolo{display:inline-block;border:5px solid #181410;font-family:JB;
+              font-size:46px;letter-spacing:.18em;padding:26px 40px;margin-top:44px;}
+  .tagline{font-size:62px;line-height:1.3;max-width:1640px;margin-top:60px;}
+  .url{font-family:JB;font-size:46px;letter-spacing:.04em;margin-top:40px;}
+  .mezzatinta{position:absolute;right:150px;top:530px;width:520px;height:520px;
+              border-radius:50%;border:6px solid #181410;background:#A8A296;
+              background-image:radial-gradient(#181410 6px, transparent 7px);
+              background-size:46px 46px;background-position:14px 14px;}
+  .barra{position:absolute;bottom:0;left:0;width:100%;height:64px;background:#181410;}
+</style>
+</head>
+<body>
+  <div class="banda"></div>
+  <div class="contenuto">
+    <span class="chip-ed">CLOUD &amp; SECURITY EDITION</span>
+    <h1><span class="nome">MARCO</span><span class="cognome">BELLINGERI</span></h1>
+    <span class="chip-ruolo">CLOUD PLATFORM &amp; AI SECURITY ENGINEER</span>
+    <p class="tagline">Rendo affidabile e sicura l&rsquo;infrastruttura cloud di team che hanno gi&agrave; un sistema in produzione.</p>
+    <p class="url">marcobellingeri.dev</p>
+  </div>
+  <div class="mezzatinta"></div>
+  <div class="barra"></div>
+</body>
+</html>
