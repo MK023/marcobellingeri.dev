@@ -91,6 +91,9 @@ jobs:
                 --body "Numero esportato dalla pipeline dopo i due gate umani in Studio (verify dei signal, approvazione della bozza). Contenuto: la merge è di Marco. I CI sono lanciati dal workflow (le PR del bot non li triggerano da sole).")
               gh workflow run site-ci.yml --ref "$branch"
               gh workflow run backend-ci.yml --ref "$branch"
+              # il judge non e' un check del ruleset: e' il referto di qualita'
+              # che Marco trova in commento sulla PR prima di mergiare
+              gh workflow run magazine-judge.yml --ref "$branch"
               echo "PR contenuto aperta: $pr"
               ;;
             *)
