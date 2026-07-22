@@ -419,10 +419,12 @@
     grid-template-columns:repeat(auto-fill, minmax(180px,1fr));
     max-width:1100px; margin:0 auto;
   }
-  /* Sette card: con l'auto-fill a 1100px uscivano righe sbilanciate (5+2),
-     visivamente pesanti. Su desktop stanno in linea, una fila sola. */
+  /* Otto card. La fila unica da sette è caduta con l'arrivo di AI-SEC e SUPPLY:
+     a 1100px otto colonne danno ~115px di testo per card, e proprio le due nuove
+     sono le più lunghe. Il difetto che l'auto-fill produceva era lo SBILANCIO
+     (5+2), non il numero di righe: 4+4 lo risolve e restituisce respiro. */
   @media(min-width:1000px){
-    .stack-grid{ grid-template-columns:repeat(7,1fr); gap:10px; }
+    .stack-grid{ grid-template-columns:repeat(4,1fr); gap:12px; }
     .stack-card{ padding:14px 12px; }
   }
   .stack-card{
