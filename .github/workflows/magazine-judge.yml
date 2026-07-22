@@ -1,0 +1,73 @@
+name: Magazine judge
+
+# LLM-as-a-judge sulla PR di contenuto del magazine: l'ultimo controllo
+# AUTOMATICO prima della revisione umana — non al posto suo. La politica del
+# gate sta in engine/lib/judge.mjs (pura, testata): bocciano i difetti
+# deterministici e i voti <=2 della rubrica; il 3 è un avviso. Il referto
+# finisce in commento sulla PR.
+#
+# Chi decide resta Marco: il contenuto lo merge lui, col referto sotto gli
+# occhi. Rendere questo check OBBLIGATORIO nel ruleset di main è un click suo
+# nelle setting (accensione documentata), non di questo file.
+#
+# Trigger doppio per la stessa ragione degli altri: le PR aperte dal cron
+# advance (GITHUB_TOKEN) non emettono `pull_request` — advance dispatcha
+# questo workflow sul branch, come già fa coi due CI.
+#
+# Nessun dato dell'evento entra in un `run:` via interpolazione ${{ }}: il
+# period viene dai NOMI dei file nel repo (validato con regex) e il branch
+# arriva dalle sole env di default del runner, sempre quotate.
+on:
+  pull_request:
+    paths: ["astro-project/src/content/magazine/**"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: write # il referto in commento sulla PR
+
+concurrency:
+  group: magazine-judge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # pin per SHA (supply-chain): il tag e' mobile, il commit no
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Rubrica sul numero del mese
+        id: rubrica
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          set -euo pipefail
+          # Il numero da giudicare = il piu' recente presente nel branch. Il
+          # nome file inizia con YYYY-MM- per costruzione (export.mjs).
+          period=$(ls astro-project/src/content/magazine/it/ | sed -n 's/^\([0-9]\{4\}-[0-9]\{2\}\)-.*/\1/p' | sort | tail -1)
+          [[ "$period" =~ ^[0-9]{4}-[0-9]{2}$ ]] || { echo "nessun numero da giudicare"; exit 1; }
+          echo "period=$period" >> "$GITHUB_OUTPUT"
+          # l'exit code del judge e' l'esito del gate; il referto va al commento
+          node engine/judge.mjs "$period" | tee referto.md
+      - name: Referto in commento sulla PR
+        # anche quando il judge boccia: un rosso senza referto e' mezzo gate
+        if: always() && steps.rubrica.outputs.period != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          pr=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --json number --jq '.[0].number' || true)
+          if [ -n "$pr" ] && [ -f referto.md ]; then
+            gh pr comment "$pr" --repo "$GITHUB_REPOSITORY" --body-file referto.md
+          else
+            echo "nessuna PR trovata per il branch: referto solo nel log"
+          fi
