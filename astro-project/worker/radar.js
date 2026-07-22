@@ -21,10 +21,14 @@ const MAX_KEV = 6;
 //    <scr<x>ipt> ricompone <script> dopo la prima passata).
 // L'output resta plain text: la pagina lo rende via textContent, mai innerHTML.
 const ENTITA = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#39': "'" };
-const decodifica = (s) => {
-  let t = s.replace(/&(#\d+|amp|lt|gt|quot|apos|#39);/g, (m, n) =>
+// Un solo passaggio anche da sola: serve pure ai LINK (l'XML escapa & come
+// &amp; dentro <link> — senza decodifica l'URL uscirebbe con la query rotta).
+const decodEntita = (s) =>
+  s.replace(/&(#\d+|amp|lt|gt|quot|apos|#39);/g, (m, n) =>
     n.startsWith('#') ? String.fromCodePoint(Number(n.slice(1))) : ENTITA[n],
   );
+const decodifica = (s) => {
+  let t = decodEntita(s);
   for (let prima = ''; prima !== t; ) { prima = t; t = t.replace(/<[^>]*>/g, ''); }
   // un `<script` senza `>` sopravvivrebbe al punto fisso: in un titolo di
   // bollettino le parentesi angolari non portano informazione — via anche loro
@@ -55,7 +59,9 @@ export function parseRssItems(xml, { max = MAX_ITEMS } = {}) {
     const t = grezza ? Date.parse(grezza) : NaN;
     items.push({
       titolo: decodifica(titolo).slice(0, 160),
-      url: link,
+      // stesso trattamento del titolo: l'input non fidato non ha corsie
+      // preferenziali (audit: il link grezzo teneva &amp; letterale in query)
+      url: decodEntita(link),
       data: Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 10),
     });
   }

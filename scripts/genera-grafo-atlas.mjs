@@ -93,9 +93,15 @@ for (let iter = 0; iter < 400; iter++) {
   for (const [a, b] of edges) {
     const dx = px[a] - px[b], dy = py[a] - py[b];
     const d = Math.sqrt(dx * dx + dy * dy) + 1e-6;
-    const att = (d * d) / K * 0.5;
-    fx[a] -= (dx / d) * att * K; fy[a] -= (dy / d) * att * K;
-    fx[b] += (dx / d) * att * K; fy[b] += (dy / d) * att * K;
+    // Attrazione proporzionale a d^2 con costante EMPIRICA (0.5), scelta per
+    // l'aspetto e verificata a occhio sul grafo reale. NON e' il d^2/K del
+    // Fruchterman-Reingold canonico: la prima stesura scriveva (d*d)/K*...*K
+    // — i due K si cancellavano (audit) e la formula eseguita era questa.
+    // Il layout verificato e' questo: si dichiara la forza vera invece di
+    // "correggere" verso un canone mai usato e rigenerare un grafo diverso.
+    const att = 0.5 * d * d;
+    fx[a] -= (dx / d) * att; fy[a] -= (dy / d) * att;
+    fx[b] += (dx / d) * att; fy[b] += (dy / d) * att;
   }
   for (let i = 0; i < N; i++) {
     // gravità verso il centro + passo limitato dal raffreddamento
