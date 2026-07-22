@@ -1,6 +1,6 @@
 # marcobellingeri.dev
 
-Sito personale di **Marco Bellingeri** — Cloud Platform & Security Engineer.
+Sito personale di **Marco Bellingeri** — Cloud Platform & AI Security Engineer.
 Astro statico, bilingue EN/IT, con un magazine mensile alimentato da una pipeline RAG.
 
 [![Site CI](https://github.com/MK023/marcobellingeri.dev/actions/workflows/site-ci.yml/badge.svg)](https://github.com/MK023/marcobellingeri.dev/actions/workflows/site-ci.yml)

@@ -22,7 +22,7 @@ export const ui = {
     // "Cloud & Security Edition" è un token di brand: resta invariato tra le lingue.
     'site.title': 'Bellingeri — Cloud & Security Edition',
     'site.description':
-      'Marco Bellingeri — freelance Cloud Platform & Security Engineer. Hands-on DevOps, Cloud and Security: pair programming, real case studies, automation. Casale Monferrato, Italy.',
+      'Marco Bellingeri — freelance Cloud Platform & AI Security Engineer. Hands-on DevOps, Cloud and Security: pair programming, real case studies, automation. Casale Monferrato, Italy.',
     'og.locale': 'en_US',
     'a11y.skipToContent': 'Skip to content',
     'loader.label': 'FLIPPING THROUGH…',
@@ -72,7 +72,7 @@ export const ui = {
     'proj.details': 'DETAILS ＋',
     'proj.close': 'CLOSE －',
 
-    'og.imageAlt': 'Marco Bellingeri — Cloud Platform & Security Engineer',
+    'og.imageAlt': 'Marco Bellingeri — Cloud Platform & AI Security Engineer',
     'hero.grade': 'SECURITY HEADERS',
     'hero.gradeVerify': 'verify it yourself',
     'hero.gradeTitle': 'Graded by Mozilla HTTP Observatory. The link re-runs the scan live.',
@@ -105,7 +105,7 @@ export const ui = {
   it: {
     'site.title': 'Bellingeri — Cloud & Security Edition',
     'site.description':
-      'Marco Bellingeri — Cloud Platform & Security Engineer freelance. DevOps, Cloud e Security con un approccio hands-on: pair programming, case study reali, automazione. Casale Monferrato, IT.',
+      'Marco Bellingeri — Cloud Platform & AI Security Engineer freelance. DevOps, Cloud e Security con un approccio hands-on: pair programming, case study reali, automazione. Casale Monferrato, IT.',
     'og.locale': 'it_IT',
     'a11y.skipToContent': 'Salta al contenuto',
     'loader.label': 'SFOGLIANDO…',
@@ -155,7 +155,7 @@ export const ui = {
     'proj.details': 'DETTAGLI ＋',
     'proj.close': 'CHIUDI －',
 
-    'og.imageAlt': 'Marco Bellingeri — Cloud Platform & Security Engineer',
+    'og.imageAlt': 'Marco Bellingeri — Cloud Platform & AI Security Engineer',
     'hero.grade': 'SECURITY HEADERS',
     'hero.gradeVerify': 'verificalo tu',
     'hero.gradeTitle': 'Voto della HTTP Observatory di Mozilla. Il link rifà la scansione dal vivo.',
