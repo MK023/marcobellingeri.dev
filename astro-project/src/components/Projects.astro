@@ -1,9 +1,18 @@
 ---
 import { numeroSezione } from '../lib/sections';
+import { getRelativeLocaleUrl } from 'astro:i18n';
 import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
+import PortalButton from './PortalButton.astro';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 const t = useTranslations(lang);
+
+// Il portale verso il grafo di Atlas: la card qui sopra lo racconta, la
+// pagina lo MOSTRA — il grafo vero della wiki, filtrato ai layer pubblicabili.
+const atlas = {
+  it: { label: 'Il grafo di Atlas', sub: 'la wiki vista come la vede una macchina — dal vivo' },
+  en: { label: 'The Atlas graph', sub: 'the wiki as a machine sees it — live' },
+}[lang];
 
 type Project = {
   id: string;
@@ -147,6 +156,7 @@ const labels = { problem: lang === 'en' ? 'PROBLEM' : 'PROBLEMA', approach: lang
       </div>
     ))}
   </div>
+  <PortalButton href={getRelativeLocaleUrl(lang, 'atlas')} label={atlas.label} sub={atlas.sub} />
 </section>
 
 <script>
