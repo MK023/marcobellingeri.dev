@@ -261,3 +261,35 @@ Cloudflare. Bundle, SDK, DSN e ramo di codice sono gli stessi, quindi il dubbio 
 — ma non è zero, e non lo si spaccia per zero. (Nota: `wrangler dev --remote` **non**
 serve allo scopo — eredita i secret del Worker deployato, quindi il ramo "secret mancante"
 lì è irraggiungibile per costruzione.)
+
+
+---
+
+## Addendum 2026-07-22 — superficie nuova: `/api/radar` e pagina `/atlas`
+
+**`/api/radar`** (endpoint pubblico GET, aggregatore dei bollettini CERT):
+
+- **Input non fidato**: i feed sono governativi ma il *canale* può essere compromesso.
+  Titoli sanificati a doppio stadio (entity in un solo passaggio → niente double-unescape;
+  tag a punto fisso → `<scr<x>ipt>` non ricompone; zero parentesi angolari residue);
+  entity decodificate anche negli URL. Rendering in pagina solo via `textContent`.
+- **Host allowlist sui link**: un item il cui link non punta ai domini dichiarati della
+  fonte viene scartato — un feed compromesso non distribuisce link altrui dal nostro dominio.
+- **Cache all'edge (30′) con chiave normalizzata al path**: la query string non buca la
+  cache → un visitatore ostile non amplifica il traffico verso i feed upstream.
+- **Fail-open per fonte** con tetto sulla risposta upstream e timeout per feed: un feed
+  giù o gonfiato degrada uno strato, mai la pagina. Nessun secret coinvolto (feed pubblici).
+- **Compliance come gate**: ogni fonte in `src/data/radar-fonti.js` deve avere
+  `licenza.nome` + `licenza.url` — un test in CI boccia una fonte senza licenza scritta.
+  Registro esteso con quote testuali: `docs/FONTI.md`.
+
+**Pagina `/atlas`** (grafo della wiki privata): il rischio è il *data leak*, non l'injection.
+Tre guardie, ognuna vista fallire prima del commit: il generatore rifiuta nodi fuori
+dall'allowlist (`concepts/` + `entities/tools/`); un test verifica l'appartenenza di ogni
+nodo; un test cerca le stringhe dei layer privati nel JSON grezzo. I 373 wikilink verso i
+layer privati sono pubblicati come *conteggio*, mai come etichette. Il refresh è manuale
+di proposito: la PR col diff del JSON è il punto in cui un occhio umano vede cosa sta per
+diventare pubblico.
+
+**Finding aperti dopo l'addendum: 0.** (CodeQL ha alzato 2 HIGH sulla prima versione
+della sanificazione titoli — fondati, corretti in `9fe593d` con test di proprietà.)
