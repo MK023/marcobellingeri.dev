@@ -1,0 +1,255 @@
+---
+import type { Lang } from '../../i18n/ui';
+import { getRelativeLocaleUrl } from 'astro:i18n';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import UtilityBar from '../../components/UtilityBar.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import grafo from '../../data/atlas-graph.json';
+
+export function getStaticPaths() {
+  return [{ params: { lang: 'en' } }, { params: { lang: 'it' } }];
+}
+
+const { lang } = Astro.params as { lang: Lang };
+
+// Atlas è la wiki privata di Marco (pattern Karpathy LLM Wiki). Questa pagina
+// ne mostra il grafo VERO — non un'animazione decorativa — ma solo i layer
+// tecnici: concetti e strumenti. Il filtro non è timidezza, è igiene dei dati,
+// e la pagina lo dichiara: per chi vende sicurezza è un punto, non un limite.
+const copy = {
+  it: {
+    title: 'Atlas — il grafo della conoscenza',
+    tagline: 'La wiki personale, vista come la vede una macchina.',
+    intro:
+      'Ogni nodo è una pagina vera della mia knowledge base; ogni filo è un link che esiste davvero. Non è un disegno: è il grafo generato dalla wiki, con le posizioni calcolate dalla struttura. I nodi grossi sono i concetti che tengono insieme il resto.',
+    filtro: `Vista filtrata: solo concetti e strumenti (${grafo.nodes.length} nodi, ${grafo.edges.length} collegamenti). Gli strati personali — carriera, persone, progetti — non sono in questa vista: ${grafo.linkEsclusi} collegamenti verso di loro sono contati ma non mostrati. L'igiene dei dati si pratica, non si dichiara soltanto.`,
+    legenda: { concept: 'concetto', tool: 'strumento' },
+    fallbackH: 'I nodi più connessi',
+    generato: `generato dalla wiki il ${grafo.generatoIl}`,
+    back: 'Torna alla home',
+  },
+  en: {
+    title: 'Atlas — the knowledge graph',
+    tagline: 'A personal wiki, seen the way a machine sees it.',
+    intro:
+      'Every node is a real page of my knowledge base; every thread is a link that actually exists. This is not an illustration: it is the graph generated from the wiki, positions computed from its structure. The big nodes are the concepts holding everything else together.',
+    filtro: `Filtered view: concepts and tools only (${grafo.nodes.length} nodes, ${grafo.edges.length} links). The personal layers — career, people, projects — are not in this view: ${grafo.linkEsclusi} links pointing to them are counted but not shown. Data hygiene is practiced, not just declared.`,
+    legenda: { concept: 'concept', tool: 'tool' },
+    fallbackH: 'Most connected nodes',
+    generato: `generated from the wiki on ${grafo.generatoIl}`,
+    back: 'Back to home',
+  },
+}[lang];
+
+const backHref = getRelativeLocaleUrl(lang, '');
+const top = [...grafo.nodes].sort((a, b) => b.degree - a.degree).slice(0, 20);
+---
+
+<BaseLayout lang={lang} title={copy.title} description={copy.tagline} path="atlas">
+  <UtilityBar />
+  <main id="main-content">
+    <article class="atl-wrap">
+      <p class="atl-cred mono">ATLAS</p>
+      <h1 class="atl-title">{copy.title}</h1>
+      <p class="atl-intro">{copy.intro}</p>
+      <p class="atl-filtro mono">{copy.filtro}</p>
+
+      <div class="atl-frame" id="atl-frame">
+        <canvas id="atl-canvas" aria-hidden="true"></canvas>
+        <p class="atl-hover mono" id="atl-hover" hidden></p>
+        <p class="atl-legenda mono">
+          <span class="atl-dot atl-dot-concept" aria-hidden="true"></span> {copy.legenda.concept}
+          <span class="atl-dot atl-dot-tool" aria-hidden="true"></span> {copy.legenda.tool}
+        </p>
+      </div>
+      <p class="atl-generato mono">{copy.generato}</p>
+
+      <!-- Il fallback È contenuto: senza JS il grafo resta leggibile come elenco. -->
+      <section class="atl-top">
+        <h2>{copy.fallbackH}</h2>
+        <ol class="mono">
+          {top.map((n) => (
+            <li>{n.label} <span class="atl-deg">· {n.degree}</span></li>
+          ))}
+        </ol>
+      </section>
+
+      <a class="util-btn atl-back" href={backHref}>← {copy.back}</a>
+    </article>
+  </main>
+  <SiteFooter />
+</BaseLayout>
+
+<script>
+  import grafo from '../../data/atlas-graph.json';
+
+  const frame = document.getElementById('atl-frame') as HTMLElement;
+  const canvas = document.getElementById('atl-canvas') as HTMLCanvasElement;
+  const hover = document.getElementById('atl-hover') as HTMLElement;
+  const ctx = canvas.getContext('2d');
+  const riduci = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  type Nodo = { id: string; label: string; group: string; degree: number; x: number; y: number };
+  const nodi = grafo.nodes as Nodo[];
+  const archi = grafo.edges as [number, number][];
+  // adiacenza per l'evidenziazione dei vicini al passaggio
+  const vicini: Set<number>[] = nodi.map(() => new Set());
+  archi.forEach(([a, b]) => { vicini[a].add(b); vicini[b].add(a); });
+  // etichette sempre visibili per i nodi che reggono il grafo
+  const soglia = [...nodi].sort((a, b) => b.degree - a.degree)[14]?.degree ?? 0;
+
+  const colori = () => {
+    const s = getComputedStyle(document.documentElement);
+    return {
+      inchiostro: s.getPropertyValue('--ink').trim(),
+      griglia: s.getPropertyValue('--halftone').trim(),
+      concept: s.getPropertyValue('--violet').trim(),
+      tool: s.getPropertyValue('--orange').trim(),
+      carta: s.getPropertyValue('--paper').trim(),
+    };
+  };
+  let tinte = colori();
+  new MutationObserver(() => { tinte = colori(); disegna(); })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] });
+
+  let W = 0, H = 0;
+  const misura = () => {
+    const r = frame.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = r.width; H = r.height;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
+    ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+
+  // La deriva: ogni nodo respira intorno alla sua posizione precalcolata.
+  // Fase e velocità derivano dall'indice — deterministiche, niente random.
+  let t = 0;
+  let attivo = -1;
+  const pos = (i: number) => {
+    const n = nodi[i];
+    const amp = riduci ? 0 : 0.004;
+    return {
+      x: (n.x + amp * Math.sin(t * 0.008 + i * 1.7)) * W,
+      y: (n.y + amp * Math.cos(t * 0.011 + i * 2.3)) * H,
+    };
+  };
+
+  const raggio = (n: Nodo) => 2 + Math.sqrt(n.degree) * 0.9;
+
+  const disegna = () => {
+    if (!ctx || !W) return;
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.beginPath();
+    for (const [a, b] of archi) {
+      const pa = pos(a), pb = pos(b);
+      ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y);
+    }
+    ctx.strokeStyle = tinte.griglia; ctx.lineWidth = 0.5; ctx.globalAlpha = 0.5;
+    ctx.stroke(); ctx.globalAlpha = 1;
+
+    // gli archi del nodo attivo, sopra e pieni
+    if (attivo >= 0) {
+      ctx.beginPath();
+      const pa = pos(attivo);
+      for (const v of vicini[attivo]) { const pv = pos(v); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pv.x, pv.y); }
+      ctx.strokeStyle = tinte.inchiostro; ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    ctx.font = '10px "JetBrains Mono", monospace';
+    // Anti-collisione greedy: un'etichetta che si sovrappone a una già posata
+    // salta il giro. I nodi restano; nel cluster denso parlano solo i primi.
+    const posate: { x: number; y: number; w: number }[] = [];
+    const libera = (x: number, y: number, w: number) =>
+      !posate.some((r) => Math.abs(r.y - y) < 12 && x < r.x + r.w + 6 && r.x < x + w + 6);
+    for (let i = 0; i < nodi.length; i++) {
+      const n = nodi[i], p = pos(i);
+      const spento = attivo >= 0 && i !== attivo && !vicini[attivo].has(i);
+      ctx.globalAlpha = spento ? 0.25 : 1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, raggio(n), 0, Math.PI * 2);
+      ctx.fillStyle = n.group === 'tool' ? tinte.tool : tinte.concept;
+      ctx.fill();
+      if ((n.degree >= soglia && !spento) || i === attivo) {
+        const lx = p.x + raggio(n) + 3, ly = p.y + 3;
+        const w = ctx.measureText(n.label).width;
+        if (i === attivo || libera(lx, ly, w)) {
+          ctx.fillStyle = tinte.inchiostro;
+          ctx.fillText(n.label, lx, ly);
+          posate.push({ x: lx, y: ly, w });
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+
+  canvas.addEventListener('pointermove', (e) => {
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    let best = -1, bd = 14 * 14;
+    for (let i = 0; i < nodi.length; i++) {
+      const p = pos(i);
+      const d = (p.x - mx) ** 2 + (p.y - my) ** 2;
+      if (d < bd) { bd = d; best = i; }
+    }
+    if (best !== attivo) {
+      attivo = best;
+      if (best >= 0) {
+        hover.textContent = `${nodi[best].label} · ${nodi[best].degree}`;
+        hover.hidden = false;
+      } else hover.hidden = true;
+      if (riduci) disegna();
+    }
+  });
+  canvas.addEventListener('pointerleave', () => { attivo = -1; hover.hidden = true; if (riduci) disegna(); });
+
+  const passo = () => {
+    if (!riduci && !document.hidden) { t += 1; disegna(); }
+    requestAnimationFrame(passo);
+  };
+
+  misura();
+  window.addEventListener('resize', () => { misura(); disegna(); });
+  disegna();
+  if (!riduci) requestAnimationFrame(passo);
+</script>
+
+<style>
+  .atl-wrap{ max-width:960px; margin:0 auto; padding:56px 24px 48px; }
+  .atl-cred{ font-size:13px; letter-spacing:0.08em; opacity:0.7; margin:0 0 8px; }
+  .atl-title{
+    font-family:'Anton', sans-serif; text-transform:uppercase;
+    font-size:clamp(28px, 5.5vw, 48px); line-height:0.98; margin:0 0 16px;
+  }
+  .atl-intro{ font-size:16px; line-height:1.65; max-width:640px; margin:0 0 12px; }
+  .atl-filtro{ font-size:11px; line-height:1.7; letter-spacing:0.02em; opacity:0.75; max-width:640px; margin:0 0 18px; }
+  .atl-frame{
+    position:relative; width:100%; aspect-ratio:4/3; max-height:75vh;
+    border:2px solid var(--rule); background:var(--paper-dark); overflow:hidden;
+  }
+  .atl-frame canvas{ display:block; cursor:crosshair; }
+  .atl-hover{
+    position:absolute; top:10px; left:12px; margin:0;
+    font-size:11px; letter-spacing:0.04em;
+    background:var(--paper); border:1px solid var(--rule); padding:4px 8px;
+  }
+  .atl-legenda{
+    position:absolute; bottom:10px; left:12px; margin:0;
+    font-size:10px; letter-spacing:0.05em; opacity:0.8;
+  }
+  .atl-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin:0 4px 0 10px; }
+  .atl-dot:first-of-type{ margin-left:0; }
+  .atl-dot-concept{ background:var(--violet); }
+  .atl-dot-tool{ background:var(--orange); }
+  .atl-generato{ font-size:10px; opacity:0.6; margin:8px 0 0; }
+  .atl-top{ margin-top:36px; }
+  .atl-top h2{
+    font-family:'Anton', sans-serif; text-transform:uppercase;
+    font-size:clamp(20px, 3.5vw, 28px); margin:0 0 10px;
+  }
+  .atl-top ol{ font-size:12px; line-height:1.9; padding-left:20px; margin:0; columns:2; }
+  .atl-deg{ opacity:0.5; }
+  .atl-back{ display:inline-block; margin-top:32px; text-decoration:none; }
+  @media (max-width: 600px){ .atl-top ol{ columns:1; } }
+</style>
