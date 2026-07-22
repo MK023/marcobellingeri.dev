@@ -1,0 +1,80 @@
+name: Devto publish due
+
+# L'uscita programmata dell'Edicola. I pezzi si scrivono in anticipo e si mergiano
+# tutti insieme: da quel momento sono live sul sito (il canonical DEVE esistere
+# prima del cross-post) e fermi come draft su dev.to. Questo cron gira
+# l'interruttore quando arriva la `date` scritta nel frontmatter.
+#
+# L'approvazione resta UNA e umana: il merge della PR. Qui non si decide niente di
+# editoriale — si esegue una data che l'autore ha gia' scritto e approvato.
+#
+# Preavviso: lo stesso run apre una issue per i pezzi in uscita DOMANI. Se il pezzo
+# e' invecchiato male (una versione cambiata, una decisione ribaltata) c'e' una
+# finestra vera di 24h per spostare la data o togliere il file. Senza il preavviso
+# questa automazione pubblicherebbe alla cieca roba scritta tre settimane prima.
+#
+# Nessun dato dell'evento entra in un `run:`: non si legge NIENTE da github.event.
+# Gli slug nascono dai nomi dei file del repo e sono validati (^[a-z0-9-]+$) in
+# engine/devto.mjs prima di ogni uso; l'unico valore interpolato viene dal nostro
+# script e passa comunque per `env:`, mai nel corpo del comando.
+on:
+  schedule:
+    - cron: "0 7 * * *" # ogni giorno alle 07:00 UTC, prima del cron della card (07:30)
+  workflow_dispatch: {} # run manuale on-demand
+
+permissions:
+  contents: read
+  issues: write # preavviso "domani esce X" + issue on-failure
+
+concurrency:
+  group: devto-publish-due
+  cancel-in-progress: false
+
+jobs:
+  due:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # pin per SHA (supply-chain): il tag e' mobile, il commit no
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Pubblica i pezzi con la data arrivata
+        id: due
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          set -euo pipefail
+          node engine/devto.mjs --due | tee /tmp/due.log
+          # Contratto con lo script: una riga `DOMANI=slug,slug` sempre presente.
+          echo "domani=$(grep '^DOMANI=' /tmp/due.log | cut -d= -f2-)" >> "$GITHUB_OUTPUT"
+      - name: Preavviso 24h per i pezzi in uscita domani
+        if: steps.due.outputs.domani != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DOMANI: ${{ steps.due.outputs.domani }}
+        run: |
+          set -euo pipefail
+          # $DOMANI resta una variabile d'ambiente e non viene mai concatenato nel
+          # comando: il suo contenuto e' comunque gia' vincolato a ^[a-z0-9-,]+$.
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Domani esce: $DOMANI" \
+            --body "$(printf '%s\n' \
+              "Questi pezzi vengono pubblicati su dev.to al prossimo run (domani, 07:00 UTC):" \
+              "" \
+              "    $DOMANI" \
+              "" \
+              "Se uno e' invecchiato male, hai 24h: sposta la \`date\` nel frontmatter o togli il file." \
+              "Non serve fare niente per confermare — il silenzio pubblica." \
+              "" \
+              "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")"
+      - name: Apri issue se l'uscita programmata fallisce
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Devto publish due fallito ($(date -u +%F))" \
+            --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
