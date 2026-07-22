@@ -90,12 +90,17 @@ if (!difetti.length) {
 // ---- referto: markdown su stdout (il workflow lo mette in commento) -----
 const v = verdetto({ difetti, criteri });
 const voti = CRITERI.map((c) => criteri[c] ? `| ${c} | ${criteri[c].voto}/5 | ${criteri[c].motivo} |` : `| ${c} | — | assente |`);
+// blocchi precomposti: niente template annidati nel template (S4624)
+const elenco = (righe) => righe.map((m) => `- ${m}`).join("\n");
+const bloccoNota = nota ? `\n> ${nota}\n` : "";
+const bloccoMotivi = v.motivi.length ? `\n**Bocciato perché:**\n${elenco(v.motivi)}\n` : "";
+const bloccoAvvisi = v.avvisi.length ? `\n**Avvisi (non bloccanti):**\n${elenco(v.avvisi)}\n` : "";
 console.log(`## Judge — numero ${period}: ${v.esito === "promosso" ? "✅ PROMOSSO" : "❌ BOCCIATO"}
 
 | criterio | voto | motivo |
 |---|---|---|
 ${voti.join("\n")}
-${nota ? `\n> ${nota}\n` : ""}${v.motivi.length ? `\n**Bocciato perché:**\n${v.motivi.map((m) => `- ${m}`).join("\n")}\n` : ""}${v.avvisi.length ? `\n**Avvisi (non bloccanti):**\n${v.avvisi.map((m) => `- ${m}`).join("\n")}\n` : ""}
+${bloccoNota}${bloccoMotivi}${bloccoAvvisi}
 *La politica del gate è in \`engine/lib/judge.mjs\`; la verifica sulle fonti resta del gate umano in Studio. Rosso = leggi il referto prima di mergiare.*`);
 
 process.exit(v.esito === "promosso" ? 0 : 1);
