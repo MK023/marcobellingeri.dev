@@ -16,9 +16,37 @@ export function parseArticle(md) {
   if (!title || !description) throw new Error("frontmatter incompleto: servono title e description");
   const tags = (fm.match(/^tags:\s*\[(.*)\]\s*$/m)?.[1] ?? "")
     .split(",").map((t) => t.trim()).filter(Boolean);
+  // La data non e' quotata nei nostri frontmatter (lo schema Astro la vuole
+  // `date: YYYY-MM-DD`). E' obbligatoria: e' la data d'uscita programmata, e un
+  // pezzo senza data non uscirebbe mai — in silenzio, che e' il modo peggiore.
+  const date = fm.match(/^date:\s*"?(\d{4}-\d{2}-\d{2})"?\s*$/m)?.[1];
+  if (!date) throw new Error("frontmatter incompleto: serve date (YYYY-MM-DD)");
   // `edicola` (opzionale): l'etichetta corta per la card della pila — il titolo
   // intero non ci sta su un foglio da 240px.
-  return { title, description, tags, edicola: campo("edicola"), body: md.slice(m[0].length).trim() };
+  return { title, description, date, tags, edicola: campo("edicola"), body: md.slice(m[0].length).trim() };
+}
+
+// Il decisore dell'uscita programmata: dato il calendario dei pezzi e cio' che e'
+// gia' live su dev.to, dice cosa pubblicare oggi e cosa esce domani (il preavviso).
+// Puro: niente rete, niente side effect — pubblicare sta nello script.
+//
+// Le date restano STRINGHE ISO e si confrontano lessicograficamente: su
+// YYYY-MM-DD l'ordine e' esatto, e non si apre il capitolo fusi orari (il cron
+// gira in UTC, l'autore scrive a Roma). L'unica aritmetica e' "+1 giorno", fatta
+// da Date in UTC per non sbagliare i fine mese.
+export function inUscita({ articoli, canonicalPubblicati, oggi }) {
+  const live = new Set(canonicalPubblicati);
+  const d = new Date(`${oggi}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  const domani = d.toISOString().slice(0, 10);
+
+  // Un pezzo gia' uscito non si ripubblica e non si annuncia: l'upsert
+  // aggiornerebbe l'articolo live senza motivo, e il preavviso sarebbe rumore.
+  const attesa = articoli.filter((a) => !live.has(a.canonicalUrl));
+  return {
+    daPubblicare: attesa.filter((a) => a.date <= oggi),
+    domani: attesa.filter((a) => a.date === domani),
+  };
 }
 
 // Gli articoli pubblicati dell'account (per le card automatiche dell'Edicola).

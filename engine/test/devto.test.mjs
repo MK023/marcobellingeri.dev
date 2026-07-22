@@ -2,7 +2,7 @@
 // Stub di fetch globale con cattura delle richieste, zero rete.
 import { test, afterEach } from "node:test";
 import { strict as assert } from "node:assert";
-import { parseArticle, upsertArticle } from "../lib/devto.mjs";
+import { parseArticle, upsertArticle, inUscita } from "../lib/devto.mjs";
 import { runEngine } from "./helpers/spawn.mjs";
 
 const realFetch = globalThis.fetch;
@@ -109,6 +109,58 @@ test("upsertArticle: risposta non-ok -> throw con status e corpo", async () => {
     /devto me\/all 500: boom/);
 });
 
+// ---- inUscita: il decisore puro dell'uscita programmata -----------------
+
+// Le date restano stringhe ISO: confrontarle lessicograficamente e' esatto e
+// non apre il capitolo fusi orari (il cron gira in UTC, l'autore scrive a Roma).
+const CAL = (over = {}) => ({
+  articoli: [
+    { slug: "vecchio", date: "2026-07-15", canonicalUrl: "https://marcobellingeri.dev/en/writing/vecchio" },
+    { slug: "oggi", date: "2026-07-22", canonicalUrl: "https://marcobellingeri.dev/en/writing/oggi" },
+    { slug: "domani", date: "2026-07-23", canonicalUrl: "https://marcobellingeri.dev/en/writing/domani" },
+    { slug: "lontano", date: "2026-08-05", canonicalUrl: "https://marcobellingeri.dev/en/writing/lontano" },
+  ],
+  canonicalPubblicati: [],
+  oggi: "2026-07-22",
+  ...over,
+});
+const slugs = (l) => l.map((a) => a.slug);
+
+test("inUscita: esce cio' che ha la data arrivata, non il futuro", () => {
+  const r = inUscita(CAL());
+  assert.deepEqual(slugs(r.daPubblicare), ["vecchio", "oggi"]);
+  assert.deepEqual(slugs(r.domani), ["domani"]);
+});
+
+test("inUscita: un pezzo gia' live su dev.to non si ripubblica", () => {
+  const r = inUscita(CAL({ canonicalPubblicati: ["https://marcobellingeri.dev/en/writing/vecchio"] }));
+  assert.deepEqual(slugs(r.daPubblicare), ["oggi"]);
+});
+
+test("inUscita: il preavviso non scatta per un pezzo gia' uscito", () => {
+  const r = inUscita(CAL({ canonicalPubblicati: ["https://marcobellingeri.dev/en/writing/domani"] }));
+  assert.deepEqual(slugs(r.domani), []);
+});
+
+test("inUscita: il giorno dopo il 31 e' il 1 del mese dopo (niente aritmetica a mano)", () => {
+  const r = inUscita(CAL({
+    articoli: [{ slug: "primo-agosto", date: "2026-08-01", canonicalUrl: "u" }],
+    oggi: "2026-07-31",
+  }));
+  assert.deepEqual(slugs(r.domani), ["primo-agosto"]);
+  assert.deepEqual(slugs(r.daPubblicare), []);
+});
+
+test("inUscita: senza articoli non inventa nulla", () => {
+  const r = inUscita(CAL({ articoli: [] }));
+  assert.deepEqual(r.daPubblicare, []);
+  assert.deepEqual(r.domani, []);
+});
+
+test("parseArticle: legge anche la data (non quotata) dal frontmatter", () => {
+  assert.equal(parseArticle(MD).date, "2026-07-15");
+});
+
 // ---- CLI (spawn) -------------------------------------------------------
 
 test("devto: senza slug o slug sporco -> uso ed exit 1", () => {
@@ -122,6 +174,31 @@ test("devto: slug inesistente -> errore chiaro ed exit 1", () => {
   const r = runEngine(["engine/devto.mjs", "non-esiste-di-sicuro"], [], { DEVTO_API_KEY: "k" });
   assert.equal(r.code, 1);
   assert.match(r.stderr, /articolo non trovato/);
+});
+
+test("devto --due: pubblica i pezzi con la data arrivata ed emette la riga DOMANI=", () => {
+  const routes = [
+    { match: "articles/me/published", body: [] }, // niente ancora live su dev.to
+    { match: "articles/me/all", body: [] },
+    { match: "dev.to/api/articles", method: "POST", body: { id: 7, url: "https://dev.to/mk/x-7" } },
+  ];
+  const r = runEngine(["engine/devto.mjs", "--due"], routes, { DEVTO_API_KEY: "k" });
+  assert.equal(r.code, 0, r.stderr);
+  // Gli articoli veri in writing/en hanno date passate: devono uscire tutti.
+  assert.match(r.stdout, /PUBBLICATO audit-di-se \(data 2026-07-15\)/);
+  // Contratto col workflow: la riga esiste sempre, anche vuota.
+  assert.match(r.stdout, /^DOMANI=/m);
+});
+
+test("devto --due: un pezzo gia' live non viene ripubblicato", () => {
+  const routes = [
+    { match: "articles/me/published", body: [{ canonical_url: "https://marcobellingeri.dev/en/writing/audit-di-se" }] },
+    { match: "articles/me/all", body: [] },
+    { match: "dev.to/api/articles", method: "POST", body: { id: 7, url: "https://dev.to/mk/x-7" } },
+  ];
+  const r = runEngine(["engine/devto.mjs", "--due"], routes, { DEVTO_API_KEY: "k" });
+  assert.equal(r.code, 0, r.stderr);
+  assert.doesNotMatch(r.stdout, /PUBBLICATO audit-di-se/);
 });
 
 test("devto: happy path sull'articolo vero — create draft con canonical", () => {
