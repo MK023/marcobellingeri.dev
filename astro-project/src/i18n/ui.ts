@@ -30,6 +30,7 @@ export const ui = {
     'sec.source': 'SOURCE: HEAD SELF · LIVE',
     'sec.loading': 'reading response headers…',
     'sec.note': 'Headers are applied at the edge (Cloudflare) and read live from this page’s response — locally they may show as missing.',
+    'sec.aiNote': 'The terminal on this page prints text written by a model. Keeping that text from becoming code is not a matter of trusting the model: the page has to refuse to run anything inline. Those last two rows are that refusal, read from the policy your browser just enforced.',
     'sec.title': 'Security',
     'sec.intro': 'This page audits itself. The table below is not a claim — it is read live from the response headers your browser just received.',
 
@@ -113,6 +114,7 @@ export const ui = {
     'sec.source': 'FONTE: HEAD SELF · LIVE',
     'sec.loading': 'lettura degli header di risposta…',
     'sec.note': 'Gli header sono applicati all’edge (Cloudflare) e letti live dalla risposta di questa pagina — in locale possono risultare assenti.',
+    'sec.aiNote': 'Il terminale di questa pagina stampa testo scritto da un modello. Perché quel testo non diventi codice non basta fidarsi del modello: serve che la pagina si rifiuti di eseguire qualunque cosa inline. Le ultime due righe sono quel rifiuto, letto dalla policy che il tuo browser ha appena applicato.',
     'sec.title': 'Security',
     'sec.intro': 'Questa pagina fa l’audit di sé stessa. La tabella qui sotto non è una dichiarazione: è letta dal vivo dagli header di risposta che il tuo browser ha appena ricevuto.',
 
