@@ -1,0 +1,39 @@
+---
+// Il portale verso una pagina "viva" del sito (Radar, grafo Atlas): un bottone
+// grande e dichiarato, non un link nascosto in un paragrafo. Riusabile: label,
+// sottotitolo e destinazione arrivano da fuori, lo stile è uno solo.
+interface Props {
+  href: string;
+  label: string;
+  sub?: string;
+}
+const { href, label, sub } = Astro.props;
+---
+
+<a class="portal-btn" href={href}>
+  <span class="portal-label display">{label}</span>
+  {sub && <span class="portal-sub mono">{sub}</span>}
+  <span class="portal-arrow mono" aria-hidden="true">→</span>
+</a>
+
+<style>
+  .portal-btn{
+    display:flex; align-items:center; gap:14px;
+    margin-top:28px; padding:16px 20px;
+    border:2px solid var(--rule); background:var(--paper);
+    text-decoration:none; color:var(--ink);
+    box-shadow:4px 4px 0 var(--rule);
+  }
+  .portal-btn:hover, .portal-btn:focus-visible{
+    background:var(--ink); color:var(--paper);
+    box-shadow:2px 2px 0 var(--rule);
+    transform:translate(2px, 2px);
+  }
+  .portal-label{ font-size:clamp(18px, 3vw, 24px); line-height:1; }
+  .portal-sub{ font-size:11px; letter-spacing:0.06em; opacity:0.75; }
+  .portal-arrow{ margin-left:auto; font-size:20px; }
+  @media (max-width: 520px){
+    .portal-btn{ flex-wrap:wrap; gap:8px; }
+    .portal-sub{ order:3; width:100%; }
+  }
+</style>

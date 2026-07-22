@@ -1,0 +1,412 @@
+---
+import type { Lang } from '../../i18n/ui';
+import { getRelativeLocaleUrl } from 'astro:i18n';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import UtilityBar from '../../components/UtilityBar.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import { FONTI } from '../../data/radar-fonti.js';
+
+export function getStaticPaths() {
+  return [{ params: { lang: 'en' } }, { params: { lang: 'it' } }];
+}
+
+const { lang } = Astro.params as { lang: Lang };
+
+// Radar — security world events. Stessa filosofia della sezione Security:
+// dimostrare, non dichiarare. Ogni punto sul globo è un'autorità reale, ogni
+// titolo è linkato alla fonte, ogni fonte porta la licenza che ne permette
+// l'uso qui. Le fonti scartate (e perché) sono in docs/FONTI.md nel repo.
+const copy = {
+  it: {
+    title: 'Radar — security world events',
+    tagline: 'Chi attacca, chi risponde, chi scrive le regole.',
+    intro:
+      'Ogni punto è un’autorità di sicurezza reale: i suoi bollettini di oggi, letti dai feed ufficiali e linkati alla fonte. Solo fonti con licenza che ne permette l’uso qui — le altre, per quanto spettacolari, sono rimaste fuori. Niente laser, niente “attacchi al secondo”: quelli sono teatro.',
+    updated: 'aggiornato',
+    updatedFallback: 'I dati si caricano con JavaScript; qui sotto le fonti, sempre raggiungibili.',
+    kevH: 'Sfruttate adesso — CISA KEV',
+    kevSub: 'Vulnerabilità con sfruttamento attivo osservato. Catalogo CC0, verificabile alla fonte.',
+    fontiH: 'Le fonti, con le loro licenze',
+    fontiSub:
+      'La regola d’ammissione: una fonte entra solo se la sua licenza permette per iscritto quest’uso. L’attribuzione non è cortesia — è la condizione della licenza.',
+    bollettini: 'bollettini →',
+    back: 'Torna alla home',
+    io: { nome: 'Marco Bellingeri', luogo: 'Casale Monferrato', desc: 'Cloud & Security. Il radar lo leggo da qui.' },
+    naturalEarth: 'Contorni: Natural Earth (pubblico dominio) via world-atlas (ISC).',
+  },
+  en: {
+    title: 'Radar — security world events',
+    tagline: 'Who attacks, who responds, who writes the rules.',
+    intro:
+      'Every dot is a real security authority: its bulletins from today, read from official feeds and linked to the source. Only sources whose licence permits this use made it in — the spectacular ones that didn’t are out. No lasers, no “attacks per second”: that’s theatre.',
+    updated: 'updated',
+    updatedFallback: 'Data loads with JavaScript; the sources below are always reachable.',
+    kevH: 'Exploited right now — CISA KEV',
+    kevSub: 'Vulnerabilities with observed active exploitation. CC0 catalog, verifiable at the source.',
+    fontiH: 'The sources, with their licences',
+    fontiSub:
+      'The admission rule: a source enters only if its licence permits this use in writing. Attribution is not courtesy — it is the licence’s condition.',
+    bollettini: 'bulletins →',
+    back: 'Back to home',
+    io: { nome: 'Marco Bellingeri', luogo: 'Casale Monferrato', desc: 'Cloud & Security. This is where I read the radar from.' },
+    naturalEarth: 'Outlines: Natural Earth (public domain) via world-atlas (ISC).',
+  },
+}[lang];
+
+const backHref = getRelativeLocaleUrl(lang, '');
+---
+
+<BaseLayout lang={lang} title={copy.title} description={copy.tagline} path="radar">
+  <UtilityBar />
+  <main id="main-content">
+    <article class="radar-wrap">
+      <p class="radar-cred mono">RADAR</p>
+      <h1 class="radar-title">{copy.title}</h1>
+      <p class="radar-intro">{copy.intro}</p>
+      <p class="radar-updated mono" id="radar-updated" data-label={copy.updated}>{copy.updatedFallback}</p>
+
+      <div class="radar-globe" id="radar-globe" data-lang={lang} data-io={JSON.stringify(copy.io)}>
+        <canvas id="radar-canvas" aria-hidden="true"></canvas>
+        <div class="radar-card mono" id="radar-card" hidden></div>
+      </div>
+
+      <section class="radar-kev">
+        <h2>{copy.kevH}</h2>
+        <p class="radar-sub">{copy.kevSub}</p>
+        <ol class="mono" id="radar-kev-list">
+          <li><a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" rel="noopener">cisa.gov/known-exploited-vulnerabilities-catalog</a></li>
+        </ol>
+      </section>
+
+      <!-- Il fallback È il contenuto: senza JS la pagina resta una mappa onesta
+           delle fonti, coi loro feed pubblici e le loro licenze. -->
+      <section class="radar-fonti">
+        <h2>{copy.fontiH}</h2>
+        <p class="radar-sub">{copy.fontiSub}</p>
+        {FONTI.map((f) => (
+          <div class="radar-fonte">
+            <h3>{f.nome} <span class="mono radar-luogo">· {f.luogo}</span></h3>
+            <p class="mono radar-licenza">
+              <a href={f.licenza.url} rel="noopener">{f.licenza.nome}</a>
+              {' — '}
+              <a href={f.home} rel="noopener">{copy.bollettini}</a>
+            </p>
+          </div>
+        ))}
+        <p class="mono radar-attrib">{copy.naturalEarth}</p>
+      </section>
+
+      <a class="util-btn radar-back" href={backHref}>← {copy.back}</a>
+    </article>
+  </main>
+  <SiteFooter />
+</BaseLayout>
+
+<script>
+  import land from '../../data/land-110m.json';
+
+  // ---- topojson: gli archi bastano ------------------------------------
+  // Per un globo wireframe non servono i poligoni: ogni arco è una polilinea
+  // di confine. Decodifica delta + transform, e si disegna tutto.
+  type Punti = [number, number][];
+  const topo = land as unknown as {
+    transform: { scale: [number, number]; translate: [number, number] };
+    arcs: [number, number][][];
+  };
+  const { scale, translate } = topo.transform;
+  const ARCHI: Punti[] = topo.arcs.map((arc) => {
+    let x = 0, y = 0;
+    return arc.map(([dx, dy]) => {
+      x += dx; y += dy;
+      return [x * scale[0] + translate[0], y * scale[1] + translate[1]] as [number, number];
+    });
+  });
+
+  const RAD = Math.PI / 180;
+  const contenitore = document.getElementById('radar-globe') as HTMLElement;
+  const canvas = document.getElementById('radar-canvas') as HTMLCanvasElement;
+  const card = document.getElementById('radar-card') as HTMLElement;
+  const ctx2d = canvas.getContext('2d');
+  const lang = contenitore.dataset.lang === 'en' ? 'en' : 'it';
+  const riduci = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  type PuntoRadar = {
+    id: string; nome: string; luogo: string; lat: number; lng: number;
+    strato: string; home: string;
+    licenza?: { nome: string; url: string };
+    items?: { titolo: string; url: string; data: string | null }[];
+    kev?: { cve: string; nome: string; data: string | null }[];
+  };
+
+  // Il punto ⚪: non è una fonte, è l'ancora. Da registro no — da copy sì.
+  const io = JSON.parse(contenitore.dataset.io || '{}') as { nome: string; luogo: string; desc: string };
+  const PUNTO_IO: PuntoRadar = {
+    id: 'io', nome: io.nome, luogo: io.luogo, lat: 45.135, lng: 8.455,
+    strato: 'io', home: `/${lang}/`,
+  };
+
+  let punti: PuntoRadar[] = [PUNTO_IO];
+  let rot = { lambda: -10, phi: -18 };
+  let selezionato: PuntoRadar | null = null;
+
+  // ---- tema: i colori vivono nei token, il canvas li rilegge -----------
+  const colori = () => {
+    const s = getComputedStyle(document.documentElement);
+    return {
+      carta: s.getPropertyValue('--paper').trim(),
+      inchiostro: s.getPropertyValue('--ink').trim(),
+      griglia: s.getPropertyValue('--halftone').trim(),
+      difesa: s.getPropertyValue('--violet').trim(),
+      regole: s.getPropertyValue('--orange').trim(),
+      io: s.getPropertyValue('--seal').trim(),
+    };
+  };
+  let tinte = colori();
+  new MutationObserver(() => { tinte = colori(); disegna(); })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] });
+
+  // ---- proiezione ortografica ------------------------------------------
+  const proietta = (lng: number, lat: number) => {
+    const l = (lng - rot.lambda) * RAD, f = lat * RAD, f0 = -rot.phi * RAD;
+    const cf = Math.cos(f);
+    return {
+      x: cf * Math.sin(l),
+      y: Math.cos(f0) * Math.sin(f) - Math.sin(f0) * cf * Math.cos(l),
+      z: Math.sin(f0) * Math.sin(f) + Math.cos(f0) * cf * Math.cos(l),
+    };
+  };
+
+  let W = 0, H = 0, R = 0, CX = 0, CY = 0;
+  const misura = () => {
+    const rect = contenitore.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = rect.width; H = rect.height;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
+    ctx2d?.setTransform(dpr, 0, 0, dpr, 0, 0);
+    R = Math.min(W, H) * 0.42; CX = W / 2; CY = H / 2;
+  };
+
+  const sullo_schermo = (p: { x: number; y: number }) => ({ x: CX + p.x * R, y: CY - p.y * R });
+
+  const traccia = (punti2d: Punti) => {
+    if (!ctx2d) return;
+    let penna = false;
+    for (const [lng, lat] of punti2d) {
+      const p = proietta(lng, lat);
+      if (p.z <= 0) { penna = false; continue; }
+      const s = sullo_schermo(p);
+      if (penna) ctx2d.lineTo(s.x, s.y); else { ctx2d.moveTo(s.x, s.y); penna = true; }
+    }
+  };
+
+  const fresco = (p: PuntoRadar) => {
+    const ultima = p.items?.[0]?.data;
+    if (!ultima) return false;
+    return Date.now() - Date.parse(ultima) < 48 * 3600 * 1000;
+  };
+
+  let fase = 0;
+  const disegna = () => {
+    if (!ctx2d || !W) return;
+    ctx2d.clearRect(0, 0, W, H);
+
+    // disco + graticola
+    ctx2d.beginPath();
+    ctx2d.arc(CX, CY, R, 0, Math.PI * 2);
+    ctx2d.strokeStyle = tinte.griglia; ctx2d.lineWidth = 1.2; ctx2d.stroke();
+    ctx2d.beginPath();
+    for (let lng = -150; lng <= 180; lng += 30) traccia(Array.from({ length: 61 }, (_, i) => [lng, -90 + i * 3] as [number, number]));
+    for (let lat = -60; lat <= 60; lat += 30) traccia(Array.from({ length: 121 }, (_, i) => [-180 + i * 3, lat] as [number, number]));
+    ctx2d.globalAlpha = 0.35; ctx2d.lineWidth = 0.5; ctx2d.stroke(); ctx2d.globalAlpha = 1;
+
+    // terre emerse
+    ctx2d.beginPath();
+    for (const arco of ARCHI) traccia(arco);
+    ctx2d.strokeStyle = tinte.inchiostro; ctx2d.lineWidth = 0.8; ctx2d.globalAlpha = 0.8;
+    ctx2d.stroke(); ctx2d.globalAlpha = 1;
+
+    // punti
+    for (const p of punti) {
+      const pr = proietta(p.lng, p.lat);
+      if (pr.z <= 0) continue;
+      const s = sullo_schermo(pr);
+      const tinta = p.strato === 'io' ? tinte.io : p.strato === 'regole' ? tinte.regole : tinte.difesa;
+      if (!riduci && fresco(p)) {
+        const onda = (fase % 90) / 90;
+        ctx2d.beginPath();
+        ctx2d.arc(s.x, s.y, 5 + onda * 14, 0, Math.PI * 2);
+        ctx2d.strokeStyle = tinta; ctx2d.globalAlpha = 1 - onda; ctx2d.lineWidth = 1.5;
+        ctx2d.stroke(); ctx2d.globalAlpha = 1;
+      }
+      ctx2d.beginPath();
+      ctx2d.arc(s.x, s.y, p === selezionato ? 6 : 4.5, 0, Math.PI * 2);
+      ctx2d.fillStyle = tinta; ctx2d.fill();
+      ctx2d.strokeStyle = tinte.carta; ctx2d.lineWidth = 1.5; ctx2d.stroke();
+    }
+  };
+
+  // ---- card -------------------------------------------------------------
+  const el = (tag: string, cls: string, testo?: string) => {
+    const e = document.createElement(tag);
+    e.className = cls;
+    if (testo) e.textContent = testo;
+    return e;
+  };
+
+  const apriCard = (p: PuntoRadar, sx: number, sy: number) => {
+    selezionato = p;
+    card.replaceChildren();
+    card.append(el('p', 'rc-luogo', `● ${p.luogo}`));
+    card.append(el('h3', 'rc-nome', p.nome));
+    if (p.id === 'io') card.append(el('p', 'rc-desc', io.desc));
+    for (const item of p.items ?? []) {
+      const riga = el('p', 'rc-item');
+      const a = el('a', 'rc-link', item.titolo) as HTMLAnchorElement;
+      a.href = item.url; a.rel = 'noopener'; a.target = '_blank';
+      riga.append(a);
+      if (item.data) riga.append(el('span', 'rc-data', ` ${item.data}`));
+      card.append(riga);
+    }
+    for (const k of (p.kev ?? []).slice(0, 3)) card.append(el('p', 'rc-item rc-kev', `${k.cve} · ${k.nome}`));
+    if (p.licenza) {
+      const lic = el('p', 'rc-licenza');
+      const a = el('a', 'rc-link', p.licenza.nome) as HTMLAnchorElement;
+      a.href = p.licenza.url; a.rel = 'noopener'; a.target = '_blank';
+      lic.append(document.createTextNode(lang === 'en' ? 'Source licence: ' : 'Licenza della fonte: '), a);
+      card.append(lic);
+    }
+    card.hidden = false;
+    const cw = card.offsetWidth, chh = card.offsetHeight;
+    card.style.left = `${Math.max(8, Math.min(sx + 14, W - cw - 8))}px`;
+    card.style.top = `${Math.max(8, Math.min(sy - chh / 2, H - chh - 8))}px`;
+    disegna();
+  };
+
+  const vicino = (mx: number, my: number) => {
+    let best: PuntoRadar | null = null, bd = 18 * 18;
+    for (const p of punti) {
+      const pr = proietta(p.lng, p.lat);
+      if (pr.z <= 0) continue;
+      const s = sullo_schermo(pr);
+      const d = (s.x - mx) ** 2 + (s.y - my) ** 2;
+      if (d < bd) { bd = d; best = p; }
+    }
+    return best;
+  };
+
+  // ---- interazione ------------------------------------------------------
+  let trascino = false, px = 0, py = 0, mosso = false;
+  canvas.addEventListener('pointerdown', (e) => { trascino = true; mosso = false; px = e.clientX; py = e.clientY; });
+  window.addEventListener('pointerup', (e) => {
+    if (trascino && !mosso) {
+      const r = canvas.getBoundingClientRect();
+      const p = vicino(e.clientX - r.left, e.clientY - r.top);
+      if (p) apriCard(p, e.clientX - r.left, e.clientY - r.top);
+      else { selezionato = null; card.hidden = true; disegna(); }
+    }
+    trascino = false;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!trascino) return;
+    const dx = e.clientX - px, dy = e.clientY - py;
+    if (Math.abs(dx) + Math.abs(dy) > 3) mosso = true;
+    rot = { lambda: rot.lambda - dx * 0.4, phi: Math.max(-60, Math.min(60, rot.phi + dy * 0.4)) };
+    px = e.clientX; py = e.clientY;
+    disegna();
+  });
+
+  // ---- moto -------------------------------------------------------------
+  const girando = !riduci;
+  const passo = () => {
+    if (girando && !trascino && !selezionato && !document.hidden) {
+      rot.lambda += 0.05;
+      fase += 1;
+      disegna();
+    } else if (!riduci && selezionato) {
+      fase += 1; // il battito dei punti freschi continua sotto la card
+      disegna();
+    }
+    requestAnimationFrame(passo);
+  };
+
+  // ---- dati -------------------------------------------------------------
+  const aggiornato = document.getElementById('radar-updated');
+  fetch('/api/radar')
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+    .then((dati: { aggiornatoIl: string; fonti: PuntoRadar[] }) => {
+      punti = [...dati.fonti, PUNTO_IO];
+      if (aggiornato) {
+        const min = Math.max(0, Math.round((Date.now() - Date.parse(dati.aggiornatoIl)) / 60000));
+        aggiornato.textContent = `${aggiornato.dataset.label} ${min} min ${lang === 'en' ? 'ago' : 'fa'}`;
+      }
+      const kev = dati.fonti.find((f) => f.id === 'cisa')?.kev ?? [];
+      const lista = document.getElementById('radar-kev-list');
+      if (lista && kev.length) {
+        lista.replaceChildren(
+          ...kev.map((k) => {
+            const li = document.createElement('li');
+            li.append(el('strong', 'rc-cve', k.cve), document.createTextNode(` ${k.nome} `), el('span', 'rc-data', k.data ?? ''));
+            return li;
+          }),
+        );
+      }
+      disegna();
+    })
+    .catch(() => { /* fail-open: il globo gira con la sola ancora, il fallback resta */ });
+
+  misura();
+  window.addEventListener('resize', () => { misura(); disegna(); });
+  disegna();
+  requestAnimationFrame(passo);
+</script>
+
+<style>
+  .radar-wrap{ max-width:860px; margin:0 auto; padding:56px 24px 48px; }
+  .radar-cred{ font-size:13px; letter-spacing:0.08em; opacity:0.7; margin:0 0 8px; }
+  .radar-title{
+    font-family:'Anton', sans-serif; text-transform:uppercase;
+    font-size:clamp(28px, 5.5vw, 48px); line-height:0.98; margin:0 0 16px;
+  }
+  .radar-intro{ font-size:16px; line-height:1.65; max-width:640px; margin:0 0 10px; }
+  .radar-updated{ font-size:11px; letter-spacing:0.05em; opacity:0.7; margin:0 0 18px; }
+
+  .radar-globe{
+    position:relative; width:100%; aspect-ratio:1/1; max-height:70vh;
+    border:2px solid var(--rule); background:var(--paper-dark);
+    touch-action:none; overflow:hidden;
+  }
+  .radar-globe canvas{ display:block; cursor:grab; }
+  .radar-globe canvas:active{ cursor:grabbing; }
+  .radar-card{
+    position:absolute; max-width:300px; padding:12px 14px;
+    background:var(--paper); border:2px solid var(--rule);
+    box-shadow:4px 4px 0 var(--rule); font-size:12px; line-height:1.5;
+  }
+  .radar-card :global(.rc-luogo){ margin:0; font-size:10px; letter-spacing:0.08em; opacity:0.7; text-transform:uppercase; }
+  .radar-card :global(.rc-nome){ font-family:'Anton', sans-serif; text-transform:uppercase; font-size:18px; margin:2px 0 8px; }
+  .radar-card :global(.rc-desc){ margin:0 0 8px; font-family:'Source Serif 4', serif; font-size:13px; }
+  .radar-card :global(.rc-item){ margin:0 0 6px; }
+  .radar-card :global(.rc-kev){ opacity:0.85; }
+  .radar-card :global(.rc-data){ opacity:0.6; font-size:10px; }
+  .radar-card :global(.rc-licenza){ margin:8px 0 0; padding-top:8px; border-top:1px solid var(--halftone); font-size:10px; opacity:0.8; }
+  .radar-card :global(a){ color:var(--orange-text); text-decoration:none; }
+  .radar-card :global(a:hover){ text-decoration:underline; }
+
+  .radar-kev, .radar-fonti{ margin-top:36px; }
+  .radar-kev h2, .radar-fonti h2{
+    font-family:'Anton', sans-serif; text-transform:uppercase;
+    font-size:clamp(20px, 3.5vw, 28px); margin:0 0 6px;
+  }
+  .radar-sub{ font-size:14px; line-height:1.6; opacity:0.85; max-width:620px; margin:0 0 14px; }
+  .radar-kev ol{ font-size:12px; line-height:1.9; padding-left:20px; margin:0; }
+  .radar-kev :global(.rc-cve){ letter-spacing:0.02em; }
+  .radar-kev :global(.rc-data){ opacity:0.6; font-size:10px; }
+  .radar-fonte{ border-top:1px solid var(--halftone); padding:12px 0; }
+  .radar-fonte h3{ font-size:16px; margin:0 0 4px; }
+  .radar-luogo{ font-size:11px; opacity:0.65; }
+  .radar-licenza{ font-size:11px; margin:0; }
+  .radar-licenza a{ color:var(--orange-text); }
+  .radar-attrib{ font-size:10px; opacity:0.6; margin-top:16px; }
+  .radar-back{ display:inline-block; margin-top:32px; text-decoration:none; }
+</style>
