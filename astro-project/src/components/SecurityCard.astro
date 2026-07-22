@@ -1,9 +1,19 @@
 ---
 import { numeroSezione } from '../lib/sections';
+import { getRelativeLocaleUrl } from 'astro:i18n';
 import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
+import PortalButton from './PortalButton.astro';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 const t = useTranslations(lang);
+
+// Il portale verso il Radar: la sezione dimostra che QUESTO sito è sicuro,
+// la pagina Radar estende lo stesso gesto al mondo — bollettini ufficiali,
+// fonti linkate, licenze dichiarate.
+const radar = {
+  it: { label: 'Radar', sub: 'security world events — chi attacca, chi risponde, chi scrive le regole' },
+  en: { label: 'Radar', sub: 'security world events — who attacks, who responds, who writes the rules' },
+}[lang];
 
 // Header attesi = quelli serviti da public/_headers. La card li rilegge LIVE
 // dalla risposta della pagina stessa (auto-referenziale): il sito dimostra
@@ -36,6 +46,7 @@ const expected = [
     </div>
     <p class="sec-note mono">{t('sec.note')}</p>
   </div>
+  <PortalButton href={getRelativeLocaleUrl(lang, 'radar')} label={radar.label} sub={radar.sub} />
 </section>
 
 <script>
