@@ -8,7 +8,15 @@ import { parseRssItems, hostAmmesso, normalizzaKev, gestisciRadar } from '../wor
 import { FONTI } from '../src/data/radar-fonti.js';
 
 const realFetch = globalThis.fetch;
-afterEach(() => { globalThis.fetch = realFetch; });
+afterEach(() => { globalThis.fetch = realFetch; delete globalThis.__SEGNALA_SENTRY__; });
+
+// Il reporter che in produzione registra worker/sentry.js. Qui raccoglie: un
+// fallimento che non passa di qui è un fallimento che nessuno vede.
+const catturaSegnalazioni = () => {
+  const viste = [];
+  globalThis.__SEGNALA_SENTRY__ = (messaggio, extra) => viste.push({ messaggio, extra });
+  return viste;
+};
 
 // Fixture nella forma REALE dei feed (catturata il 22-07-2026, non inventata).
 const RSS_CERTFR = `<?xml version='1.0' encoding='UTF-8'?>
@@ -160,6 +168,58 @@ test('radar: un feed che esplode non uccide la risposta (fail-open per fonte)', 
   const dati = await r.json();
   assert.ok(dati.mancanti.includes('ncsc-uk'));
   assert.ok(dati.fonti.find((f) => f.id === 'cisa').items.length > 0);
+});
+
+// ---- osservabilità: i fallimenti che nessuno vedeva ---------------------
+// Il fail-open è la scelta giusta (un feed giù non deve togliere la pagina), ma
+// fail-open SENZA segnale è cecità: la pagina resta su e mostra meno, e nessuno
+// sa che è successo. Questi tre test tengono la linea in entrambi i versi —
+// i due silenzi devono parlare, la giornata normale deve tacere.
+
+test('radar: il KEV giù non è più silenzioso (era un catch(() => []) muto)', async () => {
+  const viste = catturaSegnalazioni();
+  const map = TUTTI_OK();
+  map[FONTI.find((f) => f.kev).kev] = 'BOOM';
+  stubFeeds(map);
+  const r = await gestisciRadar(new Request('https://marcobellingeri.dev/api/radar'));
+  assert.equal(r.status, 200); // fail-open: la pagina resta in piedi
+  const dati = await r.json();
+  assert.deepEqual(dati.fonti.find((f) => f.id === 'cisa').kev, []);
+  assert.equal(viste.length, 1, 'il KEV caduto non è arrivato a Sentry');
+  assert.match(viste[0].messaggio, /^radar: /);
+  assert.match(viste[0].messaggio, /kev/i);
+});
+
+test('radar: tutte le fonti giù -> Sentry (il blackout non è una giornata tranquilla)', async () => {
+  const viste = catturaSegnalazioni();
+  const map = TUTTI_OK();
+  for (const f of FONTI) for (const u of f.feeds) map[u] = 'BOOM';
+  stubFeeds(map);
+  const r = await gestisciRadar(new Request('https://marcobellingeri.dev/api/radar'));
+  assert.equal(r.status, 200);
+  const dati = await r.json();
+  assert.ok(dati.mancanti.length > 0);
+  assert.ok(
+    viste.some((v) => /tutte le fonti/i.test(v.messaggio)),
+    'blackout totale senza segnale: il radar sarebbe cieco su sé stesso',
+  );
+});
+
+test('radar: una fonte sola giù NON allarma (è dichiarata in pagina, non è un silenzio)', async () => {
+  const viste = catturaSegnalazioni();
+  const map = TUTTI_OK();
+  for (const u of FONTI.find((f) => f.id === 'ncsc-uk').feeds) map[u] = 'BOOM';
+  stubFeeds(map);
+  const dati = await (await gestisciRadar(new Request('https://marcobellingeri.dev/api/radar'))).json();
+  assert.ok(dati.mancanti.includes('ncsc-uk')); // il visitatore lo vede
+  assert.equal(viste.length, 0, 'degradare di uno strato non è un incidente: così il segnale diventa rumore');
+});
+
+test('radar: giornata normale -> zero segnalazioni', async () => {
+  const viste = catturaSegnalazioni();
+  stubFeeds(TUTTI_OK());
+  await gestisciRadar(new Request('https://marcobellingeri.dev/api/radar'));
+  assert.deepEqual(viste, []);
 });
 
 test('radar: metodo non-GET -> 405', async () => {

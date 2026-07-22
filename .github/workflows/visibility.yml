@@ -44,3 +44,22 @@ jobs:
           gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "Visibility monitor fallito ($(date -u +%F))" \
             --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID — trace su Langfuse (visibility-monitor)."
+
+      # Vedi magazine-ingest.yml: l'issue on-failure copre il job che parte e
+      # fallisce, non il job che non parte. Da agosto il repo puo' restare
+      # silenzioso (networking) e i 60gg di inattivita' spengono gli schedule:
+      # questo check-in e' cio' che se ne accorge.
+      - name: Check-in Sentry (il cron e' vivo)
+        if: always()
+        env:
+          ESITO: ${{ job.status }}
+        run: |
+          stato=ok
+          [ "$ESITO" = "success" ] || stato=error
+          curl -sS -m 10 -X POST \
+            "https://o4511713634484224.ingest.de.sentry.io/api/4511714029273168/cron/visibility/ffcac5d108001982eb70aa431c32af75/" \
+            -H 'Content-Type: application/json' \
+            -d "{\"monitor_config\":{\"schedule\":{\"type\":\"crontab\",\"value\":\"0 6 * * 1\"},\"timezone\":\"UTC\",\"checkin_margin\":120,\"max_runtime\":20},\"status\":\"$stato\"}" \
+            && echo "check-in Sentry: $stato" \
+            || echo "check-in Sentry non riuscito — il monitor resta valido"
+          exit 0
