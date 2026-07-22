@@ -60,7 +60,15 @@ const strings = {
     const S = JSON.parse(overlay.dataset.strings || '{}');
 
     function scrollToId(id: string) {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        // Le sezioni vivono in home: da una pagina interna (radar, atlas,
+        // articoli) il comando naviga invece di fare un no-op silenzioso.
+        const lang = document.documentElement.lang === 'it' ? 'it' : 'en';
+        window.location.assign(`/${lang}/#${id}`);
+      }
       close();
     }
 
