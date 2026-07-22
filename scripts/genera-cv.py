@@ -58,6 +58,9 @@ SHA_GMAIL = "075f7b0c1c2e02b1aa1b6c417b19f5f3227934f4d782c375f41cd16e2bdc6083"  
 LEN_TELEFONO, LEN_DATA, LEN_GMAIL = 10, 8, 21
 
 
+TAG_RE = re.compile(r"<[^>]+>")
+
+
 def _sha(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
 
@@ -122,7 +125,7 @@ def sanifica(corpo: str, etichetta: str) -> str:
 
     tenuti = []
     for riga in re.findall(r"<(?:p|ul|li)[^>]*>[\s\S]*?</(?:p|ul|li)>|<ul>[\s\S]*?</ul>", corpo):
-        testo = html_mod.unescape(re.sub(r"<[^>]+>", "", riga)).strip()
+        testo = html_mod.unescape(TAG_RE.sub("", riga)).strip()
         if contiene_dato_sensibile(testo):
             print(f"  [{etichetta}] rimossa: {testo[:78]}")
             continue
@@ -154,23 +157,39 @@ def costruisci(lingua: str) -> Path:
 
     # ELENCHI PUNTATI, UN SOLO LINGUAGGIO (audit CV 22-07): nel docx alcune
     # esperienze usano "•" LETTERALI dentro paragrafi — sulla pagina diventano
-    # un terzo stile di lista, nero e disallineato. Ogni RUN contiguo di
-    # paragrafi-puntato diventa una <ul> vera in un colpo solo: le liste già
-    # vere non vengono toccate, quindi niente doppio wrapping.
-    def _run_in_lista(m: "re.Match[str]") -> str:
-        voci = re.findall(r"<p>\s*(?:•|·|●)\s*([\s\S]*?)</p>", m.group(0))
-        return "<ul>" + "".join(f"<li>{v}</li>" for v in voci) + "</ul>"
-
+    # un terzo stile di lista, nero e disallineato. Sanifica() emette un blocco
+    # per riga: si lavora A RIGHE (lineare — la versione a regex con
+    # quantificatori annidati era superlineare, Sonar S8786) e ogni run
+    # contiguo di paragrafi-puntato diventa una <ul> vera. Le liste già vere
+    # non vengono toccate: niente doppio wrapping.
     # il docx mette il bullet DENTRO il grassetto (<p><b>• Etichetta:</b>):
-    # lo si porta fuori, così il run qui sotto lo riconosce e il <b> resta
+    # lo si porta fuori, così il riconoscimento sotto lo vede e il <b> resta
     corpo = re.sub(r"<p>\s*<b>\s*([•·●])\s*", r"<p>\1 <b>", corpo)
-    corpo = re.sub(r"(?:<p>\s*(?:•|·|●)[\s\S]*?</p>\s*)+", _run_in_lista, corpo)
+
+    PUNTATO = re.compile(r"<p>\s*[•·●]\s*([\s\S]*?)</p>")
+    righe_out: list[str] = []
+    run: list[str] = []
+
+    def _chiudi_run() -> None:
+        if run:
+            righe_out.append("<ul>" + "".join(f"<li>{v}</li>" for v in run) + "</ul>")
+            run.clear()
+
+    for riga in corpo.split("\n"):
+        m = PUNTATO.fullmatch(riga.strip())
+        if m:
+            run.append(m.group(1))
+        else:
+            _chiudi_run()
+            righe_out.append(riga)
+    _chiudi_run()
+    corpo = "\n".join(righe_out)
 
     # La riga dell'azienda (bold tutto maiuscolo) prende aria sopra: i blocchi
     # di esperienza erano incollati l'uno all'altro.
     def _azienda(m: "re.Match[str]") -> str:
         testo = m.group(1)
-        senza_tag = re.sub(r"<[^>]+>", "", testo)
+        senza_tag = TAG_RE.sub("", testo)
         lettere = [c for c in senza_tag if c.isalpha()]
         if len(lettere) >= 5 and sum(c.isupper() for c in lettere) / len(lettere) > 0.8:
             return f'<p class="azienda"><b>{testo}</b>'
@@ -189,7 +208,7 @@ def costruisci(lingua: str) -> Path:
     # contatti, che qui vengono ridisegnati. Lasciarlo significherebbe stamparli due
     # volte, e una delle due copie conterrebbe i link che ho appena sanificato a mano.
     prima_sezione = corpo.index("<h2>")
-    scartato = re.sub(r"<[^>]+>", " ", corpo[:prima_sezione])
+    scartato = TAG_RE.sub(" ", corpo[:prima_sezione])
     for riga in filter(None, (r.strip() for r in scartato.split("  "))):
         print(f"  [{lingua}] intestazione originale scartata: {riga[:70]}")
     corpo = corpo[prima_sezione:]
