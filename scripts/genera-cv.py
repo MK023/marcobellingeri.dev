@@ -17,6 +17,7 @@ non implicita.
 
 import hashlib
 import html as html_mod
+import os
 import re
 import subprocess
 import sys
@@ -136,7 +137,9 @@ def sanifica(corpo: str, etichetta: str) -> str:
 
 
 def costruisci(lingua: str) -> Path:
-    sorgente = Path.home() / "Desktop" / f"marco_bellingeri_cv_{lingua.upper()}.docx"
+    # CV_SRC: dove stanno i .docx (default: la scrivania di Marco). Serve quando
+    # il TCC di macOS nega la scrivania al processo e si lavora su una copia.
+    sorgente = Path(os.environ.get("CV_SRC", Path.home() / "Desktop")) / f"marco_bellingeri_cv_{lingua.upper()}.docx"
     grezzo = subprocess.run(
         ["textutil", "-convert", "html", "-stdout", str(sorgente)],
         capture_output=True, text=True, check=True,
