@@ -8,6 +8,11 @@
 
 - [Home (EN)](https://marcobellingeri.dev/en/): dossier, percorso, stack, case study, progetti, contatti
 - [Home (IT)](https://marcobellingeri.dev/it/): versione italiana
+- [Radar (EN)](https://marcobellingeri.dev/en/radar/): security world events — official CERT bulletins (CISA, NCSC UK, CERT-FR) on an interactive globe, every point linked to its source, licences declared
+- [Radar (IT)](https://marcobellingeri.dev/it/radar/): versione italiana
+- [Atlas graph (EN)](https://marcobellingeri.dev/en/atlas/): the live knowledge graph of Marco's personal wiki — technical layers only, personal layers excluded by design
+- [Atlas graph (IT)](https://marcobellingeri.dev/it/atlas/): versione italiana
+- [AI transparency (EN)](https://marcobellingeri.dev/en/ai/): where this site uses AI (EU AI Act art. 50)
 
 ## Trasparenza AI
 

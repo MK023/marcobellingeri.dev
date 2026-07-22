@@ -12,14 +12,14 @@
 Sito personale di Marco (live dal 2026-07-10). Non un portfolio: un sito che **dimostra**
 invece di dichiarare (la sezione Security rilegge gli header dalla risposta HTTP; il
 Terminale interroga il RAG dal vivo). Astro statico bilingue IT/EN su Cloudflare Workers;
-un Worker sceglie la lingua su `/` e serve `/api/contact` + `/api/ask`. Backend `engine/`:
+un Worker sceglie la lingua su `/` e serve `/api/contact` + `/api/ask` + `/api/radar` (bollettini CERT aggregati, cache edge; registro licenze in `docs/FONTI.md` con guardia in CI). Backend `engine/`:
 pipeline RAG del magazine mensile (Valyu → verifica → generate → embed voyage-3.5 su
 Supabase pgvector → export). Security-by-design è il **posizionamento**, non una rifinitura.
 
 ## Struttura
 
 - `astro-project/` — il sito **e** il `worker/`. **Si parte da qui.**
-- `engine/` — pipeline Node zero-dipendenze (`fetch` nativo): `ingest`, `generate`, `embed`, `export`, `competitors`, `retrieve`, `visibility`, `devto`, `edicola`, `advance` (magazine in autopilot: i cron eseguono lo stadio sbloccato dai gate umani in Studio).
+- `engine/` — pipeline Node zero-dipendenze (`fetch` nativo): `ingest`, `generate`, `embed`, `export`, `competitors`, `retrieve`, `visibility`, `devto` (`--due` = uscita programmata), `edicola`, `advance`, `judge` (LLM-as-a-judge sulla PR di contenuto). Magazine in autopilot: i cron eseguono lo stadio sbloccato dai gate umani in Studio.
 - `supabase/` — migration sequenziali (`000N_*.sql`), RLS ovunque, DB ricostruibile da zero.
 - `docs/adr/` — decisioni architetturali (ADR). *(Le spec/piani di processo non si versionano: vivono nella sessione e restano in git history.)*
 

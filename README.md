@@ -22,9 +22,9 @@ sorgente.
 | Directory | Cosa contiene |
 | --- | --- |
 | `astro-project/` | Il sito. Astro statico, i18n EN/IT, componenti, CSP, test. **Si parte da qui.** |
-| `engine/` | Pipeline Node del numero mensile: sourcing → verifica → generazione → embed → export → radar competitor. Zero dipendenze esterne. |
+| `engine/` | Pipeline Node del numero mensile: sourcing → verifica → generazione → embed → export → judge (LLM-as-a-judge sulla PR di contenuto) → radar competitor. Più la distribuzione: `devto` (draft al merge, publish alla `date` del frontmatter), `edicola` (card automatiche). Zero dipendenze esterne. |
 | `supabase/` | Migration, seed e policy RLS del database RAG (Postgres + pgvector). Ricostruibile da zero. |
-| `docs/adr/` | Le decisioni architetturali e il perché. |
+| `docs/adr/` | Le decisioni architetturali e il perché. In `docs/FONTI.md` il registro licenze delle fonti del Radar (con guardia in CI). |
 | `mock-html-singolo/` | Il prototipo HTML da cui è nato tutto. Riferimento storico, non si tocca. |
 
 ## Farlo girare
@@ -198,6 +198,53 @@ il tracking dei task vive su Notion, non su GitHub Issues.
 - [x] **Distribuzione canonical-first** — il sito è la casa canonical; dev.to è lo specchio primario (import RSS nativo, `canonical_url` che punta qui). Long-form ospitato sul sito (collection `writing`) ed Edicola delle firme esterne
 - [x] **Terminale C1** (`2026-07-21`) — interfaccia RAG reale (`ask`): endpoint `/api/ask` con Turnstile, rate-limit per IP, cap sul body, anon key gated a `published`, citazioni e disclosure AI Act art. 50 nel payload
 - [x] **Automazioni editoriali** (`2026-07-21`) — il ciclo editoriale gira da solo, i gate umani restano: draft dev.to in CI al merge di un articolo (`devto-draft.yml`), card Edicola dal cron che interroga dev.to e porta la PR in produzione a gate verdi (`edicola-card.yml`), magazine in autopilot (ingest mensile a rotazione + advance giornaliero che esegue lo stadio sbloccato dall'ultimo gesto umano in Studio; la PR di contenuto la merge Marco). Errori dell'engine su Sentry (`lib/sentry.mjs`, zero-dep, fail-open)
+
+- [x] **Uscita programmata** (`2026-07-22`) — i pezzi dell'Edicola si scrivono in anticipo e si mergiano insieme: escono da soli su dev.to alla `date` del frontmatter (`devto-publish-due.yml`, preavviso via issue 24h prima — il silenzio pubblica, l'approvazione umana resta una sola: il merge)
+- [x] **Judge** (`2026-07-22`) — LLM-as-a-judge sulla PR di contenuto del magazine: rubrica a 5 criteri ancorati, politica di gate scritta e testata (`engine/lib/judge.mjs`), referto in commento, tracing Langfuse. Il merge resta umano
+- [x] **Radar** (`2026-07-22`) — [/radar](https://marcobellingeri.dev/en/radar/): i bollettini delle autorità di sicurezza (CISA, NCSC UK, CERT-FR + strato regole UE) su un globo interattivo. Solo fonti con licenza commerciale-compatibile verificata per iscritto (`docs/FONTI.md`); `/api/radar` nel Worker con cache edge, fail-open per fonte, link ammessi solo sui domini della fonte
+- [x] **Grafo Atlas** (`2026-07-22`) — [/atlas](https://marcobellingeri.dev/en/atlas/): il grafo vero della knowledge base personale, 138 nodi, layout precalcolato, 20KB. Solo i layer tecnici: i 373 link verso i layer privati sono contati, mai nominati — tre guardie di privacy (generatore, test allowlist, test anti-stringhe)
+
+## Architettura in un colpo d'occhio
+
+```mermaid
+flowchart LR
+    subgraph EDGE["Cloudflare Worker"]
+        W["/  → lingua"]
+        C["/api/contact"]
+        A["/api/ask (RAG)"]
+        R["/api/radar (cache 30')"]
+    end
+    subgraph SITO["Astro statico (main = produzione)"]
+        HOME["home + sezioni"]
+        RAD["/radar — globo"]
+        ATL["/atlas — grafo wiki"]
+        WRI["writing / magazine"]
+    end
+    subgraph ENGINE["engine/ (cron GitHub Actions)"]
+        ING["ingest (Valyu)"] --> GEN["generate (Claude)"]
+        GEN --> EMB["embed (Voyage)"] --> EXP["export → PR contenuto"]
+        EXP --> JUD["judge → referto in PR"]
+        DUE["devto --due (publish alla date)"]
+        CARD["edicola (card dalla pila)"]
+    end
+    DB[("Supabase pgvector<br/>publish gate nel DB")]
+    CERT["feed CERT ufficiali<br/>CISA · NCSC UK · CERT-FR"]
+    DEVTO["dev.to (canonical → sito)"]
+
+    R -->|"fetch fail-open"| CERT
+    A --> DB
+    ING --> DB
+    EMB --> DB
+    EXP --> WRI
+    DUE --> DEVTO
+    CARD --> DEVTO
+    RAD --> R
+    HOME -.->|"gate umani: verify · approva · merge"| ENGINE
+```
+
+I gate umani non sono nel diagramma per modestia: **sono il diagramma** — niente
+passa a `published` senza un gesto di Marco, e il blocco vive nel database, non
+in una policy.
 
 ## Licenza
 
