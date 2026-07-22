@@ -13,11 +13,18 @@ const { lang } = Astro.params as { lang: Lang };
 // Stessa filosofia della sezione Security: dimostrare, non dichiarare — ogni
 // affermazione punta al posto vivo dove la si può verificare.
 const CONTATTO = 'mkdevpy@proton.me';
-const UPDATED = '2026-07-21';
+const UPDATED = '2026-07-22';
+
+// Il giudice vive nella CI, non sul sito: l'unico posto dove lo si verifica è
+// il workflow nel repo pubblico. La pagina promette «ogni voce linka il punto
+// dove puoi verificarla» — vale anche quando il punto è su GitHub.
+const JUDGE_URL =
+  'https://github.com/MK023/marcobellingeri.dev/blob/main/.github/workflows/magazine-judge.yml';
 
 const privacyUrl = getRelativeLocaleUrl(lang, 'privacy');
 const magazineUrl = getRelativeLocaleUrl(lang, '') + '#magazine';
 const terminalUrl = getRelativeLocaleUrl(lang, '') + '#contact';
+const radarUrl = getRelativeLocaleUrl(lang, 'radar');
 
 const copy = {
   it: {
@@ -43,6 +50,14 @@ const copy = {
         linkLabel: 'Vai al magazine →',
       },
       {
+        name: 'Il giudice del magazine (LLM-as-a-judge)',
+        what: 'Prima che un numero arrivi sotto gli occhi di una persona, Claude lo legge e gli dà un voto su cinque criteri, seguendo una rubrica scritta prima e uguale per ogni numero. Non pubblica e non boccia da solo: viene prima della revisione umana, non al posto suo.',
+        data: 'Legge solo il testo del numero in lavorazione, in italiano e in inglese, già destinato alla pubblicazione. Nessun dato personale, nessun dato dei visitatori. Gira lato server insieme al resto della pipeline, non nel tuo browser.',
+        disclosure: 'Il voto e le motivazioni restano pubblici sulla proposta di modifica del numero. Se qualcuno prova a nascondere istruzioni per il modello dentro il testo del caso, quel numero prende il voto minimo: anche qui l’output del modello è trattato come input non fidato.',
+        link: JUDGE_URL,
+        linkLabel: 'Guarda il giudice nel repo →',
+      },
+      {
         name: 'Il monitor di visibilità',
         what: 'Uno script interno che misura come il sito compare nei motori di ricerca e nelle risposte degli assistenti IA (Google Search Console, Perplexity). Produce un report privato: non genera contenuti pubblici e non prende decisioni.',
         data: 'Nessun dato dei visitatori: interroga servizi esterni sul sito stesso.',
@@ -51,6 +66,10 @@ const copy = {
         linkLabel: null,
       },
     ],
+    noAiH: 'Il Radar non usa l’IA (e va detto)',
+    noAi:
+      'Il globo dei bollettini sembra il posto più probabile dove trovare un modello, e invece non ne ha nessuno. Scarica i comunicati pubblici delle agenzie di sicurezza, li ripulisce e li mette sulla mappa: quello che leggi è il titolo scritto dall’agenzia, con il link al suo bollettino. Nessun modello lo riassume e nessuno lo riscrive. Su un sito che parla di sicurezza dell’IA, dire dove l’IA non c’è vale quanto dire dove c’è.',
+    noAiLink: 'Apri il Radar →',
     builtH: 'Come è costruito il sito',
     built:
       'Il sito è sviluppato in pair programming con Claude Code: il codice nasce da una collaborazione umano-IA, con revisione umana su ogni modifica e gate automatici di test e sicurezza prima di ogni pubblicazione. Lo dice anche il colophon in fondo alla pagina, da sempre.',
@@ -85,6 +104,14 @@ const copy = {
         linkLabel: 'Go to the magazine →',
       },
       {
+        name: 'The magazine judge (LLM-as-a-judge)',
+        what: 'Before an issue reaches human eyes, Claude reads it and scores it against five criteria, following a rubric written up front and applied the same way to every issue. It publishes nothing and rejects nothing on its own: it comes before human review, not instead of it.',
+        data: 'It reads only the text of the issue being worked on, in Italian and English, already meant for publication. No personal data, no visitor data. It runs server-side with the rest of the pipeline, not in your browser.',
+        disclosure: 'The score and the reasoning stay public on the issue’s change request. If someone tries to hide instructions for the model inside the case text, that issue gets the lowest score: here too, model output is treated as untrusted input.',
+        link: JUDGE_URL,
+        linkLabel: 'See the judge in the repo →',
+      },
+      {
         name: 'The visibility monitor',
         what: 'An internal script that measures how the site shows up in search engines and AI assistants’ answers (Google Search Console, Perplexity). It produces a private report: it generates no public content and makes no decisions.',
         data: 'No visitor data: it queries external services about the site itself.',
@@ -93,6 +120,10 @@ const copy = {
         linkLabel: null,
       },
     ],
+    noAiH: 'The Radar uses no AI (and that is worth saying)',
+    noAi:
+      'The globe of bulletins looks like the most likely place to find a model, and it has none. It fetches the public advisories from security agencies, cleans them up and puts them on the map: what you read is the headline the agency wrote, with a link to its own bulletin. No model summarises it and none rewrites it. On a site about AI security, saying where the AI is not is worth as much as saying where it is.',
+    noAiLink: 'Open the Radar →',
     builtH: 'How the site is built',
     built:
       'The site is developed in pair programming with Claude Code: the code comes out of a human-AI collaboration, with human review on every change and automated test and security gates before anything reaches production. The colophon at the bottom of the page has said so from day one.',
@@ -122,6 +153,9 @@ const copy = {
         {s.link && <a href={s.link}>{s.linkLabel}</a>}
       </section>
     ))}
+
+    <h2>{copy.noAiH}</h2>
+    <p>{copy.noAi} <a href={radarUrl}>{copy.noAiLink}</a></p>
 
     <h2>{copy.builtH}</h2>
     <p>{copy.built}</p>
