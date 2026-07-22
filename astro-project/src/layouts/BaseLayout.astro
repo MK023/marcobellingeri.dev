@@ -12,6 +12,12 @@ import '@fontsource/jetbrains-mono/500.css';
 import '@fontsource/jetbrains-mono/700.css';
 import { getAbsoluteLocaleUrl, getRelativeLocaleUrl } from 'astro:i18n';
 import { useTranslations, defaultLang, languages, type Lang } from '../i18n/ui';
+// Palette ⌘K e terminale vivono nel LAYOUT, non nelle singole pagine: il
+// bottone in UtilityBar esiste ovunque, quindi ovunque deve esistere chi lo
+// ascolta — su /radar e /atlas era un guscio vuoto (beccato da Marco su
+// Windows: label ferma a "⌘K" perché lo script che la adatta non girava).
+import CommandPalette from '../components/CommandPalette.astro';
+import NeonTerminal from '../components/NeonTerminal.astro';
 
 interface Props {
   lang?: Lang;
@@ -205,6 +211,9 @@ const suggestTargets = (Object.keys(languages) as Lang[])
   </div>
 
   <slot />
+
+  <NeonTerminal />
+  <CommandPalette />
 
   <script>
     // Scroll-reveal per sezioni e gruppi in staggered — globale, si applica
