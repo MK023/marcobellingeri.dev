@@ -570,13 +570,29 @@
   }
   .review-toggle:hover .review-chevron{ opacity:1; color:var(--orange-text); }
   .review-toggle.open .review-chevron{ opacity:1; }
+  /* Riga dei chip sotto il nome del progetto: stato + eventuale badge-portale.
+     I chip stanno fuori dal <button> del toggle (un link dentro un bottone
+     e' HTML invalido); il margine lo porta la riga, non il singolo chip. */
+  .review-chips{ display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap; }
   .status{
     display:inline-block;
     font-family:'JetBrains Mono', monospace;
     font-size:11px; letter-spacing:0.08em;
     padding:3px 8px;
     border:2px solid var(--ink);
-    margin-top:6px;
+  }
+  /* Il badge che apre una pagina viva (es. il grafo di Atlas): stesso
+     linguaggio dei chip di stato, ma e' un LINK e lo dichiara al passaggio. */
+  .review-portal{
+    display:inline-block;
+    font-size:11px; letter-spacing:0.08em;
+    padding:3px 8px;
+    border:2px solid var(--ink);
+    background:var(--seal); color:var(--ink);
+    text-decoration:none;
+  }
+  .review-portal:hover, .review-portal:focus-visible{
+    background:var(--ink); color:var(--paper);
   }
   .status.shipped{background:var(--orange);}
   .status.active{background:var(--violet); color:var(--paper);}
