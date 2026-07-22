@@ -317,17 +317,27 @@ const backHref = getRelativeLocaleUrl(lang, '');
   });
 
   // ---- moto -------------------------------------------------------------
+  // Due freni trovati dall'audit perf (714ms di main thread a 4x CPU):
+  //  - il globo sta SOTTO l'intro su mobile: disegnare fuori viewport è
+  //    lavoro per nessuno → IntersectionObserver mette in pausa;
+  //  - 60fps per una rotazione lenta non servono → si disegna a frame
+  //    alterni (~30fps), il passo di rotazione compensa.
   const girando = !riduci;
+  let inVista = true;
+  new IntersectionObserver(([e]) => { inVista = e.isIntersecting; }).observe(contenitore);
+  let frame = 0;
   const passo = () => {
-    if (girando && !trascino && !selezionato && !document.hidden) {
-      rot.lambda += 0.05;
-      fase += 1;
+    requestAnimationFrame(passo);
+    frame += 1;
+    if (!inVista || document.hidden || frame % 2) return;
+    if (girando && !trascino && !selezionato) {
+      rot.lambda += 0.1;
+      fase += 2;
       disegna();
     } else if (!riduci && selezionato) {
-      fase += 1; // il battito dei punti freschi continua sotto la card
+      fase += 2; // il battito dei punti freschi continua sotto la card
       disegna();
     }
-    requestAnimationFrame(passo);
   };
 
   // ---- dati -------------------------------------------------------------

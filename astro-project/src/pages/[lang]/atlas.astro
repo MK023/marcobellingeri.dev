@@ -204,9 +204,15 @@ const top = [...grafo.nodes].sort((a, b) => b.degree - a.degree).slice(0, 20);
   });
   canvas.addEventListener('pointerleave', () => { attivo = -1; hover.hidden = true; if (riduci) disegna(); });
 
+  // Stessi freni del globo (audit perf): pausa fuori viewport, ~30fps —
+  // per una deriva lenta bastano e il main thread mobile ringrazia.
+  let inVista = true;
+  new IntersectionObserver(([e]) => { inVista = e.isIntersecting; }).observe(frame);
+  let tick = 0;
   const passo = () => {
-    if (!riduci && !document.hidden) { t += 1; disegna(); }
     requestAnimationFrame(passo);
+    tick += 1;
+    if (!riduci && !document.hidden && inVista && tick % 2 === 0) { t += 2; disegna(); }
   };
 
   misura();

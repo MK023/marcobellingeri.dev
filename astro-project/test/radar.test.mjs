@@ -69,6 +69,11 @@ test('parseRssItems: i bypass della sanificazione non passano (CodeQL js/incompl
   assert.equal(parseRssItems(xml('5 &amp;#60; 6'))[0].titolo, '5 &#60; 6');
 });
 
+test('parseRssItems: le entity si decodificano anche nei LINK (l\'XML escapa & come &amp;)', () => {
+  const xml = `<rss><channel><item><title>t</title><link>https://x.example/p?a=1&amp;b=2</link></item></channel></rss>`;
+  assert.equal(parseRssItems(xml)[0].url, 'https://x.example/p?a=1&b=2');
+});
+
 test('parseRssItems: rispetta il tetto max', () => {
   assert.equal(parseRssItems(RSS_CERTFR, { max: 1 }).length, 1);
 });
