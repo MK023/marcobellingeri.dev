@@ -13,17 +13,23 @@ const TETTO_UPSTREAM = 400_000; // char: un feed più grosso è troncato, il par
 const MAX_ITEMS = 5;
 const MAX_KEV = 6;
 
-// Entity HTML nei titoli RSS (&#233;, &amp;, ...) -> testo, POI via i tag: un
-// titolo con markup escapato (&lt;b&gt;) deve uscire come solo testo. L'output
-// resta comunque plain text: la pagina lo rende via textContent, mai innerHTML.
-const decodifica = (s) =>
-  s
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#?39;|&apos;/g, "'")
-    .replace(/<[^>]*>/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+// Entity HTML nei titoli RSS (&#233;, &amp;, ...) -> testo, POI via i tag.
+// Due regole imposte da CodeQL, e ha ragione lui:
+//  - le entity si decodificano in UN SOLO passaggio (replace sequenziali
+//    double-unescaperebbero: &amp;#60; non deve diventare <);
+//  - i tag si spogliano A PUNTO FISSO (un passaggio solo e' aggirabile:
+//    <scr<x>ipt> ricompone <script> dopo la prima passata).
+// L'output resta plain text: la pagina lo rende via textContent, mai innerHTML.
+const ENTITA = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#39': "'" };
+const decodifica = (s) => {
+  let t = s.replace(/&(#\d+|amp|lt|gt|quot|apos|#39);/g, (m, n) =>
+    n.startsWith('#') ? String.fromCodePoint(Number(n.slice(1))) : ENTITA[n],
+  );
+  for (let prima = ''; prima !== t; ) { prima = t; t = t.replace(/<[^>]*>/g, ''); }
+  // un `<script` senza `>` sopravvivrebbe al punto fisso: in un titolo di
+  // bollettino le parentesi angolari non portano informazione — via anche loro
+  return t.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
+};
 
 export function hostAmmesso(url, hosts) {
   try {

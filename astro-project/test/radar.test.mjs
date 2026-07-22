@@ -53,6 +53,22 @@ test('parseRssItems: xml rotto o vuoto -> lista vuota, mai throw', () => {
   assert.deepEqual(parseRssItems('<rss><channel><item><title>senza link</title></item></channel></rss>'), []);
 });
 
+test('parseRssItems: i bypass della sanificazione non passano (CodeQL js/incomplete-multi-character-sanitization + js/double-escaping)', () => {
+  const xml = (titolo) => `<rss><channel><item><title>${titolo}</title><link>https://x.example/y</link></item></channel></rss>`;
+  // la PROPRIETÀ, non una stringa: qualunque cosa entri, nell'output non
+  // sopravvive nessuna parentesi angolare — nemmeno un <script senza chiusura
+  for (const cattivo of [
+    'a&lt;scr&lt;x&gt;ipt&gt;alert(1)&lt;/script&gt;b', // tag annidato che ricompone
+    'a&lt;script src=x b', // tag aperto senza `>`: sopravvivrebbe al solo punto fisso
+  ]) {
+    const t = parseRssItems(xml(cattivo))[0].titolo;
+    assert.doesNotMatch(t, /[<>]/, `parentesi sopravvissute in: ${t}`);
+    assert.match(t, /alert\(1\)|script src/, 'il testo innocuo deve restare');
+  }
+  // double-unescape: &amp;#60; deve restare testo (&#60;), MAI diventare <
+  assert.equal(parseRssItems(xml('5 &amp;#60; 6'))[0].titolo, '5 &#60; 6');
+});
+
 test('parseRssItems: rispetta il tetto max', () => {
   assert.equal(parseRssItems(RSS_CERTFR, { max: 1 }).length, 1);
 });
