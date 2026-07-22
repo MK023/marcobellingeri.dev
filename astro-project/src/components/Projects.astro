@@ -2,17 +2,18 @@
 import { numeroSezione } from '../lib/sections';
 import { getRelativeLocaleUrl } from 'astro:i18n';
 import { useTranslations, defaultLang, type Lang } from '../i18n/ui';
-import PortalButton from './PortalButton.astro';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 const t = useTranslations(lang);
 
-// Il portale verso il grafo di Atlas: la card qui sopra lo racconta, la
-// pagina lo MOSTRA — il grafo vero della wiki, filtrato ai layer pubblicabili.
-const atlas = {
-  it: { label: 'Il grafo di Atlas', sub: 'la wiki vista come la vede una macchina — dal vivo' },
-  en: { label: 'The Atlas graph', sub: 'the wiki as a machine sees it — live' },
-}[lang];
+// Il badge-portale della card Atlas: la card racconta il grafo, il badge lo
+// APRE — dentro lo scope del progetto, accanto al suo stato, non in fondo
+// alla sezione. Vive fuori dal <button> del toggle (un link dentro un bottone
+// è HTML invalido), nella riga dei chip.
+const portali: Record<Lang, Record<string, { path: string; label: string }>> = {
+  it: { 'case-atlas': { path: 'atlas', label: 'IL GRAFO, LIVE →' } },
+  en: { 'case-atlas': { path: 'atlas', label: 'THE GRAPH, LIVE →' } },
+};
 
 type Project = {
   id: string;
@@ -141,12 +142,17 @@ const labels = { problem: lang === 'en' ? 'PROBLEM' : 'PROBLEMA', approach: lang
           <span class="swatch-label mono">{p.name.toUpperCase()}</span>
         </div>
         <button class="review-toggle" data-target={p.id} aria-expanded="false" aria-controls={p.id}>
-          <div>
-            <h3>{p.name}</h3>
-            <span class={`status ${p.status} mono`}>{p.statusLabel}</span>
-          </div>
+          <h3>{p.name}</h3>
           <span class="review-chevron mono">{t('proj.details')}</span>
         </button>
+        <div class="review-chips">
+          <span class={`status ${p.status} mono`}>{p.statusLabel}</span>
+          {portali[lang][p.id] && (
+            <a class="review-portal mono" href={getRelativeLocaleUrl(lang, portali[lang][p.id].path)}>
+              {portali[lang][p.id].label}
+            </a>
+          )}
+        </div>
         <p>{p.summary}</p>
         <div class="review-detail" id={p.id}>
           <div class="case-block"><span class="label mono">{labels.problem}</span><p>{p.problem}</p></div>
@@ -156,7 +162,6 @@ const labels = { problem: lang === 'en' ? 'PROBLEM' : 'PROBLEMA', approach: lang
       </div>
     ))}
   </div>
-  <PortalButton href={getRelativeLocaleUrl(lang, 'atlas')} label={atlas.label} sub={atlas.sub} />
 </section>
 
 <script>
