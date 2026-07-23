@@ -45,6 +45,7 @@ const expected = [
       <p class="live-stack-status mono" id="sec-status">{t('sec.loading')}</p>
     </div>
     <p class="sec-note mono">{t('sec.note')}</p>
+    <p class="sec-note mono">{t('sec.aiNote')}</p>
   </div>
   <PortalButton href={getRelativeLocaleUrl(lang, 'radar')} label={radar.label} sub={radar.sub} />
 </section>
@@ -100,6 +101,19 @@ const expected = [
         box.replaceChildren();
         expected.forEach((name) => box.appendChild(row(name, res.headers.get(name))));
         box.appendChild(row('Content-Security-Policy (meta)', metaCsp && foldHashes(metaCsp)));
+
+        // Le due righe AI. Il terminale stampa testo di un modello: che non
+        // diventi codice non è una promessa, è una policy che il browser ha già
+        // applicato quando leggi questa riga. Si guardano ENTRAMBE le sorgenti
+        // (header + meta): se una delle due concedesse la deroga, vincerebbe la
+        // deroga, e mostrare solo l'altra direbbe mezza verità.
+        const cspEffettiva = [res.headers.get('Content-Security-Policy'), metaCsp]
+          .filter(Boolean)
+          .join(' ; ');
+        const senza = (token: string) =>
+          cspEffettiva && !cspEffettiva.includes(token) ? 'OWASP LLM02 · output handling' : null;
+        box.appendChild(row("CSP: no 'unsafe-inline'", senza("'unsafe-inline'")));
+        box.appendChild(row("CSP: no 'unsafe-eval'", senza("'unsafe-eval'")));
       })
       .catch(() => {
         if (status) status.textContent = missLabel;
