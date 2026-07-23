@@ -63,3 +63,28 @@ jobs:
           gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "Magazine ingest fallito ($(date -u +%F))" \
             --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID — trace su Langfuse, errore su Sentry (script: ingest)."
+
+      # L'issue qui sopra richiede che il job PARTA e fallisca. Se GitHub
+      # disabilita lo schedule (60gg di inattivita' del repo) il cron non parte
+      # affatto: nessun fallimento, nessuna issue, e il numero del mese non esce
+      # in silenzio. Questo check-in e' l'unica cosa che si accorge dell'ASSENZA.
+      # Stesso pattern di supabase-keepalive.yml — ponytail: alla terza copia si
+      # estrae una composite action, oggi due bastano e il keepalive non si tocca.
+      #
+      # La chiave nell'URL e' la public key del DSN: pubblica per costruzione.
+      # `|| true` non e' pigrizia: un guardiano che uccide cio' che sorveglia e'
+      # peggio di nessun guardiano.
+      - name: Check-in Sentry (il cron e' vivo)
+        if: always()
+        env:
+          ESITO: ${{ job.status }}
+        run: |
+          stato=ok
+          [ "$ESITO" = "success" ] || stato=error
+          curl -sS -m 10 -X POST \
+            "https://o4511713634484224.ingest.de.sentry.io/api/4511714029273168/cron/magazine-ingest/ffcac5d108001982eb70aa431c32af75/" \
+            -H 'Content-Type: application/json' \
+            -d "{\"monitor_config\":{\"schedule\":{\"type\":\"crontab\",\"value\":\"0 6 1 * *\"},\"timezone\":\"UTC\",\"checkin_margin\":180,\"max_runtime\":20},\"status\":\"$stato\"}" \
+            && echo "check-in Sentry: $stato" \
+            || echo "check-in Sentry non riuscito — l'ingest resta valido"
+          exit 0

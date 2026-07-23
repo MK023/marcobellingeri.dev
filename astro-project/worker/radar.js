@@ -9,6 +9,12 @@
 // fonte: un feed giù toglie uno strato, mai la pagina.
 import { FONTI } from '../src/data/radar-fonti.js';
 
+// Stesso patto di index.js:62 — il reporter lo registra worker/sentry.js, così
+// questo file resta puro (niente SDK negli import) e i test lo sostituiscono con
+// un raccoglitore. Senza, i catch qui sotto sarebbero muti: fail-open che non
+// segnala non è resilienza, è cecità.
+const segnala = (messaggio, extra) => globalThis.__SEGNALA_SENTRY__?.(messaggio, extra);
+
 const TETTO_UPSTREAM = 400_000; // char: un feed più grosso è troncato, il parser regge
 const MAX_ITEMS = 5;
 const MAX_KEV = 6;
@@ -126,10 +132,24 @@ export async function gestisciRadar(request, _env, ctx) {
         lat: f.lat, lng: f.lng, strato: f.strato, home: f.home,
         licenza: f.licenza, items,
       };
-      if (f.kev) voce.kev = await scarica(f.kev, 8_000_000).then((t) => normalizzaKev(JSON.parse(t))).catch(() => []);
+      // Il KEV è uno strato intero del globo: se cade, la pagina non lo dice
+      // (niente `mancanti` per lui) e resta solo un elenco più corto. Era il
+      // silenzio peggiore dei due — nessun messaggio upstream nell'extra (S5145).
+      if (f.kev) {
+        voce.kev = await scarica(f.kev, 8_000_000)
+          .then((t) => normalizzaKev(JSON.parse(t)))
+          .catch(() => { segnala('radar: KEV non disponibile', { fonte: f.id }); return []; });
+      }
       return voce;
     }),
   );
+
+  // Una fonte giù è DICHIARATA in pagina (`mancanti`): il visitatore vede uno
+  // strato in meno e sa perché — allarmare a ogni feed ballerino renderebbe il
+  // segnale rumore, e un allarme ignorato è un allarme morto. Il blackout totale
+  // invece non lo vede nessuno: la pagina resta su, vuota e credibile.
+  const conFeed = FONTI.filter((f) => f.feeds.length > 0).length;
+  if (conFeed > 0 && mancanti.length === conFeed) segnala('radar: tutte le fonti giù', { fonti: conFeed });
 
   const risposta = new Response(JSON.stringify({ aggiornatoIl: new Date().toISOString(), fonti, mancanti }), {
     status: 200,
