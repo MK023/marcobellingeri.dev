@@ -47,8 +47,11 @@ const xDefault = getAbsoluteLocaleUrl(defaultLang, path);
 // JSON-LD Person + ProfessionalService: dati statici, tutti già pubblici sul
 // sito (niente telefono né data di nascita — il sito non è un CV). I crawler
 // lo leggono dall'HTML sorgente senza eseguirlo, quindi la CSP nel meta non
-// c'entra. Il serviceType rispecchia le card di Servizi.astro: se cambiano
-// loro, cambia anche lui.
+// c'entra. Il serviceType rispecchia le card di Servizi.astro — più una sola
+// eccezione dichiarata: 'Supply Chain Security' non ha card propria, è un
+// deliverable dentro Security Audit (Servizi.astro, riga "Audit della supply
+// chain"). Si vende davvero, quindi si dichiara; se sparisce da lì, va tolto
+// anche qui.
 const siteRoot = new URL('/', Astro.site).href;
 const jsonLd = JSON.stringify({
   '@context': 'https://schema.org',

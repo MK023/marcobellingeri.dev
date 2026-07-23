@@ -116,15 +116,22 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
         printLine('&gt; calibro principale: Pilot Custom 845 Urushi rosso, pennino 18kt medio, Iroshizuku Kon-peki.');
         printLine('&gt; il refactor 41× è nato scoprendo una cache invalidata troppo spesso. il bug più costoso è spesso il più noioso.');
       },
+      // Liste cablate: specchiano Projects.astro e Servizi.astro (ordine incluso).
+      // Se cambiano quelli, cambia anche qui — il whoami insegnò che il terminale
+      // è una superficie del posizionamento come le altre (PR #120).
       projects() {
+        printLine('<span class="yellow">llm-council</span>   — council multi-modello anti-compiacenza, open source');
         printLine('<span class="yellow">torinoparking</span> — API parcheggi Torino → in arrivo su App Store');
         printLine('<span class="yellow">jobsearch</span>     — matching CV-offerta con Claude + server MCP');
         printLine('<span class="yellow">atlas</span>         — knowledge graph personale su Obsidian');
       },
       servizi() {
-        printLine('<span class="yellow">security audit</span>  — a progetto');
-        printLine('<span class="yellow">cloud &amp; devops</span>  — retainer / giorno');
-        printLine('<span class="yellow">pair &amp; advisory</span> — a giornata');
+        printLine('<span class="yellow">security audit</span>      — a progetto');
+        printLine('<span class="yellow">ai &amp; agent security</span> — a progetto');
+        printLine('<span class="yellow">automazione ai</span>      — a progetto');
+        printLine('<span class="yellow">cloud &amp; devops</span>      — retainer / giorno');
+        printLine('<span class="yellow">pair &amp; advisory</span>     — a giornata');
+        printLine('<span class="yellow">siti web</span>            — a progetto');
         printLine('<span class="dim">primo confronto sempre gratuito.</span>');
       },
       contact() {
