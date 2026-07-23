@@ -36,7 +36,19 @@ const copy: Record<Lang, {
       {
         tag: 'SEC', title: 'Security Audit',
         body: "Ispezione ripetibile dello stack, dall'AI al sistema operativo: trovare i token esposti e le config deboli prima che li trovi qualcun altro.",
-        deliverables: ['Audit configurazioni & gestione segreti', 'Hardening dello stack AI-to-OS', 'Report con rischi prioritizzati e fix'],
+        deliverables: ['Audit configurazioni & gestione segreti', 'Hardening dello stack AI-to-OS', 'Audit della supply chain: SBOM, provenance, dipendenze, segreti nella pipeline', 'Report con rischi prioritizzati e fix'],
+        basis: 'A PROGETTO',
+      },
+      {
+        tag: 'AI-SEC', title: 'AI & Agent Security',
+        body: "Mettere agenti AI in produzione senza aprire falle: la supervisione umana si progetta, l'autonomia si guadagna con tetti e guardrail — non si concede di default.",
+        deliverables: ['Hardening di pipeline agentiche: segreti, least privilege, sandbox', 'Difesa da prompt injection su RAG e contenuti esterni', 'Preparazione AI Act (art. 50): trasparenza e registro dei run'],
+        basis: 'A PROGETTO',
+      },
+      {
+        tag: 'AI', title: 'Automazione AI',
+        body: 'Soluzioni AI su misura che tolgono lavoro ripetitivo: agenti, RAG e pipeline che girano da soli — con supervisione umana dove conta.',
+        deliverables: ['Agenti e workflow su misura (MCP)', 'RAG sui tuoi dati, con citazioni', 'Automazioni schedulate, zero server'],
         basis: 'A PROGETTO',
       },
       {
@@ -55,18 +67,6 @@ const copy: Record<Lang, {
         tag: 'WEB', title: 'Siti Web',
         body: 'Siti veloci e curati, come per Vetreria Monferrina: Astro + CMS, Lighthouse 100, sicurezza e accessibilità di serie — con un agente IA per SEO/AEO se serve.',
         deliverables: ['Sito Astro + CMS, performance 100/100', 'SEO/AEO, accessibilità WCAG, CSP/WAF', 'Agente IA schedulato (opzionale)'],
-        basis: 'A PROGETTO',
-      },
-      {
-        tag: 'AI', title: 'Automazione AI',
-        body: 'Soluzioni AI su misura che tolgono lavoro ripetitivo: agenti, RAG e pipeline che girano da soli — con supervisione umana dove conta.',
-        deliverables: ['Agenti e workflow su misura (MCP)', 'RAG sui tuoi dati, con citazioni', 'Automazioni schedulate, zero server'],
-        basis: 'A PROGETTO',
-      },
-      {
-        tag: 'AI-SEC', title: 'AI & Agent Security',
-        body: "Mettere agenti AI in produzione senza aprire falle: la supervisione umana si progetta, l'autonomia si guadagna con tetti e guardrail — non si concede di default.",
-        deliverables: ['Hardening di pipeline agentiche: segreti, least privilege, sandbox', 'Difesa da prompt injection su RAG e contenuti esterni', 'Preparazione AI Act (art. 50): trasparenza e registro dei run'],
         basis: 'A PROGETTO',
       },
     ],
@@ -100,7 +100,19 @@ const copy: Record<Lang, {
       {
         tag: 'SEC', title: 'Security Audit',
         body: 'A repeatable inspection of the whole stack, from AI to OS: find the exposed tokens and weak configs before anyone else does.',
-        deliverables: ['Config & secrets-management audit', 'AI-to-OS stack hardening', 'Report with prioritised risks and fixes'],
+        deliverables: ['Config & secrets-management audit', 'AI-to-OS stack hardening', 'Supply chain audit: SBOM, provenance, dependencies, secrets in the pipeline', 'Report with prioritised risks and fixes'],
+        basis: 'PER PROJECT',
+      },
+      {
+        tag: 'AI-SEC', title: 'AI & Agent Security',
+        body: "Putting AI agents into production without opening holes: human oversight is designed, autonomy is earned with caps and guardrails — never granted by default.",
+        deliverables: ['Agentic pipeline hardening: secrets, least privilege, sandboxing', 'Prompt-injection defence for RAG and external content', 'AI Act readiness (art. 50): transparency and run logging'],
+        basis: 'PER PROJECT',
+      },
+      {
+        tag: 'AI', title: 'AI Automation',
+        body: 'Custom AI solutions that remove repetitive work: agents, RAG and pipelines that run on their own — with human oversight where it matters.',
+        deliverables: ['Custom agents and workflows (MCP)', 'RAG on your data, with citations', 'Scheduled automations, zero servers'],
         basis: 'PER PROJECT',
       },
       {
@@ -119,18 +131,6 @@ const copy: Record<Lang, {
         tag: 'WEB', title: 'Web Development',
         body: 'Fast, polished sites, like the one for Vetreria Monferrina: Astro + CMS, Lighthouse 100, security and accessibility by default — with an AI agent for SEO/AEO if needed.',
         deliverables: ['Astro + CMS site, 100/100 performance', 'SEO/AEO, WCAG accessibility, CSP/WAF', 'Scheduled AI agent (optional)'],
-        basis: 'PER PROJECT',
-      },
-      {
-        tag: 'AI', title: 'AI Automation',
-        body: 'Custom AI solutions that remove repetitive work: agents, RAG and pipelines that run on their own — with human oversight where it matters.',
-        deliverables: ['Custom agents and workflows (MCP)', 'RAG on your data, with citations', 'Scheduled automations, zero servers'],
-        basis: 'PER PROJECT',
-      },
-      {
-        tag: 'AI-SEC', title: 'AI & Agent Security',
-        body: "Putting AI agents into production without opening holes: human oversight is designed, autonomy is earned with caps and guardrails — never granted by default.",
-        deliverables: ['Agentic pipeline hardening: secrets, least privilege, sandboxing', 'Prompt-injection defence for RAG and external content', 'AI Act readiness (art. 50): transparency and run logging'],
         basis: 'PER PROJECT',
       },
     ],
