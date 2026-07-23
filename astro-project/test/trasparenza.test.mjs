@@ -43,8 +43,12 @@ test('security.txt: esiste, ha i campi obbligatori RFC 9116 ed è servito dalla 
   for (const campo of ['Contact:', 'Expires:', 'Canonical:', 'Policy:']) {
     assert.ok(txt.includes(campo), `security.txt senza ${campo}`);
   }
-  // il contatto è lo stesso di SECURITY.md: due indirizzi diversi = uno morto
-  assert.ok(txt.includes('mkdevpy@proton.me'));
+  // il contatto è lo stesso di SECURITY.md, letto DAVVERO da SECURITY.md:
+  // due indirizzi diversi = uno morto (e un test che hardcoda non lo vedrebbe)
+  const policy = readFileSync(new URL('../../SECURITY.md', import.meta.url).pathname, 'utf8');
+  const contatto = policy.match(/\*\*([^*\s]+@[^*\s]+)\*\*/)?.[1];
+  assert.ok(contatto, 'SECURITY.md non dichiara più un contatto in grassetto');
+  assert.ok(txt.includes(contatto), `security.txt non contiene ${contatto} (il contatto di SECURITY.md)`);
 });
 
 test('security.txt: Expires non è passata (RFC 9116: scaduto = non valido)', () => {

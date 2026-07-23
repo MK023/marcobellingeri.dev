@@ -19,8 +19,8 @@ export const dateLocale: Record<Lang, string> = { en: 'en-GB', it: 'it-IT' };
 
 export const ui = {
   en: {
-    // "Cloud & Security Edition" è un token di brand: resta invariato tra le lingue.
-    'site.title': 'Bellingeri — Cloud & Security Edition',
+    // "AI, Cloud & Security Edition" è un token di brand: resta invariato tra le lingue.
+    'site.title': 'Bellingeri — AI, Cloud & Security Edition',
     'site.description':
       'Marco Bellingeri — freelance Cloud Platform & AI Security Engineer. Hands-on DevOps, Cloud and Security: pair programming, real case studies, automation. Casale Monferrato, Italy.',
     'og.locale': 'en_US',
@@ -100,11 +100,11 @@ export const ui = {
     'foot.printed': 'Printed digitally, wherever you are.',
     'foot.sealTitle': 'Built in pair programming with Claude Code',
     'foot.finePrint':
-      '© Marco Bellingeri — Cloud & Security Edition. All rights reserved, no bugs in production (hopefully).',
+      '© Marco Bellingeri — AI, Cloud & Security Edition. All rights reserved, no bugs in production (hopefully).',
     'foot.aipia': 'AIPIA member · L.4/2013',
   },
   it: {
-    'site.title': 'Bellingeri — Cloud & Security Edition',
+    'site.title': 'Bellingeri — AI, Cloud & Security Edition',
     'site.description':
       'Marco Bellingeri — Cloud Platform & AI Security Engineer freelance. DevOps, Cloud e Security con un approccio hands-on: pair programming, case study reali, automazione. Casale Monferrato, IT.',
     'og.locale': 'it_IT',
@@ -184,7 +184,7 @@ export const ui = {
     'foot.printed': 'Stampato digitalmente, ovunque tu sia.',
     'foot.sealTitle': 'Sviluppato in pair programming con Claude Code',
     'foot.finePrint':
-      '© Marco Bellingeri — Cloud & Security Edition. Tutti i diritti, nessun bug in produzione (si spera).',
+      '© Marco Bellingeri — AI, Cloud & Security Edition. Tutti i diritti, nessun bug in produzione (si spera).',
     'foot.aipia': 'Socio AIPIA · L.4/2013',
   },
 } as const;
