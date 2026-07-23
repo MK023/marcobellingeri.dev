@@ -33,8 +33,18 @@ const decodEntita = (s) =>
   s.replace(/&(#\d+|amp|lt|gt|quot|apos|#39);/g, (m, n) =>
     n.startsWith('#') ? String.fromCodePoint(Number(n.slice(1))) : ENTITA[n],
   );
+// Il ciclo a punto fisso qui sotto è QUADRATICO su una corsa di `<` senza `>`:
+// `[^>]*` riparte da ogni posizione e non trova mai la chiusura. Misurato il
+// 23-07-2026: 25k char = 0,4s · 100k = 6,7s · 200k = 30s. Col tetto a 400k per
+// feed (e 8MB sul KEV) un titolo ostile brucia la CPU del Worker e /api/radar
+// muore: fail-open per fonte non salva, perché a cadere è la richiesta intera.
+// Il taglio sta QUI e non ai due chiamanti — la funzione è la barriera, e chi
+// la userà domani eredita la guardia invece di doverla ricordare.
+// 2000 char sono 12× il titolo più lungo che teniamo (160): nessun bollettino
+// vero ci arriva vicino.
+const LIMITE_TESTO = 2000;
 const decodifica = (s) => {
-  let t = decodEntita(s);
+  let t = decodEntita(String(s).slice(0, LIMITE_TESTO));
   for (let prima = ''; prima !== t; ) { prima = t; t = t.replace(/<[^>]*>/g, ''); }
   // un `<script` senza `>` sopravvivrebbe al punto fisso: in un titolo di
   // bollettino le parentesi angolari non portano informazione — via anche loro
@@ -91,7 +101,14 @@ export function normalizzaKev(json, max = MAX_KEV) {
 // completo è ~5MB di JSON e un troncamento lo renderebbe imparsabile (kev=[]
 // silenzioso — successo davvero, beccato provando l'endpoint coi feed reali).
 const scarica = async (url, tetto = TETTO_UPSTREAM) => {
-  const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  // `redirect: manual` — il 3xx torna com'è, `r.ok` è falso e la fonte cade nel
+  // fail-open con la sua segnalazione. Col default `follow` il runtime inoltra
+  // TUTTI gli header alla destinazione anche su host diverso (doc Workers), e
+  // soprattutto scaricheremmo da un'origine che non è quella dichiarata in
+  // pagina accanto alla licenza. Verificato: 6 feed su 6 rispondono senza un
+  // solo redirect, quindi la regola non toglie niente — e se un giorno una
+  // fonte migra, è giusto saperlo da Sentry invece di seguirla in silenzio.
+  const r = await fetch(url, { signal: AbortSignal.timeout(8000), redirect: 'manual' });
   if (!r.ok) throw new Error(`upstream ${r.status}`);
   return (await r.text()).slice(0, tetto);
 };
