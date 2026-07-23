@@ -17,8 +17,8 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const cdata = (s: string) => `<![CDATA[${s.replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
 
 const channel = {
-  it: { title: 'Marco Bellingeri — Magazine', desc: 'Un caso al mese di IA applicata sul lavoro, verificato sulle fonti.' },
-  en: { title: 'Marco Bellingeri — Magazine', desc: 'One real case a month of AI put to work, checked against the sources.' },
+  it: { title: 'Marco Bellingeri — Magazine', desc: 'Un caso al mese su IA, sicurezza e governance sul lavoro, verificato sulle fonti.' },
+  en: { title: 'Marco Bellingeri — Magazine', desc: 'One real case a month on AI, security and governance at work, checked against the sources.' },
 };
 const labels = {
   it: { problem: 'Problema', approach: 'Approccio', result: 'Risultato', lesson: 'Lezione appresa' },
