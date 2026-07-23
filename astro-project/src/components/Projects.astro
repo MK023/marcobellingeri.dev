@@ -31,6 +31,21 @@ type Project = {
 const projects: Record<Lang, Project[]> = {
   it: [
     {
+      id: 'case-llmcouncil',
+      name: 'LLM Council',
+      status: 'shipped',
+      statusLabel: 'OPEN SOURCE',
+      swatchClass: 'p-dark',
+      summary:
+        'Tre modelli di provider diversi messi a contraddirsi a vicenda, perché un LLM da solo tende a darti ragione. Rispondono separati, poi si valutano alla cieca, poi un presidente esterno tira le somme. Lo uso davvero, prima delle decisioni che pesano.',
+      problem:
+        'La compiacenza di un modello non si toglie col prompt: sta nei pesi, ci finisce durante l’addestramento. Un LLM usato come supporto alle decisioni conferma la direzione che gli segnali, anche quando è sbagliata.',
+      approach:
+        'Python solo libreria standard, zero dipendenze a runtime: niente superficie d’attacco sulla catena di fornitura. Tre voter indipendenti via OpenRouter con risposte anonimizzate, valutazione incrociata alla cieca, presidente scelto fuori dal gruppo dei voter così non può votarsi. Anthropic è escluso per principio: chi orchestra il council non vota nel council.',
+      result:
+        'Repo pubblico con licenza MIT, 33 test verdi su tre versioni di Python, mappatura completa della OWASP LLM Top 10 in SECURITY.md, con i punti fuori perimetro dichiarati e motivati.',
+    },
+    {
       id: 'case-torinoparking',
       name: 'TorinoParking',
       status: 'active',
@@ -77,6 +92,21 @@ const projects: Record<Lang, Project[]> = {
     },
   ],
   en: [
+    {
+      id: 'case-llmcouncil',
+      name: 'LLM Council',
+      status: 'shipped',
+      statusLabel: 'OPEN SOURCE',
+      swatchClass: 'p-dark',
+      summary:
+        'Three models from three different providers, set up to disagree with each other, because one LLM on its own tends to tell you what you want to hear. They answer separately, rank each other blind, then an outside chairman sums up. I use it before decisions that actually cost something.',
+      problem:
+        'A model’s eagerness to agree is not a prompting problem: it sits in the weights, put there during training. An LLM used for decision support will confirm whatever direction you signal, including the wrong one.',
+      approach:
+        'Python standard library only, zero runtime dependencies, so there is no supply chain attack surface. Three independent voters through OpenRouter with anonymised answers, blind cross-ranking, and a chairman picked from outside the voter pool so it cannot vote for itself. Anthropic is excluded on principle: whoever runs the council does not sit on it.',
+      result:
+        'Public repo under MIT, 33 tests green across three Python versions, a full mapping of the OWASP LLM Top 10 in SECURITY.md, with the out-of-scope items named and justified.',
+    },
     {
       id: 'case-torinoparking',
       name: 'TorinoParking',
