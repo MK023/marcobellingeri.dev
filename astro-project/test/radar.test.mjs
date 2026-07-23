@@ -86,6 +86,33 @@ test('parseRssItems: rispetta il tetto max', () => {
   assert.equal(parseRssItems(RSS_CERTFR, { max: 1 }).length, 1);
 });
 
+// Il ciclo a punto fisso che spoglia i tag è QUADRATICO su una corsa di `<`
+// senza `>`: `[^>]*` riparte da ogni posizione e non trova mai la chiusura.
+// Misurato prima del taglio: 25k char = 0,4s · 100k = 6,7s · 200k = 30s. Il
+// tetto per feed è 400k, il KEV 8MB: un titolo così brucia la CPU del Worker e
+// /api/radar muore. È un test a tempo perché il tempo È la proprietà; la soglia
+// sta 300× sotto il valore rotto e 100× sopra quello sano, non è una gara.
+test('decodifica: una corsa di `<` non manda in ginocchio il sanificatore (ReDoS)', () => {
+  const titolo = '<'.repeat(100_000);
+  const xml = `<rss><channel><item><title>${titolo}</title><link>https://www.cisa.gov/x</link></item></channel></rss>`;
+  const t0 = process.hrtime.bigint();
+  const items = parseRssItems(xml);
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.equal(items.length, 1);
+  assert.equal(items[0].titolo, ''); // resta comunque sanificato: niente `<` in uscita
+  assert.ok(ms < 200, `sanificazione lenta: ${ms.toFixed(0)}ms su 100k char (era ~6700ms)`);
+});
+
+test('normalizzaKev: stessa guardia sul nome della vulnerabilità (il KEV ha tetto 8MB)', () => {
+  const t0 = process.hrtime.bigint();
+  const kev = normalizzaKev({
+    vulnerabilities: [{ cveID: 'CVE-2026-9999', vulnerabilityName: '<'.repeat(100_000), dateAdded: '2026-07-23' }],
+  });
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.equal(kev[0].nome, '');
+  assert.ok(ms < 200, `sanificazione lenta: ${ms.toFixed(0)}ms su 100k char`);
+});
+
 // ---- hostAmmesso --------------------------------------------------------
 
 test('hostAmmesso: solo https e host esatto della fonte', () => {
@@ -157,6 +184,39 @@ test('radar: GET felice — json con fonti, items filtrati per dominio, kev pres
   assert.ok(cisa.kev.length > 0);
   const ue = dati.fonti.find((f) => f.id === 'ue');
   assert.deepEqual(ue.items, []); // senza feed, il punto resta con la sola home
+});
+
+// Con `redirect: follow` (default) Workers inoltra TUTTI gli header alla
+// destinazione, anche su host diverso — sta scritto nella doc del runtime. Qui
+// non ci sono header sensibili, ma il punto è un altro: il Radar dichiara in
+// pagina la fonte accanto alla sua licenza, e seguire un dirottamento in
+// silenzio significa mostrare una licenza che non copre ciò che hai scaricato.
+// Verificato il 23-07-2026: 6 feed su 6 del registro rispondono 200 senza un
+// solo redirect, quindi la regola stretta non toglie niente a nessuno.
+test('radar: i feed non seguono redirect (la fonte scaricata è quella dichiarata)', async () => {
+  const inits = [];
+  globalThis.fetch = async (url, init) => {
+    inits.push(init ?? {});
+    return new Response(RSS_CISA, { status: 200 });
+  };
+  await gestisciRadar(new Request('https://marcobellingeri.dev/api/radar'));
+  assert.ok(inits.length > 0, 'nessun feed scaricato: il test non prova niente');
+  for (const i of inits) {
+    assert.equal(i.redirect, 'manual', 'un feed segue ancora i redirect del runtime');
+  }
+});
+
+test('radar: un 301 upstream toglie la fonte invece di seguirlo', async () => {
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    const ncsc = FONTI.find((f) => f.id === 'ncsc-uk').feeds;
+    if (ncsc.includes(u)) return new Response('', { status: 301, headers: { Location: 'https://evil.example.com/feed' } });
+    if (u === FONTI.find((f) => f.kev).kev) return new Response(JSON.stringify(KEV), { status: 200 });
+    return new Response(RSS_CISA, { status: 200 });
+  };
+  const r = await gestisciRadar(new Request('https://marcobellingeri.dev/api/radar'));
+  const dati = await r.json();
+  assert.ok(dati.mancanti.includes('ncsc-uk'), 'il 301 non ha tolto la fonte');
 });
 
 test('radar: un feed che esplode non uccide la risposta (fail-open per fonte)', async () => {
