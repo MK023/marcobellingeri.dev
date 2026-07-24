@@ -52,6 +52,11 @@ jobs:
           [[ "$vertical" =~ ^[a-z0-9-]+$ ]] || { echo "verticale non valido: $vertical"; exit 1; }
           echo "verticale del mese: $vertical"
           node engine/ingest.mjs "$vertical"
+          # Radar -> signals: i bollettini CERT del Radar entrano come candidati-prova
+          # sullo stesso numero appena creato. DOPO ingest per costruzione: e' ingest
+          # che crea il draft, radar-signals aggancia e basta (senza numero esce a
+          # mani vuote). Il verify col tier resta umano, gate 0006 intatto.
+          node engine/radar-signals.mjs
           gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "Magazine $(date -u +%Y-%m) ($vertical): signal ingeriti — tocca a te" \
             --body "L'ingest del numero nuovo è passato. Prossimo gate umano: verifica i signal in Supabase Studio (tier 1 / tier 2 indipendente). Appena i tier ci sono, il cron advance genera la bozza da solo. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
