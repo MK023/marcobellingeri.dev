@@ -287,6 +287,66 @@ test('radar: metodo non-GET -> 405', async () => {
   assert.equal(r.status, 405);
 });
 
+// ---- fonti a dati committati (MITRE ATLAS) ------------------------------
+// ATLAS è una tassonomia, non un flusso: il dato sta in src/data/radar-atlas.js,
+// generato da engine/atlas.mjs. Qui si verifica che esca in /api/radar SENZA
+// rete — un fetch a atlas.mitre.org qui dentro vorrebbe dire che qualcuno ha
+// rimesso a runtime i 626 KB di YAML che il Worker non sa nemmeno parsare.
+
+test('radar: la fonte a dati committati esce con i suoi item senza toccare la rete', async () => {
+  const chiamati = [];
+  const map = TUTTI_OK();
+  globalThis.fetch = async (url) => {
+    chiamati.push(String(url));
+    const body = map[String(url)];
+    if (body === undefined) return new Response('not found', { status: 404 });
+    return new Response(body, { status: 200 });
+  };
+
+  const dati = await (await gestisciRadar(new Request('https://marcobellingeri.dev/api/radar'))).json();
+  const atlas = dati.fonti.find((f) => f.id === 'atlas');
+
+  assert.ok(atlas, 'la fonte atlas non è nel registro');
+  assert.ok(atlas.items.length > 0, 'atlas è uscita viva e vuota: è il silenzio peggiore');
+  assert.ok(!dati.mancanti.includes('atlas'), 'una fonte senza feed non è una fonte giù');
+  // Confronto sull'hostname, non `includes`: `https://evil.example/?x=atlas.mitre.org`
+  // contiene la stringa e non è ATLAS (CodeQL js/incomplete-url-substring-sanitization).
+  const hostDi = (u) => { try { return new URL(u).hostname; } catch { return ''; } };
+  assert.equal(
+    chiamati.filter((u) => hostDi(u) === 'atlas.mitre.org').length,
+    0,
+    'ATLAS è stata scaricata a runtime: il dato committato non serve più a niente',
+  );
+});
+
+// Guardia sul DATO generato, non sull'output già filtrato: se engine/atlas.mjs
+// producesse un url fuori dominio, il Worker lo scarterebbe in silenzio e la
+// fonte perderebbe voci senza che nessuno lo sappia. Qui invece la CI si ferma.
+test('radar: ogni item committato sta nei domini dichiarati dalla sua fonte', () => {
+  const conDati = FONTI.filter((f) => f.itemsStatici);
+  assert.ok(conDati.length > 0, 'nessuna fonte a dati committati: il test non guarda niente');
+  for (const f of conDati) {
+    assert.ok(f.itemsStatici.length > 0, `${f.id}: itemsStatici vuoto`);
+    for (const i of f.itemsStatici) {
+      assert.ok(hostAmmesso(i.url, f.hostsAmmessi), `${f.id}: item fuori dominio ${i.url}`);
+    }
+  }
+});
+
+test('radar: un item committato fuori dominio viene scartato dalla barriera', async () => {
+  const atlas = FONTI.find((f) => f.id === 'atlas');
+  const veleno = { id: 'AML.CSX', titolo: 'link dirottato', url: 'https://evil.example/studies/x', data: '2099-01-01' };
+  atlas.itemsStatici.unshift(veleno); // data futura: senza barriera uscirebbe primo
+  try {
+    stubFeeds(TUTTI_OK());
+    const dati = await (await gestisciRadar(new Request('https://marcobellingeri.dev/api/radar'))).json();
+    const uscite = dati.fonti.find((f) => f.id === 'atlas').items.map((i) => i.url);
+    assert.ok(!uscite.includes(veleno.url), 'la barriera di dominio non copre gli item committati');
+  } finally {
+    atlas.itemsStatici.shift();
+  }
+});
+
 // ---- la pagina nella build ----------------------------------------------
 
 test('radar: la pagina esiste in dist per entrambe le lingue, col fallback senza JS', () => {

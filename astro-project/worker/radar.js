@@ -136,9 +136,13 @@ export async function gestisciRadar(request, _env, ctx) {
       // Arrow esplicita: `map(scarica)` passerebbe l'INDICE come tetto —
       // feed 0 troncato a 0 char. Successo davvero, beccato eseguendo.
       const esiti = await Promise.allSettled(f.feeds.map((u) => scarica(u)));
-      const items = esiti
+      // Le fonti a dati committati (ATLAS) non hanno feed: gli item arrivano
+      // dal registro, ma passano dalla STESSA barriera di dominio e dallo
+      // stesso tetto. La provenienza cambia, la regola no.
+      const grezzi = f.itemsStatici ?? esiti
         .filter((e) => e.status === 'fulfilled')
-        .flatMap((e) => parseRssItems(e.value))
+        .flatMap((e) => parseRssItems(e.value));
+      const items = grezzi
         .filter((i) => hostAmmesso(i.url, f.hostsAmmessi))
         .sort((a, b) => String(b.data).localeCompare(String(a.data)))
         .slice(0, MAX_ITEMS);

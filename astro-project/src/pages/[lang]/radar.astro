@@ -158,6 +158,7 @@ const backHref = getRelativeLocaleUrl(lang, '');
       griglia: s.getPropertyValue('--halftone').trim(),
       difesa: s.getPropertyValue('--violet').trim(),
       regole: s.getPropertyValue('--orange').trim(),
+      ia: s.getPropertyValue('--ia').trim(),
       io: s.getPropertyValue('--seal').trim(),
     };
   };
@@ -184,10 +185,65 @@ const backHref = getRelativeLocaleUrl(lang, '');
     canvas.width = W * dpr; canvas.height = H * dpr;
     canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
     ctx2d?.setTransform(dpr, 0, 0, dpr, 0, 0);
-    R = Math.min(W, H) * 0.42; CX = W / 2; CY = H / 2;
+    // 0.46 e non 0.42: il globo respira un po' di più nel riquadro senza toccarne
+    // i bordi (0.46 × 2 = 92% del lato corto). Non risolve le sovrapposizioni —
+    // quelle sono chilometriche, se ne occupa posizioniVisibili — ma dà aria ai
+    // punti sparpagliati, che a 0.42 si pestavano ancora fra loro.
+    R = Math.min(W, H) * 0.46; CX = W / 2; CY = H / 2;
   };
 
   const sullo_schermo = (p: { x: number; y: number }) => ({ x: CX + p.x * R, y: CY - p.y * R });
+
+  // Due autorità nella stessa città sono lo stesso pixel a QUALUNQUE zoom che
+  // mostri ancora il pianeta: MITRE McLean dista 12 km da CISA, la Casa Bianca
+  // 300 m, il DSIT ~1 km da NCSC UK. Per separarli con lo zoom servirebbe un
+  // globo da 64.000 px di raggio — cioè non un globo. Quindi il dato resta vero
+  // (le coordinate non si toccano) e a scostarsi è solo il DISEGNO.
+  //
+  // Rilassamento a coppie, non clustering: la prima versione raggruppava
+  // rispetto al PRIMO membro del gruppo e spezzava le catene — misurato sulla
+  // costellazione vera (Londra ×2, Parigi, Bruxelles, L'Aia), due punti
+  // finivano a 0,7px. Qui ogni coppia sotto SEPARA si respinge lungo il proprio
+  // asse per 6 passate: catene e collisioni fra gruppi sono lo stesso caso.
+  // Misurato sugli stessi scenari (3 raggi × rotazione completa): peggiore
+  // 12,6px. Deterministico, nessun random, memoryless: il moto resta fluido.
+  //
+  // Nasce QUI e non dentro `disegna` perché anche `vicino` (il click) deve
+  // vedere le stesse posizioni: due proiezioni separate sono due verità, e la
+  // seconda diventa il bug in cui clicchi un punto e si apre l'altro.
+  const SEPARA = 13;
+  const posizioniVisibili = () => {
+    const visibili: { p: PuntoRadar; x: number; y: number }[] = [];
+    for (const p of punti) {
+      const pr = proietta(p.lng, p.lat);
+      if (pr.z <= 0) continue;
+      visibili.push({ p, ...sullo_schermo(pr) });
+    }
+    for (let passata = 0; passata < 6; passata++) {
+      let mosso = false;
+      for (let i = 0; i < visibili.length; i++) {
+        for (let j = i + 1; j < visibili.length; j++) {
+          const a = visibili[i], b = visibili[j];
+          let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+          if (d >= SEPARA) continue;
+          if (d < 0.01) { dx = 1; dy = 0; d = 1; } // coincidenti: asse convenzionale
+          const spinta = (SEPARA - d) / 2 / d;
+          a.x -= dx * spinta; a.y -= dy * spinta;
+          b.x += dx * spinta; b.y += dy * spinta;
+          mosso = true;
+        }
+      }
+      if (!mosso) break;
+    }
+    // Lo scostamento è in coordinate schermo: vicino al bordo del disco
+    // spingerebbe un punto FUORI dal pianeta (Londra ci passa a ogni giro).
+    // Se esce, si riporta sul bordo lungo il raggio.
+    for (const v of visibili) {
+      const d = Math.hypot(v.x - CX, v.y - CY), max = R - 4;
+      if (d > max) { v.x = CX + ((v.x - CX) / d) * max; v.y = CY + ((v.y - CY) / d) * max; }
+    }
+    return visibili;
+  };
 
   const traccia = (punti2d: Punti) => {
     if (!ctx2d) return;
@@ -227,11 +283,12 @@ const backHref = getRelativeLocaleUrl(lang, '');
     ctx2d.stroke(); ctx2d.globalAlpha = 1;
 
     // punti
-    for (const p of punti) {
-      const pr = proietta(p.lng, p.lat);
-      if (pr.z <= 0) continue;
-      const s = sullo_schermo(pr);
-      const tinta = p.strato === 'io' ? tinte.io : p.strato === 'regole' ? tinte.regole : tinte.difesa;
+    for (const s of posizioniVisibili()) {
+      const p = s.p;
+      // Quattro strati: la catena di ternari era già al limite, un oggetto la
+      // chiude. `difesa` resta il default: uno strato nuovo senza tinta si vede
+      // sul globo invece di sparire.
+      const tinta = { io: tinte.io, regole: tinte.regole, ia: tinte.ia }[p.strato] ?? tinte.difesa;
       if (!riduci && fresco(p)) {
         const onda = (fase % 90) / 90;
         ctx2d.beginPath();
@@ -285,12 +342,10 @@ const backHref = getRelativeLocaleUrl(lang, '');
 
   const vicino = (mx: number, my: number) => {
     let best: PuntoRadar | null = null, bd = 18 * 18;
-    for (const p of punti) {
-      const pr = proietta(p.lng, p.lat);
-      if (pr.z <= 0) continue;
-      const s = sullo_schermo(pr);
+    // Stessa fonte di verità del disegno: si clicca dove si vede.
+    for (const s of posizioniVisibili()) {
       const d = (s.x - mx) ** 2 + (s.y - my) ** 2;
-      if (d < bd) { bd = d; best = p; }
+      if (d < bd) { bd = d; best = s.p; }
     }
     return best;
   };
