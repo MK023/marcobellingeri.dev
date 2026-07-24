@@ -178,6 +178,10 @@ JSON all'API Resend (non SMTP grezzo), che gestisce l'encoding degli header. Il 
 
 ## Difese confermate (ciò che regge, con la prova)
 
+> Le difese dei sistemi **AI** sono mappate sulla tassonomia MITRE ATLAS — con prova
+> `file:riga`, metriche dichiarate (NIST AI RMF *Measure*) e policy di retention della
+> telemetria — in **`docs/THREAT-MODEL-AI.md`** (2026-07-24).
+
 - **Worker `/api/contact`** — ordine dei controlli corretto (rate-limit → Origin →
   cap body → parse → honeypot → validazione → Turnstile → Resend): i check economici
   precedono quelli costosi; la fetch esterna (Turnstile) sta dopo la validazione locale.
