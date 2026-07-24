@@ -12,6 +12,11 @@
        sistema; su desktop resta nero. Il verde va dichiarato, non ereditato da un
        font: così è lo stesso su ogni dispositivo e segue la modalità notte. */
     --seal:#1E8F5A;
+    /* ponytail: quarto strato del Radar (MITRE ATLAS). Oro perché è l'unica
+       tinta assente da entrambe le palette: distinta da --violet (difesa),
+       --orange (regole) e --seal (io) in luce e in notte. Il valore è una
+       proposta da approvare a occhio, non un vincolo tecnico. */
+    --ia:#A86400;
   }
   html[data-mode="night"]{
     --paper:#0B0710;
@@ -22,6 +27,7 @@
     --violet:#29E7FF;
     --halftone:#3A2F4C;
     --seal:#3DF58C;
+    --ia:#FFE84D;
   }
   *, *::before, *::after{
     transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;

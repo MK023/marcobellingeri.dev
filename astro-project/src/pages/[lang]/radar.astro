@@ -158,6 +158,7 @@ const backHref = getRelativeLocaleUrl(lang, '');
       griglia: s.getPropertyValue('--halftone').trim(),
       difesa: s.getPropertyValue('--violet').trim(),
       regole: s.getPropertyValue('--orange').trim(),
+      ia: s.getPropertyValue('--ia').trim(),
       io: s.getPropertyValue('--seal').trim(),
     };
   };
@@ -231,7 +232,10 @@ const backHref = getRelativeLocaleUrl(lang, '');
       const pr = proietta(p.lng, p.lat);
       if (pr.z <= 0) continue;
       const s = sullo_schermo(pr);
-      const tinta = p.strato === 'io' ? tinte.io : p.strato === 'regole' ? tinte.regole : tinte.difesa;
+      // Quattro strati: la catena di ternari era già al limite, un oggetto la
+      // chiude. `difesa` resta il default: uno strato nuovo senza tinta si vede
+      // sul globo invece di sparire.
+      const tinta = { io: tinte.io, regole: tinte.regole, ia: tinte.ia }[p.strato] ?? tinte.difesa;
       if (!riduci && fresco(p)) {
         const onda = (fase % 90) / 90;
         ctx2d.beginPath();

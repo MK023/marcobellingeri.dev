@@ -10,6 +10,13 @@
 // `hostsAmmessi` è una barriera di sicurezza: un item di feed il cui link non
 // punta al dominio della fonte viene scartato dal normalizzatore — un feed
 // compromesso non può trasformare il Radar in un distributore di link altrui.
+//
+// `itemsStatici` è per le fonti che NON sono un flusso: MITRE ATLAS è una
+// tassonomia con poche release l'anno, e il suo dato sta committato in
+// radar-atlas.js (generato da engine/atlas.mjs). Passa dalla stessa barriera
+// di dominio dei feed: la provenienza cambia, la regola no.
+import { ATLAS_CASI } from './radar-atlas.js';
+
 export const FONTI = [
   {
     id: 'cisa',
@@ -81,6 +88,31 @@ export const FONTI = [
     licenza: {
       nome: 'Decisione 2011/833/UE (riuso con attribuzione)',
       url: 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32011D0833',
+    },
+  },
+  {
+    // Lo strato "IA": non chi risponde agli incidenti né chi scrive le norme,
+    // ma la mappa di come gli attacchi ai sistemi di IA sono andati davvero.
+    // Nessun feed: ATLAS è una tassonomia versionata, non un flusso — il dato
+    // è committato e si rigenera con `node engine/atlas.mjs` a ogni release.
+    id: 'atlas',
+    nome: 'MITRE ATLAS',
+    paese: 'US',
+    // MITRE ha due sedi principali: McLean (VA) e Bedford (MA). Qui Bedford,
+    // perché McLean dista 12 km da CISA e alla scala del globo i due punti
+    // sono lo stesso pixel — ATLAS avrebbe coperto CISA. Visto dipingendo,
+    // non leggendo.
+    luogo: 'Bedford, Massachusetts',
+    lat: 42.4906,
+    lng: -71.2767,
+    strato: 'ia',
+    feeds: [],
+    itemsStatici: ATLAS_CASI,
+    hostsAmmessi: ['atlas.mitre.org'],
+    home: 'https://atlas.mitre.org/',
+    licenza: {
+      nome: 'Apache License 2.0 · Copyright 2021-2026 MITRE',
+      url: 'https://github.com/mitre-atlas/atlas-data/blob/main/LICENSE',
     },
   },
 ];
