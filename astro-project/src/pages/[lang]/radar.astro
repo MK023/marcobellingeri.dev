@@ -198,9 +198,15 @@ const backHref = getRelativeLocaleUrl(lang, '');
   // mostri ancora il pianeta: MITRE McLean dista 12 km da CISA, la Casa Bianca
   // 300 m, il DSIT ~1 km da NCSC UK. Per separarli con lo zoom servirebbe un
   // globo da 64.000 px di raggio — cioè non un globo. Quindi il dato resta vero
-  // (le coordinate non si toccano) e a scostarsi è solo il DISEGNO: i punti che
-  // cadono sullo stesso pixel si dispongono su un cerchietto attorno al loro
-  // baricentro. Deterministico, nessun random: stesso ordine = stessa figura.
+  // (le coordinate non si toccano) e a scostarsi è solo il DISEGNO.
+  //
+  // Rilassamento a coppie, non clustering: la prima versione raggruppava
+  // rispetto al PRIMO membro del gruppo e spezzava le catene — misurato sulla
+  // costellazione vera (Londra ×2, Parigi, Bruxelles, L'Aia), due punti
+  // finivano a 0,7px. Qui ogni coppia sotto SEPARA si respinge lungo il proprio
+  // asse per 6 passate: catene e collisioni fra gruppi sono lo stesso caso.
+  // Misurato sugli stessi scenari (3 raggi × rotazione completa): peggiore
+  // 12,6px. Deterministico, nessun random, memoryless: il moto resta fluido.
   //
   // Nasce QUI e non dentro `disegna` perché anche `vicino` (il click) deve
   // vedere le stesse posizioni: due proiezioni separate sono due verità, e la
@@ -213,25 +219,28 @@ const backHref = getRelativeLocaleUrl(lang, '');
       if (pr.z <= 0) continue;
       visibili.push({ p, ...sullo_schermo(pr) });
     }
-    const gruppi: (typeof visibili)[] = [];
-    for (const v of visibili) {
-      const g = gruppi.find((g) => Math.hypot(g[0].x - v.x, g[0].y - v.y) < SEPARA);
-      if (g) g.push(v); else gruppi.push([v]);
+    for (let passata = 0; passata < 6; passata++) {
+      let mosso = false;
+      for (let i = 0; i < visibili.length; i++) {
+        for (let j = i + 1; j < visibili.length; j++) {
+          const a = visibili[i], b = visibili[j];
+          let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+          if (d >= SEPARA) continue;
+          if (d < 0.01) { dx = 1; dy = 0; d = 1; } // coincidenti: asse convenzionale
+          const spinta = (SEPARA - d) / 2 / d;
+          a.x -= dx * spinta; a.y -= dy * spinta;
+          b.x += dx * spinta; b.y += dy * spinta;
+          mosso = true;
+        }
+      }
+      if (!mosso) break;
     }
-    for (const g of gruppi) {
-      if (g.length < 2) continue;
-      const cx = g.reduce((s, v) => s + v.x, 0) / g.length;
-      const cy = g.reduce((s, v) => s + v.y, 0) / g.length;
-      g.forEach((v, i) => {
-        const a = (i / g.length) * Math.PI * 2 - Math.PI / 2;
-        v.x = cx + Math.cos(a) * SEPARA;
-        v.y = cy + Math.sin(a) * SEPARA;
-        // Lo scostamento è in coordinate schermo: vicino al bordo del disco
-        // spingerebbe il punto FUORI dal pianeta (Londra ci passa a ogni giro).
-        // Se esce, si riporta sul bordo lungo il raggio.
-        const d = Math.hypot(v.x - CX, v.y - CY), max = R - 4;
-        if (d > max) { v.x = CX + ((v.x - CX) / d) * max; v.y = CY + ((v.y - CY) / d) * max; }
-      });
+    // Lo scostamento è in coordinate schermo: vicino al bordo del disco
+    // spingerebbe un punto FUORI dal pianeta (Londra ci passa a ogni giro).
+    // Se esce, si riporta sul bordo lungo il raggio.
+    for (const v of visibili) {
+      const d = Math.hypot(v.x - CX, v.y - CY), max = R - 4;
+      if (d > max) { v.x = CX + ((v.x - CX) / d) * max; v.y = CY + ((v.y - CY) / d) * max; }
     }
     return visibili;
   };

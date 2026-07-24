@@ -9,6 +9,7 @@
 // Run: node engine/atlas.mjs
 import { readFile, writeFile } from "node:fs/promises";
 import { estraiCasi, prossimoSymlink } from "./lib/atlas.mjs";
+import { logsafe } from "./lib/logsafe.mjs";
 import { catchTopLevel } from "./lib/sentry.mjs";
 
 catchTopLevel("atlas");
@@ -23,7 +24,9 @@ const MAX = 12;
 // `dist/ATLAS.yaml` e' diventato deprecato restando scaricabile e identico
 // all'aspetto.
 const scarica = async (percorso, salti = 3) => {
-  const r = await fetch(BASE + percorso, { signal: AbortSignal.timeout(30_000) });
+  // `redirect: 'manual'` come nel Worker (#129): il dato di cui mostriamo la
+  // licenza deve arrivare dall'origine dichiarata, non da un dirottamento.
+  const r = await fetch(BASE + percorso, { signal: AbortSignal.timeout(30_000), redirect: 'manual' });
   if (!r.ok) throw new Error(`atlas: ${percorso} -> HTTP ${r.status}`);
   const testo = await r.text();
 
@@ -37,7 +40,9 @@ const yaml = await scarica("ATLAS-latest.yaml");
 if (!yaml.startsWith("format-version:")) {
   throw new Error("atlas: il file non ha l'intestazione v6 attesa — formato cambiato");
 }
-const versione = yaml.match(/^ {2}version: '([^']+)'/m)?.[1] ?? null;
+// logsafe alla nascita del valore: e' dato di rete e finisce nei log e nel
+// file generato — sanificato una volta, pulito ovunque (S5145).
+const versione = logsafe(yaml.match(/^ {2}version: '([^']+)'/m)?.[1] ?? 'sconosciuta');
 
 const casi = estraiCasi(yaml, { max: MAX });
 // Zero case study da un file che si scarica bene e' il silenzio peggiore:
