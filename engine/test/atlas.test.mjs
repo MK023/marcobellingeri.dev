@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { STUDIO, estraiCasi } from "../lib/atlas.mjs";
+import { STUDIO, estraiCasi, prossimoSymlink } from "../lib/atlas.mjs";
 
 // Forma reale del file dist/v6/ATLAS-2026.06.yaml, ridotta: una technique (da
 // ignorare), due case study, e lo stesso id ripetuto sotto `relationships:` —
@@ -67,6 +67,32 @@ test("atlas: il nome quotato perde le virgolette, l'url e' quello canonico", () 
 
 test("atlas: max taglia la lista", () => {
   assert.equal(estraiCasi(YAML, { max: 1 }).length, 1);
+});
+
+// La catena di symlink e' la trappola vera: `dist/ATLAS.yaml` e' DEPRECATO e
+// continua a scaricarsi identico all'aspetto, mentre il dato vivo sta due
+// symlink piu' in la'. Chi non li segue serve un dato morto senza accorgersene.
+test("atlas: segue la catena di symlink risolvendo relativo alla cartella", () => {
+  assert.equal(prossimoSymlink("v6/ATLAS-latest.yaml\n", "ATLAS-latest.yaml"), "v6/ATLAS-latest.yaml");
+  assert.equal(prossimoSymlink("ATLAS-2026.06.yaml", "v6/ATLAS-latest.yaml"), "v6/ATLAS-2026.06.yaml");
+});
+
+test("atlas: i dati veri non sono un symlink (la catena si ferma)", () => {
+  assert.equal(prossimoSymlink(YAML, "v6/ATLAS-2026.06.yaml"), null);
+  assert.equal(prossimoSymlink("format-version: 6.0.0\ncollection:\n", "x.yaml"), null);
+});
+
+// Il target arriva dalla RETE e finisce dentro un URL: deve restare un nome di
+// file relativo, o sposterebbe la richiesta su un'altra origine.
+test("atlas: un symlink che prova a uscire dalla cartella viene rifiutato", () => {
+  for (const cattivo of [
+    "../../../etc/passwd.yaml",
+    "/etc/ATLAS.yaml",
+    "https://evil.example/ATLAS.yaml",
+    "v6/../../ATLAS.yaml",
+  ]) {
+    assert.equal(prossimoSymlink(cattivo, "dist/ATLAS-latest.yaml"), null, `passato: ${cattivo}`);
+  }
 });
 
 test("atlas: input che non e' ATLAS degrada a lista vuota, non esplode", () => {

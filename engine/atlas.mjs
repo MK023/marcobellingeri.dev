@@ -8,7 +8,7 @@
 //
 // Run: node engine/atlas.mjs
 import { writeFile } from "node:fs/promises";
-import { estraiCasi } from "./lib/atlas.mjs";
+import { estraiCasi, prossimoSymlink } from "./lib/atlas.mjs";
 import { catchTopLevel } from "./lib/sentry.mjs";
 
 catchTopLevel("atlas");
@@ -18,23 +18,19 @@ const FILE = new URL("../astro-project/src/data/radar-atlas.js", import.meta.url
 // Il Radar ne mostra MAX_ITEMS (5); 12 lasciano margine senza gonfiare il bundle.
 const MAX = 12;
 
-// `dist/ATLAS-latest.yaml` e' un SYMLINK: via raw torna il percorso di
-// destinazione come testo (20 byte), non i dati. Oggi la catena e' doppia:
-// ATLAS-latest.yaml -> v6/ATLAS-latest.yaml -> v6/ATLAS-2026.06.yaml.
-// Seguirla invece di pinnare la versione: pinnandola il dato invecchia in
-// silenzio, ed e' il modo in cui `dist/ATLAS.yaml` e' diventato deprecato
-// restando scaricabile e identico all'aspetto.
+// Segue la catena di symlink (vedi prossimoSymlink) invece di pinnare la
+// versione: pinnandola il dato invecchia in silenzio, ed e' esattamente come
+// `dist/ATLAS.yaml` e' diventato deprecato restando scaricabile e identico
+// all'aspetto.
 const scarica = async (percorso, salti = 3) => {
   const r = await fetch(BASE + percorso, { signal: AbortSignal.timeout(30_000) });
   if (!r.ok) throw new Error(`atlas: ${percorso} -> HTTP ${r.status}`);
   const testo = await r.text();
 
-  const target = testo.trim();
-  const isSymlink = /^[\w.-]+(?:\/[\w.-]+)*\.yaml$/.test(target) && !target.includes("..");
-  if (!isSymlink) return testo;
+  const prossimo = prossimoSymlink(testo, percorso);
+  if (!prossimo) return testo;
   if (salti <= 0) throw new Error("atlas: catena di symlink troppo lunga");
-  const dir = percorso.includes("/") ? percorso.slice(0, percorso.lastIndexOf("/") + 1) : "";
-  return scarica(dir + target, salti - 1);
+  return scarica(prossimo, salti - 1);
 };
 
 const yaml = await scarica("ATLAS-latest.yaml");

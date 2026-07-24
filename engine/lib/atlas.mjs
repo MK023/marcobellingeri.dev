@@ -17,6 +17,22 @@
 
 export const STUDIO = "https://atlas.mitre.org/studies/";
 
+// `dist/ATLAS-latest.yaml` e' un SYMLINK: via raw.githubusercontent torna il
+// percorso di destinazione come testo (18-20 byte), non i dati. Oggi la catena
+// e' doppia: ATLAS-latest -> v6/ATLAS-latest -> v6/ATLAS-2026.06.
+//
+// Ritorna il prossimo percorso da scaricare, o null se il corpo sono gia' i dati.
+// Il target e' contenuto REMOTO che finisce dentro un URL: qui e' confinato a un
+// nome di file relativo (niente `..`, niente `/` iniziale, niente schema o host),
+// cosi' non puo' spostare la richiesta altrove.
+export function prossimoSymlink(corpo, percorso) {
+  const target = String(corpo).trim();
+  if (!/^[\w.-]+(?:\/[\w.-]+)*\.yaml$/.test(target)) return null;
+  if (target.split("/").includes("..")) return null;
+  const dir = percorso.includes("/") ? percorso.slice(0, percorso.lastIndexOf("/") + 1) : "";
+  return dir + target;
+}
+
 const scrosta = (v) => {
   const s = v.trim();
   const q = s.startsWith("'") && s.endsWith("'");

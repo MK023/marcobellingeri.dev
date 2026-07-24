@@ -309,8 +309,11 @@ test('radar: la fonte a dati committati esce con i suoi item senza toccare la re
   assert.ok(atlas, 'la fonte atlas non è nel registro');
   assert.ok(atlas.items.length > 0, 'atlas è uscita viva e vuota: è il silenzio peggiore');
   assert.ok(!dati.mancanti.includes('atlas'), 'una fonte senza feed non è una fonte giù');
+  // Confronto sull'hostname, non `includes`: `https://evil.example/?x=atlas.mitre.org`
+  // contiene la stringa e non è ATLAS (CodeQL js/incomplete-url-substring-sanitization).
+  const hostDi = (u) => { try { return new URL(u).hostname; } catch { return ''; } };
   assert.equal(
-    chiamati.filter((u) => u.includes('atlas.mitre.org')).length,
+    chiamati.filter((u) => hostDi(u) === 'atlas.mitre.org').length,
     0,
     'ATLAS è stata scaricata a runtime: il dato committato non serve più a niente',
   );
