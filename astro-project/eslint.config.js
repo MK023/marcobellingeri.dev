@@ -15,7 +15,11 @@ import astro from 'eslint-plugin-astro';
 import globals from 'globals';
 
 export default [
-  { ignores: ['dist/**', '.astro/**', 'coverage/**', 'node_modules/**'] },
+  // `.wrangler/` sono gli scratch del dev server (bundle Wrangler + SDK Sentry
+  // riscritto): gitignored, la CI non li vede mai, ma in locale dopo un
+  // `npx wrangler dev` il lint sputava 177 errori non nostri. Rumore che
+  // nasconde il primo errore vero.
+  { ignores: ['dist/**', '.astro/**', 'coverage/**', 'node_modules/**', '.wrangler/**'] },
 
   js.configs.recommended,
   ...ts.configs.recommended,
