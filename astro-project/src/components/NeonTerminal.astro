@@ -1,4 +1,14 @@
 ---
+import { defaultLang, type Lang } from '../i18n/ui';
+
+// Il terminale si apre anche da /en/ (cmdk, Konami): gli aria-label seguono la
+// lingua della pagina, o uno screen reader inglese sente etichette italiane.
+const lang = (Astro.currentLocale ?? defaultLang) as Lang;
+const aria = {
+  it: { close: 'Chiudi terminale', input: 'Terminale interattivo' },
+  en: { close: 'Close terminal', input: 'Interactive terminal' },
+}[lang];
+
 // `ls` elenca le sezioni che esistono davvero: elencarne una non renderizzata
 // manderebbe l'utente su un'ancora morta.
 const lsEntries = [
@@ -17,11 +27,11 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
   <div class="crt-screen">
     <div class="scanlines"></div>
     <div class="crt-flicker"></div>
-    <button class="neon-close" id="neon-close" aria-label="Chiudi terminale">✕</button>
+    <button class="neon-close" id="neon-close" aria-label={aria.close}>✕</button>
     <div class="crt-output" id="crt-output"></div>
     <div class="crt-inputline">
       <span class="crt-prompt">guest@bellingeri:~$</span>
-      <input class="crt-input" id="crt-input" type="text" autocomplete="off" spellcheck="false" aria-label="Terminale interattivo" />
+      <input class="crt-input" id="crt-input" type="text" autocomplete="off" spellcheck="false" aria-label={aria.input} />
     </div>
   </div>
   {/* Turnstile invisibile per `ask`: stesso pattern e sitekey di Servizi.astro

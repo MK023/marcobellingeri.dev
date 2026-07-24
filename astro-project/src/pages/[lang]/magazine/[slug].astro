@@ -34,9 +34,25 @@ const aiUrl = getRelativeLocaleUrl(lang, 'ai');
 // Meta description: incipit del problema, troncato pulito.
 const description = d.problem.length > 155 ? d.problem.slice(0, 152).trimEnd() + '…' : d.problem;
 const backHref = getRelativeLocaleUrl(lang, '') + '#magazine';
+
+// JSON-LD dell'articolo: dà a Google headline, data e autore che il grafo
+// Person+Service del layout non porta. L'autore si aggancia all'@id #person
+// già definito in BaseLayout, non lo duplica.
+const canonical = new URL(getRelativeLocaleUrl(lang, `magazine/${slug}`), Astro.site).href;
+const articleLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: d.title,
+  datePublished: d.date.toISOString(),
+  inLanguage: lang,
+  author: { '@id': `${new URL('/', Astro.site).href}#person` },
+  articleSection: d.sector,
+  mainEntityOfPage: canonical,
+});
 ---
 
-<BaseLayout lang={lang} title={`${d.title} — Magazine`} description={description} path={`magazine/${slug}`}>
+<BaseLayout lang={lang} title={`${d.title} — Magazine`} description={description} path={`magazine/${slug}`} ogType="article" publishedTime={d.date.toISOString()}>
+  <script type="application/ld+json" set:html={articleLd} slot="head" />
   <UtilityBar />
   <main id="main-content">
     <article class="mag-article">

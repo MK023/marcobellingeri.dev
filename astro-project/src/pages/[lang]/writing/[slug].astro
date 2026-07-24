@@ -35,9 +35,24 @@ const dateLabel = d.date.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', {
   month: 'long',
   day: 'numeric',
 });
+
+// JSON-LD BlogPosting: headline, data e autore (agganciato all'@id #person del
+// layout) che il grafo Person+Service non porta sulle pagine-articolo.
+const canonical = new URL(getRelativeLocaleUrl(lang, `writing/${slug}`), Astro.site).href;
+const articleLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: d.title,
+  description: d.description,
+  datePublished: d.date.toISOString(),
+  inLanguage: lang,
+  author: { '@id': `${new URL('/', Astro.site).href}#person` },
+  mainEntityOfPage: canonical,
+});
 ---
 
-<BaseLayout lang={lang} title={d.title} description={d.description} path={`writing/${slug}`}>
+<BaseLayout lang={lang} title={d.title} description={d.description} path={`writing/${slug}`} ogType="article" publishedTime={d.date.toISOString()}>
+  <script type="application/ld+json" set:html={articleLd} slot="head" />
   <UtilityBar />
   <main id="main-content">
     <article class="wr-article">

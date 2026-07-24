@@ -138,7 +138,7 @@ const copy = {
 }[lang];
 ---
 
-<BaseLayout lang={lang} title={copy.title} path="ai">
+<BaseLayout lang={lang} title={copy.title} description={copy.intro.slice(0, 155)} path="ai">
   <main id="main-content" class="legal-page">
     <h1 class="display">{copy.title}</h1>
     <p class="legal-intro">{copy.intro}</p>
