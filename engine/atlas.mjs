@@ -7,7 +7,7 @@
 // 626 KB del file supererebbero comunque TETTO_UPSTREAM.
 //
 // Run: node engine/atlas.mjs
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { estraiCasi, prossimoSymlink } from "./lib/atlas.mjs";
 import { catchTopLevel } from "./lib/sentry.mjs";
 
@@ -50,17 +50,26 @@ if (casi.length < precedenti) {
   throw new Error(`atlas: regressione — ${casi.length} case study contro i ${precedenti} committati`);
 }
 
+// Un oggetto per riga, compatto. Con l'indentazione a 2 ogni case study diventa
+// un blocco di 6 righe identico nella forma agli altri, e il rilevatore di
+// copia-incolla di Sonar ci legge 71 righe duplicate su 78 (misurato sulla PR
+// #131: 16% sul new code, soglia 3%). Compattando, ogni riga e' unica per
+// contenuto e la duplicazione sparisce davvero invece di essere esclusa dal
+// gate. Una riga per voce, cosi' il diff di una release resta leggibile.
+const righe = casi.map((c) => `  ${JSON.stringify(c)},`).join("\n");
 const contenuto = `// Generato da engine/atlas.mjs — non modificare a mano.
 // Fonte: MITRE ATLAS ${versione} — Apache License 2.0, Copyright 2021-2026 MITRE.
 // Rigenerare quando MITRE pubblica una release: \`node engine/atlas.mjs\`.
 export const ATLAS_VERSIONE = ${JSON.stringify(versione)};
-export const ATLAS_CASI = ${JSON.stringify(casi, null, 2)};
+export const ATLAS_CASI = [
+${righe}
+];
 `;
 
-const prima = await import(FILE.href)
-  .then((m) => JSON.stringify(m.ATLAS_CASI))
-  .catch(() => null);
-if (prima === JSON.stringify(casi)) {
+// Confronto sul CONTENUTO del file, non sui soli dati: cosi' anche un cambio di
+// formato come questo viene riscritto invece di passare per "nessuna novita'".
+const prima = await readFile(FILE, "utf8").catch(() => null);
+if (prima === contenuto) {
   console.log(`atlas: nessuna novita' (ATLAS ${versione}, ${casi.length} case study)`);
 } else {
   await writeFile(FILE, contenuto);
