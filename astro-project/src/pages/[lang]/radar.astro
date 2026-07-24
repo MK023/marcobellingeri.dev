@@ -185,10 +185,51 @@ const backHref = getRelativeLocaleUrl(lang, '');
     canvas.width = W * dpr; canvas.height = H * dpr;
     canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
     ctx2d?.setTransform(dpr, 0, 0, dpr, 0, 0);
-    R = Math.min(W, H) * 0.42; CX = W / 2; CY = H / 2;
+    // 0.46 e non 0.42: il globo respira un po' di più nel riquadro senza toccarne
+    // i bordi (0.46 × 2 = 92% del lato corto). Non risolve le sovrapposizioni —
+    // quelle sono chilometriche, se ne occupa posizioniVisibili — ma dà aria ai
+    // punti sparpagliati, che a 0.42 si pestavano ancora fra loro.
+    R = Math.min(W, H) * 0.46; CX = W / 2; CY = H / 2;
   };
 
   const sullo_schermo = (p: { x: number; y: number }) => ({ x: CX + p.x * R, y: CY - p.y * R });
+
+  // Due autorità nella stessa città sono lo stesso pixel a QUALUNQUE zoom che
+  // mostri ancora il pianeta: MITRE McLean dista 12 km da CISA, la Casa Bianca
+  // 300 m, il DSIT ~1 km da NCSC UK. Per separarli con lo zoom servirebbe un
+  // globo da 64.000 px di raggio — cioè non un globo. Quindi il dato resta vero
+  // (le coordinate non si toccano) e a scostarsi è solo il DISEGNO: i punti che
+  // cadono sullo stesso pixel si dispongono su un cerchietto attorno al loro
+  // baricentro. Deterministico, nessun random: stesso ordine = stessa figura.
+  //
+  // Nasce QUI e non dentro `disegna` perché anche `vicino` (il click) deve
+  // vedere le stesse posizioni: due proiezioni separate sono due verità, e la
+  // seconda diventa il bug in cui clicchi un punto e si apre l'altro.
+  const SEPARA = 13;
+  const posizioniVisibili = () => {
+    const visibili: { p: PuntoRadar; x: number; y: number }[] = [];
+    for (const p of punti) {
+      const pr = proietta(p.lng, p.lat);
+      if (pr.z <= 0) continue;
+      visibili.push({ p, ...sullo_schermo(pr) });
+    }
+    const gruppi: (typeof visibili)[] = [];
+    for (const v of visibili) {
+      const g = gruppi.find((g) => Math.hypot(g[0].x - v.x, g[0].y - v.y) < SEPARA);
+      if (g) g.push(v); else gruppi.push([v]);
+    }
+    for (const g of gruppi) {
+      if (g.length < 2) continue;
+      const cx = g.reduce((s, v) => s + v.x, 0) / g.length;
+      const cy = g.reduce((s, v) => s + v.y, 0) / g.length;
+      g.forEach((v, i) => {
+        const a = (i / g.length) * Math.PI * 2 - Math.PI / 2;
+        v.x = cx + Math.cos(a) * SEPARA;
+        v.y = cy + Math.sin(a) * SEPARA;
+      });
+    }
+    return visibili;
+  };
 
   const traccia = (punti2d: Punti) => {
     if (!ctx2d) return;
@@ -228,10 +269,8 @@ const backHref = getRelativeLocaleUrl(lang, '');
     ctx2d.stroke(); ctx2d.globalAlpha = 1;
 
     // punti
-    for (const p of punti) {
-      const pr = proietta(p.lng, p.lat);
-      if (pr.z <= 0) continue;
-      const s = sullo_schermo(pr);
+    for (const s of posizioniVisibili()) {
+      const p = s.p;
       // Quattro strati: la catena di ternari era già al limite, un oggetto la
       // chiude. `difesa` resta il default: uno strato nuovo senza tinta si vede
       // sul globo invece di sparire.
@@ -289,12 +328,10 @@ const backHref = getRelativeLocaleUrl(lang, '');
 
   const vicino = (mx: number, my: number) => {
     let best: PuntoRadar | null = null, bd = 18 * 18;
-    for (const p of punti) {
-      const pr = proietta(p.lng, p.lat);
-      if (pr.z <= 0) continue;
-      const s = sullo_schermo(pr);
+    // Stessa fonte di verità del disegno: si clicca dove si vede.
+    for (const s of posizioniVisibili()) {
       const d = (s.x - mx) ** 2 + (s.y - my) ** 2;
-      if (d < bd) { bd = d; best = p; }
+      if (d < bd) { bd = d; best = s.p; }
     }
     return best;
   };
