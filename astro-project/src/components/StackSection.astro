@@ -8,7 +8,7 @@ const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 const copy = {
   it: {
     title: 'Stack',
-    certsHead: 'Certificazioni · verificabili su Credly',
+    certsHead: 'Certificazioni · ognuna verificabile alla fonte',
     certAnthropic: 'Anthropic · 15 corsi · 2026',
     newTab: 'si apre in una nuova scheda',
     cards: [
@@ -24,7 +24,7 @@ const copy = {
   },
   en: {
     title: 'Stack',
-    certsHead: 'Certifications · verifiable on Credly',
+    certsHead: 'Certifications · each verifiable at the source',
     certAnthropic: 'Anthropic · 15 courses · 2026',
     newTab: 'opens in a new tab',
     cards: [
@@ -41,19 +41,27 @@ const copy = {
 }[lang];
 
 // Certificazioni rese come PILA da edicola (Newsstand): impilate e compatte non
-// fanno "muro di badge junior", e si aprono a ventaglio. Link al profilo Credly,
-// dove le verificabili stanno tutte. L'Anthropic Academy 2026 (15 corsi) sposta
-// il segnale sull'AI attuale.
+// fanno "muro di badge junior", e si aprono a ventaglio.
+// CURATA A 10 — tetto deciso da Marco (24-07-2026), non si sfora: la pila
+// racconta la DIREZIONE (AI security, supply chain, zero trust), la storia
+// professionale la racconta il Percorso. Ogni voce linka la SUA verifica:
+// PDF Linux Foundation con ID certificato, pagine di verifica Securiti e
+// AttackIQ, Credly per il resto. Ciò che esce dalla pila resta sul profilo
+// Credly (linkato nel footer e nel terminale), non sparisce dal mondo.
 const CREDLY = 'https://credly.com/users/marco-bellingeri';
+const LF_CERT = (id: string) =>
+  `https://ti-user-certificates.s3.amazonaws.com/e0df7fbf-a057-42af-8a1f-590912be5460/4dde14c1-ec30-4b56-ba8d-50fc17ccd6d9-marco-bellingeri-${id}-certificate.pdf`;
 const certs = [
-  { label: 'IT Specialist – Cybersecurity', sub: 'Cisco Networking Academy · 2022', href: CREDLY },
-  { label: 'Linux Essentials', sub: 'Linux Professional Institute · 2022', href: CREDLY },
-  { label: 'GitHub Foundations', sub: 'GitHub · 2025', href: CREDLY },
-  { label: 'MongoDB Python Developer Path', sub: 'MongoDB · 2024', href: CREDLY },
-  { label: 'Python PCEP [30-02]', sub: 'Python Institute · 2024', href: CREDLY },
-  { label: 'Containers & Kubernetes Essentials', sub: 'IBM · 2024', href: CREDLY },
-  { label: 'Docker Essentials', sub: 'IBM · 2024', href: CREDLY },
+  { label: 'AI Security & Governance', sub: 'Securiti Education · 2026', href: 'https://education.securiti.ai/verification/14B137A88-14B135575-144EF5CD6/' },
+  { label: 'Foundations of AI Security', sub: 'AttackIQ Academy · 2026', href: 'https://www.academy.attackiq.com/certificates/certificate-template?resource=11843&type=course&title=Foundations%20of%20AI%20Security&cert_id=6711' },
+  { label: 'Secure AI/ML-Driven Software Development', sub: 'OpenSSF · Linux Foundation · 2026', href: LF_CERT('c13ddfe5-838d-4746-86b2-19c680ca9756') },
+  { label: 'Automating Supply Chain Security: SBOMs & Signatures', sub: 'OpenSSF · Linux Foundation · 2026', href: LF_CERT('a293b447-ef0e-49be-815c-00e903d807b2') },
+  { label: 'Understanding the EU Cyber Resilience Act (CRA)', sub: 'OpenSSF · Linux Foundation · 2026', href: LF_CERT('9302380f-be95-4491-acef-0382ba853655') },
+  { label: 'Introduction to Zero Trust', sub: 'Linux Foundation · 2026', href: LF_CERT('5f6c1e79-a93d-4cef-8761-91e6f8a3da77') },
   { label: 'Anthropic Academy', sub: copy.certAnthropic, href: CREDLY },
+  { label: 'Google AI Professional Certificate', sub: 'Google Career Certificates · 2026', href: CREDLY },
+  { label: 'Using Voyage Models with MongoDB', sub: 'MongoDB · 2026', href: CREDLY },
+  { label: 'GitHub Foundations', sub: 'GitHub · 2025', href: CREDLY },
 ];
 ---
 

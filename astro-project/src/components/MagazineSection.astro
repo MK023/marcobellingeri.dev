@@ -18,9 +18,6 @@ const issues = (await getCollection('magazine', (c) => c.data.lang === lang)).so
 // ruotate. Solo link in uscita (nuova scheda). La fonte è src/data/edicola.json:
 // le card dev.to le aggiunge da solo il cron Edicola card (engine/edicola.mjs),
 // una card interna si aggiunge a mano con `path` al posto di `href`.
-// Devpunks non è una firma ma un talent network: sta FUORI dalla pila, come chip
-// fisso a fianco dell'edicola.
-const DEVPUNKS = 'https://devpunks.com';
 
 const copy = {
   it: {
@@ -29,7 +26,6 @@ const copy = {
     problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA',
     permalink: 'Apri la pagina →',
     edicolaHead: 'Edicola · dove la firma esce anche fuori',
-    devpunks: 'Nel talent network',
     newTab: 'si apre in una nuova scheda',
   },
   en: {
@@ -38,7 +34,6 @@ const copy = {
     problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED',
     permalink: 'Open the page →',
     edicolaHead: 'Edicola · where the byline also runs',
-    devpunks: 'In the talent network',
     newTab: 'opens in a new tab',
   },
 }[lang];
@@ -101,55 +96,10 @@ const bylines = (edicola as Card[]).map((c) => ({
     ))}
   </div>
 
-  <div class="edicola-wrap">
-    <Newsstand head={copy.edicolaHead} items={bylines} newTab={copy.newTab} />
-    <a
-      class="edicola-devpunks"
-      href={DEVPUNKS}
-      target="_blank"
-      rel="noopener"
-      aria-label={`Devpunks — ${copy.devpunks} (${copy.newTab})`}
-    >
-      <span class="dp-source mono">{copy.devpunks}</span>
-      <span class="dp-title">Devpunks</span>
-    </a>
-  </div>
+  <Newsstand head={copy.edicolaHead} items={bylines} newTab={copy.newTab} />
 </section>
 
 <style>
-  /* Devpunks: giornale FISSO (non nella pila) a fianco dell'edicola. Stesso
-     vestito dei fogli della pila — specchia .paper di Newsstand.astro (scoped lì,
-     non riusabile da fuori): se cambia quello, cambia anche questo. */
-  .edicola-wrap{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px 24px; }
-  .edicola-devpunks{
-    flex:0 0 auto; margin-bottom:12px;
-    display:flex; flex-direction:column; gap:6px;
-    width:min(240px, 78vw); padding:11px 14px 13px;
-    text-decoration:none; color:var(--ink); background:var(--paper);
-    border:2px solid var(--ink); box-shadow:4px 4px 0 var(--ink);
-    transform:rotate(1.4deg);
-    transition:box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
-  }
-  .dp-source{
-    font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
-    opacity:0.62; padding-bottom:5px; border-bottom:1.5px solid var(--ink);
-  }
-  .dp-title{
-    font-family:'Source Serif 4', serif;
-    font-size:16px; font-weight:600; line-height:1.25;
-  }
-  /* :hover e :focus-visible separati: Safari ≤ 15.3 butta la lista intera. */
-  .edicola-devpunks:hover{
-    background:var(--ink); color:var(--paper);
-    box-shadow:6px 6px 0 var(--orange);
-  }
-  .edicola-devpunks:focus-visible{
-    background:var(--ink); color:var(--paper);
-    box-shadow:6px 6px 0 var(--orange);
-  }
-  .edicola-devpunks:hover .dp-source{ opacity:0.85; border-bottom-color:var(--paper); }
-  .edicola-devpunks:focus-visible .dp-source{ opacity:0.85; border-bottom-color:var(--paper); }
-  .edicola-devpunks:focus-visible{ outline:3px solid var(--orange); outline-offset:3px; }
 </style>
 
 <script>
