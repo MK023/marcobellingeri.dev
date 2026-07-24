@@ -57,3 +57,46 @@ test("radar-signals: source_name tagliato a 200, payload vuoto -> lista vuota", 
   assert.deepEqual(mapRadar([]), []);
   assert.deepEqual(mapRadar(undefined), []);
 });
+
+// ---- CLI (spawn, zero rete: fetch-mock) ---------------------------------
+
+import { runEngine } from "./helpers/spawn.mjs";
+
+const RADAR = { fonti: [{ id: "cisa", nome: "CISA", items: [
+  { titolo: "Advisory X", url: "https://www.cisa.gov/a", data: "2026-07-24" },
+  { titolo: "Advisory Y", url: "https://www.cisa.gov/b", data: "2026-07-23" },
+] }] };
+
+test("radar-signals --dry: stampa i candidati e non scrive nulla", () => {
+  const r = runEngine(["engine/radar-signals.mjs", "--dry"], [{ match: "api/radar", body: RADAR }]);
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /2 bollettini dal Radar/);
+  assert.match(r.stdout, /\[dry\] https:\/\/www\.cisa\.gov\/a/);
+  // nessuna rotta Supabase mockata: se scrivesse, il figlio morirebbe con "fetch non mockata"
+});
+
+test("radar-signals: senza numero draft esce a mani vuote, exit 0", () => {
+  const r = runEngine(["engine/radar-signals.mjs"], [
+    { match: "api/radar", body: RADAR },
+    { match: "issues?select", body: [] },
+  ]);
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /nessun numero .* esco senza scrivere/);
+});
+
+test("radar-signals: col draft aggancia i nuovi e salta i gia' visti", () => {
+  const r = runEngine(["engine/radar-signals.mjs"], [
+    { match: "api/radar", body: RADAR },
+    { match: "issues?select", body: [{ id: "i-1", number: 3, status: "draft" }] },
+    { match: "signals?select", body: [{ source_url: "https://www.cisa.gov/a" }] }, // gia' sul numero
+    { match: "signals", method: "POST", body: [] },
+  ]);
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /1 nuovi candidati-prova su #3 \(1 gia' visti\)/);
+});
+
+test("radar-signals: /api/radar giu' -> errore chiaro ed exit 1", () => {
+  const r = runEngine(["engine/radar-signals.mjs"], [{ match: "api/radar", status: 503, body: "giu" }]);
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /api\/radar -> HTTP 503/);
+});
