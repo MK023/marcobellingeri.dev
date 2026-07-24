@@ -30,6 +30,7 @@ const copy = {
     fontiSub:
       'La regola d’ammissione: una fonte entra solo se la sua licenza permette per iscritto quest’uso. L’attribuzione non è cortesia — è la condizione della licenza.',
     bollettini: 'bollettini →',
+    bollettiniOggi: 'Bollettini di oggi da',
     back: 'Torna alla home',
     io: { nome: 'Marco Bellingeri', luogo: 'Casale Monferrato', desc: 'Cloud & Security. Il radar lo leggo da qui.' },
     naturalEarth: 'Contorni: Natural Earth (pubblico dominio) via world-atlas (ISC).',
@@ -47,6 +48,7 @@ const copy = {
     fontiSub:
       'The admission rule: a source enters only if its licence permits this use in writing. Attribution is not courtesy — it is the licence’s condition.',
     bollettini: 'bulletins →',
+    bollettiniOggi: "Today's bulletins from",
     back: 'Back to home',
     io: { nome: 'Marco Bellingeri', luogo: 'Casale Monferrato', desc: 'Cloud & Security. This is where I read the radar from.' },
     naturalEarth: 'Outlines: Natural Earth (public domain) via world-atlas (ISC).',
@@ -91,6 +93,9 @@ const backHref = getRelativeLocaleUrl(lang, '');
               {' — '}
               <a href={f.home} rel="noopener">{copy.bollettini}</a>
             </p>
+            {/* Equivalente accessibile dei titoli che il canvas mostra solo nelle card:
+                vuota in SSR (i bollettini arrivano da /api/radar), riempita dalla fetch. */}
+            <ul class="sr-only radar-boll" id={`radar-boll-${f.id}`} aria-label={`${copy.bollettiniOggi} ${f.nome}`}></ul>
           </div>
         ))}
         <p class="mono radar-attrib">{copy.naturalEarth}</p>
@@ -415,6 +420,16 @@ const backHref = getRelativeLocaleUrl(lang, '');
             return li;
           }),
         );
+      }
+      // Equivalente accessibile dei titoli che il canvas mostra solo nelle card:
+      // per ogni fonte riempie la sua lista sr-only coi bollettini come TESTO.
+      // Non link di proposito: link fuori schermo sarebbero tab-stop invisibili
+      // per chi naviga da tastiera vedendo. L'informazione (i titoli) è ciò che
+      // mancava; per agire, il link "bollettini →" della fonte è già lì, visibile.
+      for (const f of dati.fonti) {
+        const ul = document.getElementById(`radar-boll-${f.id}`);
+        if (!ul || !f.items?.length) continue;
+        ul.replaceChildren(...f.items.map((i) => el('li', '', `${i.titolo}${i.data ? ` (${i.data})` : ''}`)));
       }
       disegna();
     })

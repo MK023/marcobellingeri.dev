@@ -128,6 +128,15 @@
     .halftone-frame{ opacity:0.9; }
   }
   .mono{font-family:'JetBrains Mono', monospace;}
+
+  /* Solo per screen reader: fuori dallo schermo ma nel flusso accessibile.
+     Serve al Radar per dare un equivalente testuale ai bollettini che altrimenti
+     vivono solo nelle card del canvas (aria-hidden). Tecnica standard, non display:none
+     (che toglierebbe anche agli assistivi). */
+  .sr-only{
+    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
   .display{font-family:'Anton', sans-serif; text-transform:uppercase; letter-spacing:0.01em;}
 
   a{color:inherit;}
