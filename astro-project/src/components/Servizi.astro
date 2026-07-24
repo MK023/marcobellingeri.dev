@@ -227,7 +227,7 @@ const briefLabels = {
         <div class="svc-step"><label for="svc-email">{c.order.contactStep}</label></div>
         {/* Validazione custom (vedi script): niente reportValidity — le bolle native
             del browser stonano col design. Errori inline, on-brand. */}
-        <input type="text" id="svc-name" class="svc-note-input" placeholder={c.order.namePlaceholder} autocomplete="name" required />
+        <input type="text" id="svc-name" class="svc-note-input" placeholder={c.order.namePlaceholder} aria-label={c.order.namePlaceholder} autocomplete="name" required />
         <p class="svc-err mono" id="svc-err-name" hidden></p>
         <input type="email" id="svc-email" class="svc-note-input" placeholder={c.order.emailPlaceholder} autocomplete="email" required />
         <p class="svc-err mono" id="svc-err-email" hidden></p>

@@ -28,9 +28,13 @@ interface Props {
   // La 404 non ha un URL canonico né una versione in un'altra lingua: dichiararli
   // direbbe ai motori che quella pagina esiste. Va indicizzata come "non esiste".
   noindex?: boolean;
+  // Le pagine-articolo (magazine, writing) sono `article`, non `website`: i social
+  // mostrano data e autore, e `publishedTime` alimenta il JSON-LD che emettono loro.
+  ogType?: 'website' | 'article';
+  publishedTime?: string;
 }
 
-const { lang = defaultLang, title, description, path = '', noindex = false } = Astro.props;
+const { lang = defaultLang, title, description, path = '', noindex = false, ogType = 'website', publishedTime } = Astro.props;
 
 const t = useTranslations(lang);
 const pageTitle = title ?? t('site.title');
@@ -120,7 +124,13 @@ const suggestTargets = (Object.keys(languages) as Lang[])
   <meta property="og:title" content={pageTitle} />
   <meta property="og:description" content={pageDescription} />
   <meta property="og:locale" content={t('og.locale')} />
-  <meta property="og:type" content="website" />
+  <meta property="og:type" content={ogType} />
+  {ogType === 'article' && publishedTime && (
+    <>
+      <meta property="article:published_time" content={publishedTime} />
+      <meta property="article:author" content="Marco Bellingeri" />
+    </>
+  )}
   <meta property="og:site_name" content="marcobellingeri.dev" />
   <meta property="og:url" content={canonical} />
   <!-- WhatsApp, Telegram, LinkedIn e Slack non renderizzano HTML né SVG: senza una
@@ -135,6 +145,7 @@ const suggestTargets = (Object.keys(languages) as Lang[])
   <meta name="twitter:title" content={pageTitle} />
   <meta name="twitter:description" content={pageDescription} />
   <meta name="twitter:image" content={new URL('/og.png', Astro.site).href} />
+  <meta name="twitter:image:alt" content={t('og.imageAlt')} />
 
   <!--
     Rilevamento giorno/notte eseguito PRIMA del primo paint, per evitare
@@ -178,6 +189,8 @@ const suggestTargets = (Object.keys(languages) as Lang[])
     })();
   </script>
 
+  <!-- Meta/JSON-LD specifici della pagina (es. Article sulle pagine-articolo). -->
+  <slot name="head" />
 </head>
 <body>
   <a href="#main-content" class="skip-link">{t('a11y.skipToContent')}</a>
