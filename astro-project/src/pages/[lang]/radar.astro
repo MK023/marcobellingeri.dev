@@ -226,6 +226,11 @@ const backHref = getRelativeLocaleUrl(lang, '');
         const a = (i / g.length) * Math.PI * 2 - Math.PI / 2;
         v.x = cx + Math.cos(a) * SEPARA;
         v.y = cy + Math.sin(a) * SEPARA;
+        // Lo scostamento è in coordinate schermo: vicino al bordo del disco
+        // spingerebbe il punto FUORI dal pianeta (Londra ci passa a ogni giro).
+        // Se esce, si riporta sul bordo lungo il raggio.
+        const d = Math.hypot(v.x - CX, v.y - CY), max = R - 4;
+        if (d > max) { v.x = CX + ((v.x - CX) / d) * max; v.y = CY + ((v.y - CY) / d) * max; }
       });
     }
     return visibili;
