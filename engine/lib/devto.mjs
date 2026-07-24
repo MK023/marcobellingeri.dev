@@ -4,6 +4,27 @@
 // stesso canonical -> update, mai un doppione.
 const API = "https://dev.to/api";
 
+// dev.to serve da cache CONDIVISA anche le risposte di endpoint autenticati, e
+// non varia sulla `api-key`: una risposta 401 finita in cache viene poi servita
+// a chiunque chiami lo stesso url, con qualunque chiave.
+//
+// Misurato il 24-07-2026 su /articles/me/published?per_page=100: la 401 portava
+// `Age: 195` (header presente solo sulle risposte da cache), e lo STESSO url con
+// un parametro in piu' tornava 200 nello stesso secondo, con la stessa chiave.
+// Il cron `Devto publish due` e' morto cosi', e per due ore e' sembrato un
+// problema di credenziali — una chiave e' stata pure ruotata per niente.
+//
+// Difesa: non condividere mai una voce di cache. Ogni lettura autenticata ha il
+// suo url. E' un workaround verso un difetto loro, non un design nostro: se un
+// giorno dev.to varia sulla api-key (o smette di cachare questi endpoint),
+// questa funzione si toglie e non manca a nessuno.
+let progressivo = 0;
+export function urlNonCondiviso(url) {
+  const u = new URL(url);
+  u.searchParams.set("_", `${Date.now().toString(36)}${(progressivo++).toString(36)}`);
+  return u.toString();
+}
+
 // Frontmatter minimale della writing collection: title/description tra virgolette,
 // tags inline [a, b, c]. Non è uno YAML parser: copre il formato dei nostri file.
 export function parseArticle(md) {
@@ -53,7 +74,9 @@ export function inUscita({ articoli, canonicalPubblicati, oggi }) {
 export async function publishedArticles() {
   const { DEVTO_API_KEY } = process.env;
   if (!DEVTO_API_KEY) throw new Error("missing env: DEVTO_API_KEY (usa `doppler run`)");
-  const r = await fetch(`${API}/articles/me/published?per_page=100`, { headers: { "api-key": DEVTO_API_KEY } });
+  const r = await fetch(urlNonCondiviso(`${API}/articles/me/published?per_page=100`), {
+    headers: { "api-key": DEVTO_API_KEY },
+  });
   if (!r.ok) throw new Error(`devto me/published ${r.status}: ${await r.text()}`);
   return r.json();
 }
@@ -67,7 +90,7 @@ export async function upsertArticle({ title, description, tags, body, canonicalU
   if (!DEVTO_API_KEY) throw new Error("missing env: DEVTO_API_KEY (usa `doppler run`)");
   const headers = { "api-key": DEVTO_API_KEY, "Content-Type": "application/json" };
 
-  const r = await fetch(`${API}/articles/me/all?per_page=100`, { headers });
+  const r = await fetch(urlNonCondiviso(`${API}/articles/me/all?per_page=100`), { headers });
   if (!r.ok) throw new Error(`devto me/all ${r.status}: ${await r.text()}`);
   const esistente = (await r.json()).find((a) => a.canonical_url === canonicalUrl);
 

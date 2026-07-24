@@ -2,7 +2,7 @@
 // Stub di fetch globale con cattura delle richieste, zero rete.
 import { test, afterEach } from "node:test";
 import { strict as assert } from "node:assert";
-import { parseArticle, upsertArticle, inUscita } from "../lib/devto.mjs";
+import { parseArticle, upsertArticle, inUscita, urlNonCondiviso } from "../lib/devto.mjs";
 import { runEngine } from "./helpers/spawn.mjs";
 
 const realFetch = globalThis.fetch;
@@ -210,4 +210,50 @@ test("devto: happy path sull'articolo vero — create draft con canonical", () =
   assert.equal(r.code, 0, r.stderr);
   assert.match(r.stdout, /creato id 9 — draft/);
   assert.match(r.stdout, /canonical -> https:\/\/marcobellingeri\.dev\/en\/writing\/audit-di-se/);
+});
+
+// ---- cache condivisa avvelenata (24-07-2026) -----------------------------
+// dev.to serve da cache condivisa anche le risposte di endpoint AUTENTICATI e
+// non varia sulla api-key: un 401 finito in cache viene poi servito a chiunque
+// chiami lo STESSO url, con qualunque chiave. Misurato: la risposta 401 portava
+// `Age: 195`, e lo stesso url con un parametro in piu' tornava 200 nello stesso
+// secondo con la stessa chiave. Il cron `Devto publish due` e' morto cosi', e
+// per due ore e' sembrato un problema di credenziali.
+
+test("devto: due richieste non condividono mai la stessa voce di cache", () => {
+  const a = urlNonCondiviso("https://dev.to/api/articles/me/published?per_page=100");
+  const b = urlNonCondiviso("https://dev.to/api/articles/me/published?per_page=100");
+  assert.notEqual(a, b, "stesso url = stessa cache = un 401 altrui diventa il nostro");
+});
+
+test("devto: i parametri veri sopravvivono, l'endpoint non cambia", () => {
+  const u = new URL(urlNonCondiviso("https://dev.to/api/articles/me/published?per_page=100"));
+  assert.equal(u.origin + u.pathname, "https://dev.to/api/articles/me/published");
+  assert.equal(u.searchParams.get("per_page"), "100");
+});
+
+test("devto: funziona anche su un url senza query", () => {
+  const u = new URL(urlNonCondiviso("https://dev.to/api/articles"));
+  assert.equal(u.pathname, "/api/articles");
+  assert.ok([...u.searchParams.keys()].length === 1, "deve aggiungere esattamente un parametro");
+});
+
+test("devto: le letture autenticate passano tutte dall'url non condiviso", async () => {
+  const visti = [];
+  globalThis.fetch = async (url, opt) => {
+    visti.push(String(url));
+    if (String(url).includes("/articles/me/all")) return new Response("[]", { status: 200 });
+    return new Response(JSON.stringify({ id: 1, url: "https://dev.to/x" }), { status: 200 });
+  };
+  process.env.DEVTO_API_KEY = "test-key";
+  await upsertArticle({
+    title: "t", description: "d", tags: ["a"], body: "b",
+    canonicalUrl: "https://marcobellingeri.dev/en/writing/x/",
+  });
+  const lettura = visti.find((u) => u.includes("/articles/me/all"));
+  assert.ok(lettura, "nessuna lettura di me/all");
+  assert.ok(
+    new URL(lettura).searchParams.has("_"),
+    "me/all senza url non condiviso: resta esposta alla cache avvelenata",
+  );
 });
