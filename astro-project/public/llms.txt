@@ -1,7 +1,7 @@
 # Marco Bellingeri — Cloud Platform & AI Security Engineer
 
 > Sito personale di Marco Bellingeri, freelance Cloud Platform & AI Security Engineer
-> (Casale Monferrato, IT). DevOps, Cloud e Security con approccio hands-on: pair
+> (Casale Monferrato, IT). AI, Cloud e Security con approccio hands-on: pair
 > programming, case study reali, automazione. Bilingue EN (primario) / IT.
 
 ## Pagine
