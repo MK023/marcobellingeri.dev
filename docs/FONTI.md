@@ -38,6 +38,15 @@
 | **Artificial Analysis** (Data API) | ToS §2.1: licenza *«solely for your own personal, **noncommercial** use»*; §2.2(a) vieta di *«commercially exploit … any content displayed on the Site»* e (d) di *«republish»*; §2.5: *«There are **no implied licenses**»*. Gli apidocs confermano: *«for **redistribution rights** … contact the team»* — la ridistribuzione si negozia, non è nel tier. Valutata il 24-07-2026 | [Terms-of-Use.pdf](https://artificialanalysis.ai/docs/legal/Terms-of-Use.pdf) (v1.0, 28-04-2024) · [data-api/docs](https://artificialanalysis.ai/data-api/docs) |
 | **BSI / CERT-Bund** (DE) | Nutzungsbedingungen: *«Software und Veröffentlichungen, die zum kostenfreien Download angeboten werden, dürfen **nur zu nicht kommerziellen Zwecken** verwendet werden»* e *«Eine weitergehende, insbesondere **kommerzielle** oder publizistische Verwendung bedarf der vorherigen Zustimmung durch das BSI»*. Verificato il 24-07-2026 (era "in attesa" per un 404: l'URL giusto è sotto `/Service/`, non `/Service-Navi/`) | [bsi.bund.de — Nutzungsbedingungen](https://www.bsi.bund.de/DE/Service/Nutzungsbedingungen/Nutzungsbedingungen.html) |
 | **NCSC-NL — advisories** | Il feed `advisories.ncsc.nl/rss/advisories` è reale e funzionante, ma sta su un **host diverso** da quello coperto dal CC0 e dichiara `<copyright>Copyright 2026 - NCSC-NL</copyright>`: leggibile come il *«tenzij anders vermeld»* che esclude il CC0. Ambiguo = fuori, senza interpretazioni comode. (Il feed **news** su `www.ncsc.nl` resta dentro) | [advisories.ncsc.nl/rss/advisories](https://advisories.ncsc.nl/rss/advisories) |
+| **INCIBE-CERT** (ES) | Aviso legal: la riproduzione è autorizzata solo se *«**No se pretenda un uso comercial**, quedando expresamente prohibidas su distribución, comunicación pública, transformación o descompilación»*. NonCommercial esplicito. Verificato il 25-07-2026 | [incibe.es/aviso-legal](https://www.incibe.es/aviso-legal) |
+| **CERT.br** (BR) | **CC BY-NC-ND 4.0** dichiarata nel footer del sito: vieta l'uso commerciale (**NC**) *e* le opere derivate (**ND**). Doppiamente incompatibile — il Radar riusa e rielabora. Verificato il 25-07-2026 | [cert.br](https://www.cert.br/sobre/) · [deed CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.pt-br) |
+| **CSA / SingCERT** (SG) | Terms of use: i contenuti *«shall not be reproduced, republished, uploaded, posted, transmitted or otherwise distributed in any way, without the prior written permission of CSA»*; l'unica eccezione è per materiali di public education, *«for **personal, non-commercial use only**»*. Il **Singapore Open Data Licence** (che il commerciale lo permetterebbe) copre i dataset di `data.gov.sg`, **non** gli alert SingCERT sul sito CSA: licenza giusta, perimetro sbagliato. Verificato il 25-07-2026 | [csa.gov.sg/terms-of-use](https://www.csa.gov.sg/terms-of-use/) · [Singapore Open Data Licence](https://data.gov.sg/open-data-licence) |
+| **NCSC-IE** (Irlanda) | Solo `© NCSC 2025` nel footer, nessuna licenza di riuso dichiarata e nessun feed RSS nel sorgente. Ambiguo = fuori. Verificato il 25-07-2026 | [ncsc.gov.ie](https://www.ncsc.gov.ie/) |
+| **CERT-SE** (Svezia) | Nessuna dichiarazione di licenza o copyright nel footer (solo accessibilità e contatti), e **nessun RSS** nel sorgente: la sottoscrizione è via email. Ambiguo = fuori, e comunque senza flusso. Verificato il 25-07-2026 | [cert.se](https://www.cert.se/) |
+| **NCSC-FI / Traficom** (Finlandia) | Footer con il solo `© Traficom`, nessuna licenza di riuso. L'RSS **esiste** (la sezione feed è linkata), quindi il blocco è solo la licenza; la pagina copyright di Traficom risponde 404 e non è stato possibile leggere la primaria. Ambiguo = fuori. Verificato il 25-07-2026 | [kyberturvallisuuskeskus.fi](https://www.kyberturvallisuuskeskus.fi/en) |
+| **Cyber Centre** (Canada) | **Chiusa per prudenza, non per licenza negativa** — decisione di Marco del 25-07-2026. Il caso è genuinamente contraddittorio: il [record ufficiale del bollettino](https://open.canada.ca/data/en/info/3a02df5a-84c9-43b4-b483-abfd8e0c24c6) sul portale Open Government dichiara **OGL-Canada**, che concede *«a worldwide, royalty-free, perpetual, non-exclusive licence to use the Information, **including for commercial purposes**»*; il boilerplate `canada.ca` parla però di *«personal and public **non-commercial** use»*, e quella pagina risponde **403** in inglese, in francese e via curl — la primaria non è stata letta. Due pagine ufficiali dello stesso governo che si contraddicono: la regola dice ambiguo = fuori. **Riapribile** se un giorno si legge la primaria e conferma l'OGL: è l'unico candidato con RSS reale e licenza potenzialmente idonea | [OGL-Canada](https://open.canada.ca/en/open-government-licence-canada) · [record del bollettino](https://open.canada.ca/data/en/info/3a02df5a-84c9-43b4-b483-abfd8e0c24c6) |
+| **HKCERT** (Hong Kong) | Pagina termini **403**, licenza non verificabile. Non perseguita oltre: una fonte che non lascia leggere le proprie condizioni non entra. Tentato il 25-07-2026 | hkcert.org/terms-and-conditions |
+| **CNCERT/CC** (Cina) | **Non valutata per licenza**: prima della conformità c'è una scelta editoriale. È un'agenzia statale cinese, e citarla come fonte su un sito che vende AI security in Europa è una presa di posizione visibile, non un dettaglio tecnico. Decisione di Marco del 25-07-2026: non si persegue | — |
 
 ## 🟡 Approvate ma NON cablate
 
@@ -69,6 +78,19 @@ poi connessione fallita), quindi prima di cablarla va provata da `wrangler dev`.
 
 SANS ISC / DShield (403) · OECD AI Incidents Monitor (T&C 403) · CSIRTS.com (aggregatore
 terzo: condizioni proprie da leggere).
+
+## Come si cerca una fonte nuova (il criterio, non l'elenco)
+
+Emerso il 25-07-2026 dopo un giro a vuoto su nove paesi: **non si cerca un CERT, si cerca una
+giurisdizione**. Ogni fonte approvata qui sopra sta in un paese con una politica nazionale di
+open government — OGL britannica, Licence Ouverte francese, CC0 olandese, CC BY neozelandese e
+australiana. Nessuna è entrata per il fatto di essere un CERT: è entrata perché quel governo
+aveva già deciso, per legge, che i suoi contenuti si riusano.
+
+Corollario pratico: le directory di team (FIRST, indici vari) servono a **enumerare**, non a
+selezionare. Percorrerle a tappeto costa una verifica a testa e produce quasi solo no — il giro
+del 25-07 è finito 0 su 9. Partire invece dall'elenco dei paesi con licenza pubblica aperta, e
+solo lì cercare il CERT, inverte il rapporto fra verifiche e risultati.
 
 ## Come si aggiunge una fonte
 
