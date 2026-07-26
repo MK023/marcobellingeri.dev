@@ -1,64 +1,94 @@
-# CLAUDE.md — marcobellingeri.dev
+# CLAUDE.md, marcobellingeri.dev
 
-> Memoria di progetto, caricata a ogni turno. **Corta e ad alta densità**: è context
-> speso ogni turno, non un README. Le regole operative *generali* (PR, sicurezza
-> baseline, i due modelli MUST pipeline+test) vivono nel CLAUDE.md **globale** di Marco —
-> qui solo ciò che è **specifico di questo repo**. Sezione lunga → spostala in un file
-> dedicato e rimanda al percorso (progressive disclosure: si legge on-demand, non si
-> auto-carica un file grosso a ogni turno).
+> Project memory, loaded on every turn. **Short and dense**: this is context spent every turn,
+> not a README. The *general* operating rules (PRs, baseline security, the two MUST models
+> pipeline+test) live in Marco's **global** CLAUDE.md. Only what is **specific to this repo**
+> belongs here. A section growing long should move to a dedicated file with a path pointer
+> (progressive disclosure: read on demand, not auto-loaded on every turn).
 
-## Cos'è
+## What this is
 
-Sito personale di Marco (live dal 2026-07-10). Non un portfolio: un sito che **dimostra**
-invece di dichiarare (la sezione Security rilegge gli header dalla risposta HTTP; il
-Terminale interroga il RAG dal vivo). Astro statico bilingue IT/EN su Cloudflare Workers;
-un Worker sceglie la lingua su `/` e serve `/api/contact` + `/api/ask` + `/api/radar` (bollettini CERT aggregati, cache edge; registro licenze in `docs/FONTI.md` con guardia in CI). Backend `engine/`:
-pipeline RAG del magazine mensile (Valyu → verifica → generate → embed voyage-3.5 su
-Supabase pgvector → export). Security-by-design è il **posizionamento**, non una rifinitura.
+Marco's personal site (live since 2026-07-10). Not a portfolio: a site that **demonstrates**
+instead of declaring (the Security section reads the headers back out of the HTTP response; the
+Terminal queries the RAG live). Static Astro, bilingual IT/EN, on Cloudflare Workers; a Worker
+picks the language on `/` and serves `/api/contact`, `/api/ask` and `/api/radar` (aggregated
+CERT bulletins, edge cache; the licence registry is `docs/FONTI.md` with a guard in CI). Backend
+in `engine/`: the RAG pipeline of the monthly magazine (Valyu, verification, generate, embed
+voyage-3.5 on Supabase pgvector, export). Security by design is the **positioning**, not a
+finishing touch.
 
-## Struttura
+## Layout
 
-- `astro-project/` — il sito **e** il `worker/`. **Si parte da qui.**
-- `engine/` — pipeline Node zero-dipendenze (`fetch` nativo): `ingest`, `generate`, `embed`, `export`, `competitors`, `retrieve`, `visibility`, `devto` (`--due` = uscita programmata), `radar-signals` (bollettini Radar -> candidati-prova), `edicola`, `advance`, `judge` (LLM-as-a-judge sulla PR di contenuto). Magazine in autopilot: i cron eseguono lo stadio sbloccato dai gate umani in Studio.
-- `supabase/` — migration sequenziali (`000N_*.sql`), RLS ovunque, DB ricostruibile da zero.
-- `docs/adr/` — decisioni architetturali (ADR). *(Le spec/piani di processo non si versionano: vivono nella sessione e restano in git history.)*
+- `astro-project/`: the site **and** the `worker/`. **Start here.**
+- `engine/`: a zero-dependency Node pipeline (native `fetch`): `ingest`, `generate`, `embed`,
+  `export`, `competitors`, `retrieve`, `visibility`, `devto` (`--due` for scheduled releases),
+  `radar-signals` (Radar bulletins into proof candidates), `edicola`, `advance`, `judge`
+  (LLM-as-a-judge on the content PR). The magazine runs on autopilot: the crons run the stage
+  unlocked by the human gates in Studio.
+- `supabase/`: sequential migrations (`000N_*.sql`), RLS everywhere, a DB rebuildable from
+  scratch.
+- `docs/adr/`: architectural decisions (ADRs). *(Process specs and plans are not versioned:
+  they live in the session and stay in the git history.)*
 
-## Comandi
+## Commands
 
-Sito (`cd astro-project`): `npm run dev` · `npm run check` (astro/TS) · `npm run lint`
-(ESLint — gli unici occhi sui `.astro`) · `npm run build` · `npm run test:csp`
-(i test girano su `dist/`, **non** sul sorgente). Header veri (che `astro preview` non dà): `npx wrangler dev`.
-Engine (`cd engine`): `doppler run -- node <script>.mjs [--limit N]` · `npm test` (unit+integration, **zero rete**).
-Sempre `lint` + `check` + `test` verdi prima di dire "fatto".
+Site (`cd astro-project`): `npm run dev` · `npm run check` (astro/TS) · `npm run lint` (ESLint,
+the only eyes on the `.astro` files) · `npm run build` · `npm run test:csp` (tests run against
+`dist/`, **not** the source). Real headers (which `astro preview` does not give):
+`npx wrangler dev`.
+Engine (`cd engine`): `doppler run -- node <script>.mjs [--limit N]` · `npm test` (unit plus
+integration, **no network**).
+Always `lint` + `check` + `test` green before saying "done".
 
-## Stile di lavoro (specifico del repo)
+## How we work here (specific to this repo)
 
-- **Ogni modifica in branch + PR, mai su `main`** (nemmeno in locale). Il **codice** lo mergio io a gate verdi; i **contenuti** (articoli) li merge Marco.
-- **`main` è la produzione**: deploy automatico a ogni push. L'autonomia si ferma alla produzione — migration sul DB vero, segreti, azioni verso l'esterno solo su ok esplicito di Marco (verificando prima il target di ogni DDL).
-- **Verificare in browser, non fidarsi della lettura**: ogni bug serio è uscito eseguendo. Servi la build, misura.
-- **Skill che usiamo** (invocale al momento giusto, senza aspettare che Marco le chieda): **graphify** (query dei chiamanti prima di ogni edit non triviale, update del grafo dopo i merge) · **verify**/**run** (esegui prima di dire "fatto") · **test-driven-development** (test prima del codice, i due modelli MUST) · **web-perf** (ogni task di performance/CWV) · **ponytail** (diff minimo, la scala YAGNI→riuso→stdlib→una riga) · **prompt-master** (ogni prompt non banale, es. il system prompt di `ask`) · **humanizer** (ogni testo pubblico — articoli, copy, bio; **mai** i CV) · **code-review** (prima del merge). Nota proattiva in `.claude/session-skills.md`.
+- **Every change goes in a branch and a PR, never on `main`** (not even locally). I merge the
+  **code** once the gates are green; Marco merges the **content** (articles).
+- **`main` is production**: automatic deploy on every push. Autonomy stops at production.
+  Migrations on the real DB, secrets, and actions towards the outside world need Marco's
+  explicit approval (checking the target of every DDL first).
+- **Verify in the browser, do not trust the reading**: every serious bug came out by running it.
+  Serve the build, measure.
+- **Skills we use** (invoke them at the right moment, without waiting to be asked): **graphify**
+  (query the callers before any non-trivial edit, update the graph after merges) ·
+  **verify**/**run** (run it before saying "done") · **test-driven-development** (tests before
+  code, the two MUST models) · **web-perf** (every performance/CWV task) · **ponytail** (minimal
+  diff, the YAGNI → reuse → stdlib → one-liner ladder) · **prompt-master** (every non-trivial
+  prompt, for example the `ask` system prompt) · **humanizer** (every public text: articles,
+  copy, bio; **never** the CVs) · **code-review** (before merging). Proactive note in
+  `.claude/session-skills.md`.
 
-## Convenzioni di codice
+## Code conventions
 
-- **Match dello stile esistente.** Le lib `engine/lib/*` sono senza JSDoc: non aggiungerlo dove non c'è.
-- Output del modello / dato di rete = **input non fidato**: nel DOM solo via `esc()` (mai `innerHTML` col grezzo); nei log solo via `logsafe` (S5145); nelle query PostgREST solo via la barriera `pg`.
-- CSP a hash, **niente `unsafe-inline`**: niente `style=` inline nel JS runtime (la CSP li blocca in produzione — il colore va in `global.css`).
+- **Match the existing style.** The `engine/lib/*` libraries carry no JSDoc: do not add it where
+  there is none.
+- Model output and network data are **untrusted input**: into the DOM only through `esc()`
+  (never `innerHTML` with the raw value); into logs only through `logsafe` (S5145); into
+  PostgREST queries only through the `pg` barrier.
+- Hash-based CSP, **no `unsafe-inline`**: no inline `style=` in runtime JS (the CSP blocks it in
+  production, so the colour belongs in `global.css`).
 
-## Sicurezza (non negoziabile)
+## Security (non-negotiable)
 
-- Segreti solo su **Doppler**, mai nel repo. `.env` ignorato. gitleaks full-history + push protection attivi.
-- **La CSP vive nel `<meta>`, non negli header** — rimetterla in `_headers` manda il sito offline (un test dedicato lo impedisce). In `_headers` resta solo `frame-ancestors`.
-- RLS su tutte le tabelle; la RPC RAG serve **solo** `published` (il publish gate è in DB).
+- Secrets only on **Doppler**, never in the repo. `.env` is ignored. gitleaks full-history and
+  push protection are both on.
+- **The CSP lives in the `<meta>`, not in the headers**: putting it back in `_headers` takes the
+  site offline (a dedicated test prevents it). `_headers` keeps only `frame-ancestors`.
+- RLS on every table; the RAG RPC serves **only** `published` (the publish gate is in the DB).
 
-## Cosa NON fare (decisioni chiuse — non riaprire senza dati nuovi)
+## What NOT to do (closed decisions, do not reopen without new data)
 
-- Loader 780ms · CSP nel meta · SRI sul loader Turnstile (302 a un build id che ruota) · PII in history (`f731a91`, rischio accettato) · UX mobile a 15,7 schermate.
-- I 3 debiti "il fix è un regresso": `UtilityBar` (setInterval), `Projects.astro` (`Record<Lang>`), log verbosi in `engine/lib/*`.
-- I marker `ponytail:` sono **ceiling dichiarati** con upgrade path accanto, non debito da saldare.
+- The 780ms loader · the CSP in the meta · SRI on the Turnstile loader (a 302 to a rotating
+  build id) · PII in the history (`f731a91`, an accepted risk) · mobile UX at 15.7 screens.
+- The three debts where "the fix is a regression": `UtilityBar` (setInterval), `Projects.astro`
+  (`Record<Lang>`), verbose logs in `engine/lib/*`.
+- The `ponytail:` markers are **declared ceilings** with an upgrade path beside them, not debt
+  to pay down.
 
-## Riferimenti (leggi on-demand)
+## References (read on demand)
 
-- `README.md` — comandi completi, contratto pipeline/test, roadmap.
-- `SECURITY_AUDIT.md` — audit (0 finding aperti), difese confermate con prova.
-- `docs/adr/` — hosting/i18n, motore mensile, componenti, sourcing a due canali.
-- Ground truth cross-sessione: Atlas (repo privato `MK023/Atlas`) → `projects/marcobellingeri-dev.md`.
+- `README.md`: full commands, the pipeline/test contract, the roadmap.
+- `SECURITY_AUDIT.md`: the audit (0 open findings), defences confirmed with proof.
+- `docs/adr/`: hosting/i18n, the monthly engine, components, two-channel sourcing.
+- Cross-session ground truth: Atlas (private repo `MK023/Atlas`) →
+  `projects/marcobellingeri-dev.md`.

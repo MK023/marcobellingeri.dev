@@ -1,72 +1,72 @@
-# ADR 0003 — Componenti nuovi "show-off"
+# ADR 0003, the new "show-off" components
 
-- **Stato**: Accettato (design; build in sequenza)
-- **Data**: 2026-07-05
-- **Blocco**: B3
-- **Dipende da**: [ADR-0001](0001-architettura-hosting-i18n.md), [ADR-0002](0002-motore-numero-mensile.md)
+- **Status**: Accepted (design; built in sequence)
+- **Date**: 2026-07-05
+- **Block**: B3
+- **Depends on**: [ADR-0001](0001-architettura-hosting-i18n.md), [ADR-0002](0002-motore-numero-mensile.md)
 
-## Contesto
+## Context
 
-Il sito è la business card tecnica di Marco (professionista AI/security) e hub di
-un futuro canale YouTube noir su "IA spiegata ai senior", target anglosassone. I
-componenti nuovi devono **dimostrare competenza reale**, non essere gadget, e
-restare coerenti con l'estetica "90s magazine / noir".
+The site is Marco's technical business card (an AI/security professional) and the hub of a
+future noir YouTube channel on "AI explained to seniors", aimed at an English-speaking
+audience. The new components have to **demonstrate real competence** rather than be gadgets,
+and they have to stay consistent with the "90s magazine / noir" aesthetic.
 
-Componenti già esistenti (non toccati qui): CommandPalette (⌘K), NeonTerminal
-(CRT), UtilityBar giorno/notte, halftone, cursori custom.
+Components that already exist (not touched here): CommandPalette (⌘K), NeonTerminal (CRT), the
+day/night UtilityBar, halftone, custom cursors.
 
-## Scelti (Marco)
+## Chosen (by Marco)
 
-### C1 — Terminale CRT → interfaccia RAG reale
-- **Cosa**: l'easter-egg neon diventa un comando `ask <domanda>` che interroga
-  l'archivio dei numeri **pubblicati**.
-- **Dimostra**: AI + RAG + backend edge, in un'estetica noir/hacker.
-- **Flusso**: input → Worker → embed query (Voyage) → `match_article_chunks`
-  (solo `published`) → Claude compone la risposta **citando i numeri** → stream
-  al terminale. Risponde nella lingua della UI (IT/EN).
-- **Security by design** (è un endpoint AI **pubblico** = superficie):
-  - **Rate limiting** per IP (Cloudflare) + **cost-cap** (max token/chiamata, tetto
-    giornaliero) per evitare abuso e bollette.
-  - **Guardrail anti prompt-injection**: system prompt irrigidito, nessun accesso
-    a tool, output confinato all'archivio, rifiuto fuori-scope; l'input utente non
-    entra mai in un contesto privilegiato.
-  - Nessuna PII raccolta; CSP dedicata per l'endpoint.
-- **Dipendenze**: B2 implementato (Supabase + RAG con contenuti pubblicati) +
-  key (Voyage/Anthropic/Supabase) + Worker. → **BLOCCATO finché non ci sono key.
-  Ultimo a costruirsi.**
+### C1, the CRT terminal becomes a real RAG interface
+- **What**: the neon easter egg turns into an `ask <question>` command that queries the archive
+  of **published** issues.
+- **Demonstrates**: AI, RAG and an edge backend, in a noir/hacker aesthetic.
+- **Flow**: input, Worker, embed the query (Voyage), `match_article_chunks` (`published` only),
+  Claude composes the answer **citing the issues**, then it streams to the terminal. It answers
+  in the UI language (IT/EN).
+- **Security by design** (it is a **public** AI endpoint, so it is surface):
+  - **Rate limiting** per IP (Cloudflare) plus a **cost cap** (max tokens per call, daily
+    ceiling) to prevent abuse and bills.
+  - **Anti prompt-injection guardrails**: a hardened system prompt, no tool access, output
+    confined to the archive, refusal outside scope; user input never enters a privileged
+    context.
+  - No PII collected; a dedicated CSP for the endpoint.
+- **Dependencies**: B2 implemented (Supabase plus RAG with published content), the keys
+  (Voyage/Anthropic/Supabase) and the Worker. → **Blocked until the keys exist. Built last.**
 
-### C3 — Security card auto-referenziale
-- **Cosa**: riquadro che mostra gli **header di sicurezza del sito stesso**
-  (CSP, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) con
-  una riga di spiegazione per ciascuno.
-- **Dimostra**: competenza security, in modo meta e coerente col noir.
-- **Spec**: valori generati **a build-time dalla fonte-di-verità degli header**
-  (config CF/`_headers`), non da un fetch live → sempre coerenti, zero superficie.
-  Bilingue.
-- **Dipendenze**: nessuna key. **Costruibile ora** (meglio dopo aver portato gli
-  header su Cloudflare, così mostra quelli reali di produzione).
+### C3, the self-referential security card
+- **What**: a panel showing **the site's own security headers** (CSP, HSTS,
+  X-Content-Type-Options, Referrer-Policy, Permissions-Policy) with one line of explanation for
+  each.
+- **Demonstrates**: security competence, in a way that is both meta and consistent with the
+  noir tone.
+- **Spec**: the values are generated **at build time from the headers' source of truth** (the
+  CF config / `_headers`) rather than from a live fetch, so they are always consistent and add
+  no surface. Bilingual.
+- **Dependencies**: no keys. **Buildable now** (better after the headers have moved to
+  Cloudflare, so that it shows the real production ones).
 
-### C4 — Switcher lingua + banner geo
-- **Cosa**: switcher `/it/ ↔ /en/` + banner che **suggerisce** la lingua in base
-  al geo, SEO-safe ([[ADR-0001]] §4): non redirige i crawler, override via cookie,
-  entrambe le lingue sempre crawlabili.
-- **Dimostra**: competenza i18n / SEO internazionale.
-- **Dipendenze**: la **fondazione i18n Astro** (`/it//en/`, hreflang, x-default).
-  Nessuna key. **Costruibile ora** ed è il cuore del lavoro bilingue.
+### C4, the language switcher plus geo banner
+- **What**: an `/it/ ↔ /en/` switcher plus a banner that **suggests** a language based on geo,
+  SEO-safe ([[ADR-0001]] §4): it does not redirect crawlers, it can be overridden by cookie,
+  and both languages stay crawlable.
+- **Demonstrates**: i18n and international SEO competence.
+- **Dependencies**: the **Astro i18n foundation** (`/it/`, `/en/`, hreflang, x-default). No
+  keys. **Buildable now**, and it is the heart of the bilingual work.
 
-## Scartato
+## Rejected
 
-- **C2 — Wire-feed dei signals** (dispaccio d'agenzia dei segnali Firecrawl):
-  scartato da Marco.
+- **C2, a signals wire feed** (a newswire-style dispatch of the Firecrawl signals): rejected by
+  Marco.
 
-## Ordine di build (Marco decide la sequenza)
+## Build order (Marco decides the sequence)
 
-1. **Ora, senza key**: fondazione i18n → **C4**; e **C3** (standalone).
-2. **Dopo B2-impl + key**: **C1** (terminale RAG) con la sua spec di sicurezza.
+1. **Now, without keys**: the i18n foundation, then **C4**; and **C3** (standalone).
+2. **After B2 implementation plus keys**: **C1** (the RAG terminal) with its security spec.
 
-## Osservabilità (decisione aperta, vincolo: gratis)
+## Observability (open decision, constraint: free)
 
-- Proposta: **Langfuse** (trace/costi della generazione LLM — Marco lo usa già) +
-  **observability nativa Cloudflare** (edge, gratis) + **log GitHub Actions** (CI).
-- Alternativa vetrina: **Grafana + Loki** self-host (cruscotto unico, ma costo
-  infra). Da decidere.
+- Proposal: **Langfuse** (traces and costs of LLM generation, which Marco already uses) plus
+  **native Cloudflare observability** (edge, free) plus **GitHub Actions logs** (CI).
+- The showcase alternative: self-hosted **Grafana + Loki** (a single dashboard, but with infra
+  cost). To be decided.

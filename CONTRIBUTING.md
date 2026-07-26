@@ -1,89 +1,86 @@
-# Contribuire
+# Contributing
 
-Questo documento **descrive la convenzione già in uso** in questo repository, ricavata
-dalla storia dei commit. Non introduce un processo nuovo: mette per iscritto quello che
-c'è, così che valga anche quando a scrivere è un agente e non una persona.
+This document **describes the convention already in use** in this repository, reconstructed
+from the commit history. It does not introduce a new process: it writes down what is already
+there, so that it holds even when the author is an agent rather than a person.
 
-## Branch
+## Branches
 
-Non si committa mai direttamente su `main`. Ogni lavoro nasce su un branch:
-
-```
-<tipo>/<slug-in-kebab-case>
-```
-
-dove `<tipo>` è lo stesso insieme dei tipi di commit: `feat`, `fix`, `chore`, `ci`,
-`docs`, `test`. Esempi reali: `feat/design-refresh`, `fix/csp-e-cloudflare`.
-
-I branch di Dependabot (`dependabot/…`) non seguono questa regola: li genera GitHub.
-
-Un branch vive quanto un blocco di lavoro. Se supera la settimana, o il diff supera
-il migliaio di righe, va spezzato: un diff che nessuno riesce a rivedere non è stato
-rivisto.
-
-## Commit
-
-[Conventional Commits](https://www.conventionalcommits.org/), con l'oggetto in italiano:
+Nothing is ever committed straight to `main`. Every piece of work starts on a branch:
 
 ```
-<tipo>(<scope>): <oggetto all'infinito o al presente, minuscolo, senza punto finale>
-
-<corpo: perché, non cosa. Il cosa lo dice il diff.>
+<type>/<slug-in-kebab-case>
 ```
 
-**Tipi**, in ordine di frequenza reale: `feat`, `fix`, `chore`, `docs`, `ci`, `test`.
+where `<type>` comes from the same set as the commit types: `feat`, `fix`, `chore`, `ci`,
+`docs`, `test`. Real examples: `feat/design-refresh`, `fix/csp-e-cloudflare`.
 
-**Scope** usati finora: `site`, `engine`, `ci`, `db`, `security`, `adr`, `gdpr`,
-`obs`, `secrets`, `env`, `readme`, `audit`, `backend`. Se serve uno scope nuovo va
-bene; se ne serve uno per ogni commit, lo scope non sta funzionando.
+Dependabot branches (`dependabot/…`) do not follow this rule. GitHub generates them.
 
-**Merge commit**: `merge: <descrizione del blocco>`. È una deviazione consapevole
-dallo standard — `merge` non è un tipo di Conventional Commits — ma rende la storia
-di `main` leggibile come una lista di blocchi chiusi. Si mantiene.
+A branch lives as long as one block of work. If it runs past a week, or the diff runs past a
+thousand lines, split it: a diff nobody can review has not been reviewed.
 
-Un solo commit storico è fuori convenzione (`sec: …`): per la sicurezza si usa
-`fix(security)` o `chore(security)`.
+## Commits
 
-Il corpo del commit spiega **perché**, e quando una scelta è controintuitiva dice
-anche cosa succederebbe altrimenti. Il commit che ha sbloccato la CSP racconta perché
-la policy è uscita da `_headers`: senza quella riga, il primo che la rimette dentro
-manda il sito offline.
+[Conventional Commits](https://www.conventionalcommits.org/), with the subject written in
+Italian:
 
-## Pull request
+```
+<type>(<scope>): <subject in the infinitive or present tense, lowercase, no trailing period>
 
-Ogni branch entra in `main` con una PR: `main` è protetta da un ruleset che vieta il
-push diretto, la cancellazione e il force-push. Devono essere verdi:
+<body: why, not what. The diff already says what.>
+```
 
-- **Backend CI**: unit + integration, gitleaks full-history, ricostruzione del DB da
-  zero con assert su schema, RLS e publish gate.
-- **Site CI**: `astro check` (type-check), ESLint, build, poi i test su `dist/` —
-  hash CSP di ogni script inline, `_headers` che non annulla il `<meta>`, Archivio
-  coerente con l'indice dei numeri.
+**Types**, in order of actual frequency: `feat`, `fix`, `chore`, `docs`, `ci`, `test`.
 
-Prima di aprire la PR, in `astro-project/`: `npm run check && npm run lint`. Sono le
-uniche due reti che guardano i file `.astro` — SonarCloud non li sa analizzare.
+**Scopes** used so far: `site`, `engine`, `ci`, `db`, `security`, `adr`, `gdpr`, `obs`,
+`secrets`, `env`, `readme`, `audit`, `backend`. A new scope is fine; if every commit needs a
+new one, the scoping is not working.
 
-**Se tocchi lo script `is:inline` in `BaseLayout.astro`**, il suo hash SHA cambia e la
-CSP non lo autorizza più: `npm run test:csp` fallisce e **stampa l'hash corretto** da
-incollare in `astro.config.mjs`. Non è un incidente, è la procedura — quel test esiste
-per impedire che l'hash e lo script divergano in silenzio.
+**Merge commits**: `merge: <description of the block>`. This is a deliberate departure from
+the standard, since `merge` is not a Conventional Commits type, but it makes the history of
+`main` read as a list of closed blocks. It stays.
 
-Entrambi girano su **ogni** PR, senza filtri per path. Un filtro farebbe risparmiare
-una cinquantina di secondi e in cambio bloccherebbe per sempre ogni PR che tocca solo
-un `.md`: un check obbligatorio che non parte non riporta nulla, e GitHub lo lascia in
-attesa all'infinito.
+One historical commit sits outside the convention (`sec: …`). For security work, use
+`fix(security)` or `chore(security)`.
 
-La CI del sito gira su `dist/`, non sul sorgente, perché il modo in cui questo sito si
-rompe non è compilando: è servendo. `astro preview` non applica `public/_headers`, e
-per questo la CSP rotta è sopravvissuta a ogni build verde finché non è stata servita
-davvero.
+The commit body explains **why**, and when a choice is counterintuitive it also says what
+would happen otherwise. The commit that unblocked the CSP explains why the policy moved out
+of `_headers`: without that line, the first person to move it back takes the site offline.
 
-## Segreti
+## Pull requests
 
-Mai nel repository. `.env` è ignorato, `doppler.yaml` contiene solo nomi di progetto e
-config. In locale i segreti arrivano da `doppler run`; in CI da service token scoped.
-gitleaks gira sull'intera storia a ogni push su `main`.
+Every branch reaches `main` through a PR. `main` is protected by a ruleset that forbids
+direct pushes, deletion and force-pushes. These must be green:
 
-Sulle PR di Dependabot gitleaks è saltato di proposito: il `GITHUB_TOKEN` è ristretto
-per policy di GitHub e l'action fallirebbe chiamando l'API. Ogni merge resta comunque
-coperto dallo scan su `main`.
+- **Backend CI**: unit and integration tests, gitleaks over the full history, a rebuild of
+  the database from scratch with assertions on the schema, RLS and the publish gate.
+- **Site CI**: `astro check` (type-check), ESLint, build, then the tests that run against
+  `dist/`: the CSP hash of every inline script, `_headers` not cancelling the `<meta>`, and
+  the Archive staying consistent with the issue index.
+
+Before opening the PR, from `astro-project/`: `npm run check && npm run lint`. Those are the
+only two nets watching the `.astro` files, because SonarCloud cannot parse them.
+
+**If you touch the `is:inline` script in `BaseLayout.astro`**, its SHA hash changes and the
+CSP no longer authorises it. `npm run test:csp` fails and **prints the correct hash** to paste
+into `astro.config.mjs`. That is not an accident, it is the procedure: the test exists to stop
+the hash and the script from drifting apart in silence.
+
+Both workflows run on **every** PR, with no path filters. A filter would save about fifty
+seconds and in exchange would permanently block every PR that only touches a `.md` file: a
+required check that never starts reports nothing, and GitHub leaves it pending forever.
+
+The site CI runs against `dist/` rather than the source, because the way this site breaks is
+not by compiling, it is by serving. `astro preview` does not apply `public/_headers`, which is
+how a broken CSP survived every green build until it was actually served.
+
+## Secrets
+
+Never in the repository. `.env` is ignored, and `doppler.yaml` holds only project and config
+names. Locally, secrets come from `doppler run`; in CI, from scoped service tokens. gitleaks
+runs over the full history on every push to `main`.
+
+On Dependabot PRs gitleaks is skipped on purpose: GitHub policy restricts the `GITHUB_TOKEN`,
+so the action would fail when it calls the API. Every merge is still covered by the scan on
+`main`.

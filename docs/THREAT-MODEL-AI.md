@@ -1,113 +1,115 @@
-# Threat model AI — nel vocabolario MITRE ATLAS
+# AI threat model, in MITRE ATLAS vocabulary
 
-> Le difese di questo sito sono nate prima del loro nome ATLAS: questo documento le mappa
-> sulla tassonomia (release **2026.06**, la stessa servita dallo strato IA del Radar) perché
-> un threat model che parla il vocabolario standard si confronta, si audita e si aggiorna.
-> Ogni difesa citata porta la **prova** (`file:riga`) e, dove esiste, il test che la guarda.
-> Convenzione: gli ID tecnica sono verificati contro `dist/v6/ATLAS-2026.06.yaml`, non citati
-> a memoria.
+> This site's defences existed before they had an ATLAS name. This document maps them onto the
+> taxonomy (release **2026.06**, the same one served by the Radar's AI layer) because a threat
+> model that speaks the standard vocabulary can be compared, audited and updated. Every defence
+> named here carries its **proof** (`file:line`) and, where one exists, the test that watches it.
+> Convention: technique IDs are checked against `dist/v6/ATLAS-2026.06.yaml`, never quoted from
+> memory.
 
-## Perimetro
+## Perimeter
 
-I sistemi AI del sito sono quelli elencati in `/ai`: il comando `ask` del terminale (RAG +
-Claude Haiku), la pipeline del magazine (`engine/`: ingest → generate → embed), il judge
-(LLM-as-a-judge sui numeri), gli embedding (Voyage). Il Radar **non** è un sistema AI e la
-pagina lo dichiara.
+The site's AI systems are the ones listed on `/ai`: the terminal's `ask` command (RAG plus
+Claude Haiku), the magazine pipeline (`engine/`: ingest, generate, embed), the judge
+(LLM-as-a-judge on the issues) and the embeddings (Voyage). The Radar is **not** an AI system,
+and the page says so.
 
-**Fatto strutturale che taglia mezza tassonomia**: il sito non possiede modelli — niente
-pesi, niente training, modelli di terzi via API (Anthropic, Voyage). Le tattiche su
-training e furto del modello sono **non applicabili per architettura**, non per mitigazione
-(v. ultima sezione).
+**A structural fact that cuts half the taxonomy**: the site owns no models. No weights, no
+training, third-party models over an API (Anthropic, Voyage). Tactics against training and
+model theft are **not applicable by architecture**, not by mitigation (see the last section).
 
-## Mappa: tecnica ATLAS → vettore concreto → difesa → prova
+## The map: ATLAS technique → concrete vector → defence → proof
 
-### AML.T0093 — Prompt Infiltration via Public-Facing Application
-`/api/ask` è esattamente la superficie descritta: input libero dal pubblico verso un LLM.
+### AML.T0093, Prompt Infiltration via Public-Facing Application
+`/api/ask` is exactly the surface described: free public input reaching an LLM.
 
-| Difesa | Prova |
+| Defence | Proof |
 |---|---|
-| Turnstile + rate limit per IP | `astro-project/worker/index.js:210-212` (`ASK_LIMITER`) |
-| Body limitato prima del parse | `astro-project/worker/index.js:69` (`leggiBodyLimitato`) |
-| Output cappato (500 token) | `astro-project/worker/index.js:316` |
+| Turnstile plus per-IP rate limiting | `astro-project/worker/index.js:210-212` (`ASK_LIMITER`) |
+| Body capped before the parse | `astro-project/worker/index.js:69` (`leggiBodyLimitato`) |
+| Output capped at 500 tokens | `astro-project/worker/index.js:316` |
 
-### AML.T0051 — LLM Prompt Injection (diretta e indiretta)
-| Difesa | Prova |
+### AML.T0051, LLM Prompt Injection (direct and indirect)
+| Defence | Proof |
 |---|---|
-| **I permessi stanno nel codice, non nel prompt**: `ask` non ha tool, non ha azioni, può solo rispondere con testo | commento-contratto a `astro-project/worker/index.js:201` |
-| Il system prompt è difesa in profondità, **non** LA barriera | `astro-project/worker/index.js:293` |
-| L'output del modello è input non fidato nel DOM: tutto passa da `esc()` | `astro-project/src/components/NeonTerminal.astro:56,100` |
+| **Permissions live in the code, not in the prompt**: `ask` has no tools, no actions, and can only answer with text | contract comment at `astro-project/worker/index.js:201` |
+| The system prompt is defence in depth, **not** the barrier | `astro-project/worker/index.js:293` |
+| Model output is untrusted input in the DOM: everything goes through `esc()` | `astro-project/src/components/NeonTerminal.astro:68` (definition), `:241` (the answer) |
 
-### AML.T0070 / AML.T0071 — RAG Poisoning / False RAG Entry Injection
-Il vettore vero del sito: contenuti di terzi entrano dai canali di sourcing (Valyu, Radar)
-e potrebbero puntare ad avvelenare ciò che il RAG serve.
+### AML.T0070 / AML.T0071, RAG Poisoning / False RAG Entry Injection
+The site's real vector: third-party content enters through the sourcing channels (Valyu,
+Radar) and could aim to poison what the RAG serves.
 
-| Difesa | Prova |
+| Defence | Proof |
 |---|---|
-| La RPC del RAG serve **solo** `published`; il publish gate è **in DB**, non in applicazione | `supabase/migrations/0006_publish_gate.sql:6-7` |
-| `published` richiede verify **umano** con tier (1, o 2+indipendente) | stesso gate; il tier non è mai assegnato da un modello |
-| Il testo di terzi è **dato, mai istruzioni** nella generazione | `engine/ingest.mjs:14`; stesso contratto in `engine/lib/radar-signals.mjs` |
-| Gli item del Radar passano la barriera di dominio | `astro-project/worker/radar.js` (`hostAmmesso`), test in `radar.test.mjs` |
+| The RAG's RPC serves **only** `published`; the publish gate is **in the DB**, not in the application | `supabase/migrations/0006_publish_gate.sql:6-7` |
+| `published` requires **human** verification with a tier (1, or 2 plus independent) | the same gate; the tier is never assigned by a model |
+| Third-party text is **data, never instructions** during generation | `engine/ingest.mjs:14`; the same contract in `engine/lib/radar-signals.mjs` |
+| Radar items pass the domain barrier | `astro-project/worker/radar.js` (`hostAmmesso`), tested in `radar.test.mjs` |
 
-### AML.T0080 — AI Agent Context Poisoning
-L'unico "agente" è la pipeline del magazine, e il suo contesto ingerisce web di terzi.
+### AML.T0080, AI Agent Context Poisoning
+The only "agent" is the magazine pipeline, and its context ingests third-party web content.
 
-| Difesa | Prova |
+| Defence | Proof |
 |---|---|
-| Autonomia cappata dai **due gate umani** (verify tier + merge contenuti) | `0006_publish_gate.sql`; regola nel `CLAUDE.md` di repo |
-| Judge consultivo post-generazione (referto + exit code, mai bloccante per scelta) | `engine/judge.mjs:106` |
+| Autonomy capped by the **two human gates** (tier verification, content merge) | `0006_publish_gate.sql`; the rule in the repo's `CLAUDE.md` |
+| Advisory post-generation judge (report plus exit code, deliberately never blocking) | `engine/judge.mjs:106` |
 
-### AML.T0056 / AML.T0069.002 — Extract LLM System Prompt
-Rischio **accettato per progetto**: il system prompt di `ask` non è un segreto né un
-controllo di sicurezza — estrarlo non conferisce alcuna autorità (i permessi stanno nel
-codice, v. sopra). Nessuna difesa dedicata, ed è una scelta, non una dimenticanza.
+### AML.T0056 / AML.T0069.002, Extract LLM System Prompt
+A risk **accepted by design**: the `ask` system prompt is neither a secret nor a security
+control, and extracting it confers no authority (permissions live in the code, see above).
+No dedicated defence, and that is a choice rather than an oversight.
 
-### AML.T0029 — Denial of AI Service
-| Difesa | Prova |
+### AML.T0029, Denial of AI Service
+| Defence | Proof |
 |---|---|
-| Rate limit per IP + Turnstile prima del modello | `astro-project/worker/index.js:210-212` |
-| `max_tokens: 500` — il costo per richiesta è cappato | `astro-project/worker/index.js:316` |
-| Fail-open dichiarato: modello giù = risposta degradata, non 500 | attributo `esito: degradato` in `astro-project/worker/langfuse.js` |
+| Per-IP rate limiting plus Turnstile in front of the model | `astro-project/worker/index.js:210-212` |
+| `max_tokens: 500`, so the cost per request is capped | `astro-project/worker/index.js:316` |
+| Declared fail-open: the model being down means a degraded answer, not a 500 | the `esito: degradato` attribute in `astro-project/worker/langfuse.js` |
 
-### AML.T0024 — Exfiltration via AI Inference API
-Il RAG può esfiltrare solo ciò che è già pubblico: serve esclusivamente contenuto
-`published`, che sta sul sito alla luce del sole. Il canale competitor (dati interni) è
-**deny-all a livello RLS e non entra mai nel RAG** (`supabase/migrations/0002_channel2_competitors.sql:40`, ADR-0004).
+### AML.T0024, Exfiltration via AI Inference API
+The RAG can only exfiltrate what is already public: it serves `published` content
+exclusively, which sits on the site in plain sight. The competitor channel (internal data) is
+**deny-all at the RLS level and never enters the RAG**
+(`supabase/migrations/0002_channel2_competitors.sql:40`, ADR-0004).
 
-### Non applicabili per architettura (dichiarato, non dimenticato)
+### Not applicable by architecture (declared, not forgotten)
 `AML.T0020` (Poison Training Data), `AML.T0018` (Poison AI Model), `AML.T0058` (Publish
-Poisoned Models), model theft/inversion: **nessun training e nessun modello proprio**.
-Il rischio residuo è di filiera — la fiducia nei modelli API di Anthropic/Voyage — ed è
-gestito come supply chain (SHA pinning, SBOM, attestation), non come difesa ML.
+Poisoned Models), model theft and inversion: **no training and no models of our own**.
+The residual risk is a supply chain one, the trust placed in the Anthropic and Voyage API
+models, and it is managed as supply chain (SHA pinning, SBOM, attestation) rather than as an
+ML defence.
 
-## Misurare (NIST AI RMF — funzione *Measure*)
+## Measuring (NIST AI RMF, *Measure* function)
 
-Le metriche dichiarate, tutte esistenti oggi (niente dashboard da costruire):
+The declared metrics, all of which exist today, with no dashboard left to build:
 
-| Metrica | Dove si legge | Quando |
+| Metric | Where to read it | When |
 |---|---|---|
-| **Esito delle richieste `ask`**: `ok` / `degradato` / `zero-match` | attributo `esito` delle trace Langfuse (`worker/langfuse.js`) | a campione; un'impennata di `zero-match` = RAG che non copre le domande vere |
-| **Verdetto del judge** per numero (promosso/bocciato + referto) | commento sulla PR di contenuto; exit code `engine/judge.mjs:106` | a ogni numero |
-| **Silenzi e anomalie**: KEV muto, blackout Radar, cron che non partono | Sentry (segnalazioni + cron check-in) | a notifica |
+| **Outcome of `ask` requests**: `ok` / `degradato` / `zero-match` | the `esito` attribute on Langfuse traces (`worker/langfuse.js`) | sampled; a spike in `zero-match` means the RAG does not cover the real questions |
+| **Judge verdict** per issue (passed or failed, plus the report) | the comment on the content PR; exit code in `engine/judge.mjs:106` | every issue |
+| **Silences and anomalies**: a mute KEV, a Radar blackout, crons that never start | Sentry (reports plus cron check-ins) | on notification |
 
-Il criterio di lettura è scritto qui perché una metrica senza soglia d'attenzione è
-arredamento: `zero-match` in crescita → si arricchisce il magazine, non si "tuna" il RAG;
-judge che boccia due numeri di fila → si riapre l'editoriale, non si abbassa la barra.
+The reading criteria are written down here because a metric without a threshold for concern
+is furniture. Rising `zero-match` means enriching the magazine, not "tuning" the RAG. A judge
+that fails two issues in a row means reopening the editorial line, not lowering the bar.
 
-## Retention della telemetria AI
+## AI telemetry retention
 
-- **Contenuti utente: mai raccolti, per costruzione.** Né la domanda né la risposta di
-  `ask` lasciano il Worker verso Langfuse — solo numeri (token, tempi, esito) e un session
-  id casuale per visita. Lo dice `/privacy`, lo implementa `worker/langfuse.js` ("SOLO
-  NUMERI, MAI CONTENUTI") e **un test dedicato lo fa rispettare** (`astro-project/test/worker.test.mjs:397`).
-  La retention del contenuto è quindi un non-problema: non c'è contenuto.
-- **Telemetria (i numeri): 90 giorni.** Bastano per debug e per la metrica `esito` su una
-  stagione; oltre, è accumulo. ⚠️ *Applicazione: la retention si imposta nel progetto
-  Langfuse (impostazione una tantum, mano di Marco) — questa riga è la policy, quella è
-  l'attuazione.*
+- **User content: never collected, by construction.** Neither the question nor the answer of
+  `ask` leaves the Worker for Langfuse, only numbers (tokens, timings, outcome) and a random
+  session id per visit. `/privacy` says so, `worker/langfuse.js` implements it ("NUMBERS ONLY,
+  NEVER CONTENT") and **a dedicated test enforces it**
+  (`astro-project/test/worker.test.mjs:397`). Content retention is therefore a non-problem:
+  there is no content.
+- **Telemetry (the numbers): 90 days.** Enough for debugging and for the `esito` metric across
+  a season; beyond that it is hoarding. Note on enforcement: retention is set in the Langfuse
+  project (a one-off setting, done by hand by Marco). This line is the policy, that is the
+  implementation.
 
-## Manutenzione di questo documento
+## Maintaining this document
 
-Si aggiorna quando: (1) entra un sistema AI nuovo in `/ai`; (2) MITRE pubblica una release
-ATLAS con tecniche RAG/agent nuove (`node engine/atlas.mjs` la porta nel Radar — questo
-documento va riletto nello stesso giro); (3) un incidente reale smentisce una riga qui
-sopra — nel qual caso la riga si corregge, non si difende.
+It is updated when: (1) a new AI system appears on `/ai`; (2) MITRE publishes an ATLAS release
+with new RAG or agent techniques (`node engine/atlas.mjs` brings it into the Radar, and this
+document should be reread in the same pass); (3) a real incident contradicts a line above, in
+which case the line gets corrected rather than defended.

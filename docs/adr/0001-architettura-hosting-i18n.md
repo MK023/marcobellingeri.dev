@@ -1,120 +1,111 @@
-# ADR 0001 — Architettura: hosting, i18n, rilevamento lingua, motore mensile
+# ADR 0001, architecture: hosting, i18n, language detection, monthly engine
 
-- **Stato**: Accettato
-- **Data**: 2026-07-05
-- **Decisori**: Marco (navigator), Claude
-- **Blocco**: B1 (architettura → decide l'hosting)
+- **Status**: Accepted
+- **Date**: 2026-07-05
+- **Deciders**: Marco (navigator), Claude
+- **Block**: B1 (architecture, which decides the hosting)
 
-## Contesto
+## Context
 
-`marcobellingeri.dev` è la **business card tecnica** di Marco per un progetto più
-grande (in arrivo): un **canale YouTube** — casi reali di applicazione e uso di
-IA/tecnologia, rivolto a un pubblico **over/senior anglosassone** che ancora non
-padroneggia questi strumenti, con estetica **noir** coerente col sito. Il sito
-gli farà da hub/landing.
+`marcobellingeri.dev` is Marco's **technical business card** for a bigger project still to
+come: a **YouTube channel** covering real cases of applying and using AI and technology, aimed
+at a **senior, English-speaking audience** that has not yet got to grips with these tools, with
+a **noir** aesthetic matching the site. The site will act as its hub and landing page.
 
-Vincoli che guidano l'architettura:
+Constraints driving the architecture:
 
-- **Bilingue IT/EN** con **SEO e AEO internazionali** come obiettivo primario
-  (target principale anglosassone).
-- **Rilevamento automatico della lingua** in base a chi richiede (geo/IP + lingua
-  browser).
-- **Security by design**, piattaforma coerente col mondo di Marco (già usa
-  Cloudflare Zero Trust altrove).
-- Evoluzione di un sito Astro già esistente (identità "90s magazine", numeri
-  mensili, archivio via Firecrawl), **non** un rifacimento.
-- **Numeri mensili** ("magazine anni '90"): ogni mese un numero, articoli reali
-  (caso → applicazione → soluzione); i visitatori possono **richiamare numeri
-  precedenti**.
+- **Bilingual IT/EN** with **international SEO and AEO** as the primary goal (the main target
+  is English-speaking).
+- **Automatic language detection** based on who is asking (geo/IP plus browser language).
+- **Security by design**, on a platform consistent with Marco's world (he already uses
+  Cloudflare Zero Trust elsewhere).
+- An evolution of an existing Astro site ("90s magazine" identity, monthly issues, an archive
+  fed by Firecrawl), **not** a rewrite.
+- **Monthly issues** ("90s magazine"): one issue a month, real articles (case, application,
+  solution), with visitors able to **pull up past issues**.
 
-## Decisioni
+## Decisions
 
-### 1. Hosting: Cloudflare **Workers** (static assets) + adapter `@astrojs/cloudflare`
-Non Pages. I docs Cloudflare indicano Workers come strada moderna (Pages ha già
-una guida di migrazione → Workers); Workers aggiunge **Cron Triggers**,
-osservabilità e accesso nativo a **Workers AI / Vectorize** sulla stessa
-piattaforma — utile per il RAG futuro. Astro è framework first-class su CF.
+### 1. Hosting: Cloudflare **Workers** (static assets) plus the `@astrojs/cloudflare` adapter
+Not Pages. The Cloudflare docs point to Workers as the modern path (Pages already has a
+migration guide towards Workers), and Workers adds **Cron Triggers**, observability and native
+access to **Workers AI / Vectorize** on the same platform, which will be useful for the future
+RAG. Astro is a first-class framework on CF.
 
-### 2. Rendering: **static-first, prerender per-lingua**
-Nessun backend a runtime finché non serve (YAGNI). HTML statico pulito e veloce =
-ottimale per SEO **e AEO** (gli answer-engine vogliono contenuto crawlabile, non
-RAG dietro JavaScript). Il "progetto collegato" (canale YT) potrà aggiungere
-in seguito **una** funzione edge, non un backend sempre attivo.
+### 2. Rendering: **static-first, prerendered per language**
+No runtime backend until one is needed (YAGNI). Clean, fast static HTML is optimal for SEO
+**and AEO** (answer engines want crawlable content, not a RAG behind JavaScript). The "linked
+project" (the YouTube channel) can later add **one** edge function, not an always-on backend.
 
-### 3. i18n: Astro nativo, `prefixDefaultLocale: true`
-URL `/it/…` e `/en/…` **entrambi prefissati** → nessun default ambiguo, hreflang
-espliciti, migliore per SEO internazionale. Aggiungere `x-default`, **sitemap per
-lingua**, e uno **switcher lingua visibile**. Contenuti (numeri passati e nuovi) =
-**content collections bilingui**; l'archivio e il richiamo dei numeri precedenti
-sono **rotte statiche crawlabili**.
+### 3. i18n: native Astro, `prefixDefaultLocale: true`
+URLs `/it/…` and `/en/…` are **both prefixed**, so there is no ambiguous default, hreflang is
+explicit, and international SEO is better for it. Add `x-default`, a **sitemap per language**
+and a **visible language switcher**. Content (past and new issues) becomes **bilingual content
+collections**; the archive and the recall of past issues are **static, crawlable routes**.
 
-### 4. Rilevamento lingua per geo/IP: **sì, ma SEO-safe**
-Tensione nota: Google **sconsiglia l'auto-redirect per IP/browser** — Googlebot
-crawla da IP USA e verrebbe sempre dirottato su `/en/`, mancando l'indicizzazione
-di `/it/`. Reconciliazione adottata:
+### 4. Language detection by geo/IP: **yes, but SEO-safe**
+A known tension: Google **advises against auto-redirecting by IP or browser**, since Googlebot
+crawls from US IPs and would always be diverted to `/en/`, leaving `/it/` unindexed. The
+reconciliation adopted:
 
-- Entrambe le lingue restano **URL statici sempre crawlabili** con hreflang +
-  `x-default`.
-- Il geo-redirect vive **solo sul root `/`**, tramite un **Worker** che legge
-  `request.cf.country` + `Accept-Language`.
-- **Solo per utenti umani**: i crawler noti (Googlebot, bingbot, ecc.) **non**
-  vengono redirezionati.
-- **Override utente** via cookie (la scelta manuale vince sul geo) + switcher
-  visibile.
-- Redirect solo su `/` (302), **mai** sulle URL di lingua già risolte.
+- Both languages stay **permanently crawlable static URLs** with hreflang and `x-default`.
+- The geo-redirect lives **only on the root `/`**, through a **Worker** that reads
+  `request.cf.country` and `Accept-Language`.
+- **Humans only**: known crawlers (Googlebot, bingbot and so on) are **not** redirected.
+- **User override** via cookie (a manual choice beats geo) plus a visible switcher.
+- Redirects happen only on `/` (302), **never** on already-resolved language URLs.
 
-### 5. Motore del numero mensile (dettaglio in B2)
-Agente/i AI generano il numero → commit → **Workers Build** auto-deploy. Trigger:
-**GitHub Action** (come ora) *oppure* **Cloudflare Cron Trigger** — deciso in B2.
+### 5. The monthly issue engine (detail in B2)
+AI agents generate the issue, it gets committed, and **Workers Build** auto-deploys. The
+trigger is either a **GitHub Action** (as today) *or* a **Cloudflare Cron Trigger**, decided in
+B2.
 
-### 6. RAG store: **Supabase (pgvector)** — deciso
-Aggiornamento (2026-07-05): scelto **Supabase pgvector** (non Vectorize) come
-store del RAG e source-of-truth di draft/review. Già padroneggiato da Marco
-(monferrinoAI/rubble). Dettaglio pipeline e schema in **ADR-0002**.
+### 6. RAG store: **Supabase (pgvector)**, decided
+Update (2026-07-05): **Supabase pgvector** was chosen (not Vectorize) as the RAG store and the
+source of truth for drafts and review. Marco already knows it well (monferrinoAI/rubble).
+Pipeline and schema detail in **ADR-0002**.
 
 ### 7. Security by design
-WAF/managed rules Cloudflare; header di sicurezza portati da `vercel.json` →
-Workers/`_headers`; secret in **Workers env** (mai in repo); repo **privata durante
-il build → pubblica al go-live** (sblocca secret scanning + push protection +
-ruleset gratis).
+Cloudflare WAF and managed rules; security headers carried over from `vercel.json` to
+Workers/`_headers`; secrets in **Workers env** (never in the repo); the repo stays **private
+during the build and goes public at go-live** (which unlocks secret scanning, push protection
+and rulesets for free).
 
-## Note — uso di Firecrawl
+## Notes on using Firecrawl
 
-- **Ruolo**: scraping strutturato delle fonti (competitor/mercato/security) che
-  alimenta la generazione del numero. Oggi: `astro-project/firecrawl_issue.py`,
-  eseguito da GitHub Action mensile, scrive JSON statici in
-  `public/data/issues/` letti dal browser.
-- **Fonti** (`SOURCES` nello script): Troy Hunt, Julia Evans, Simon Willison,
-  Corey Quinn (Last Week in AWS), ecc. — da rivedere per il posizionamento reale.
-- **Chiave**: `FIRECRAWL_API_KEY` **solo** nei secret (GitHub Secrets oggi →
-  Workers env in futuro), **mai** nel repo. Nello script è letta via
-  `os.environ`; il `fc-xxxxxxxx` nei commenti è un placeholder.
-- **Evoluzione (B2)**: da "scrape → JSON" a "scrape → generazione con LLM →
-  store (RAG) → numero bilingue". Firecrawl resta lo strato di raccolta; sopra si
-  aggiunge la generazione (Claude/Python) e l'eventuale indicizzazione Vectorize.
-- **Precondizione**: mantenere Firecrawl entro la CSP/allowlist e loggare cosa
-  viene raccolto (tracciabilità).
+- **Role**: structured scraping of the sources (competitors, market, security) that feed issue
+  generation. Today: `astro-project/firecrawl_issue.py`, run by a monthly GitHub Action, writes
+  static JSON into `public/data/issues/` for the browser to read.
+- **Sources** (`SOURCES` in the script): Troy Hunt, Julia Evans, Simon Willison, Corey Quinn
+  (Last Week in AWS) and others, to be revisited against the real positioning.
+- **Key**: `FIRECRAWL_API_KEY` lives **only** in secrets (GitHub Secrets today, Workers env
+  later), **never** in the repo. The script reads it through `os.environ`; the `fc-xxxxxxxx` in
+  the comments is a placeholder.
+- **Evolution (B2)**: from "scrape to JSON" towards "scrape, generate with an LLM, store (RAG),
+  bilingual issue". Firecrawl stays the collection layer, with generation (Claude/Python) and
+  possible Vectorize indexing on top.
+- **Precondition**: keep Firecrawl inside the CSP and the allowlist, and log what gets
+  collected (traceability).
 
-## Conseguenze
+## Consequences
 
-**Pro**: un'unica piattaforma (Workers) per statico + edge + AI/RAG futuro; SEO/AEO
-massimizzati dallo statico + hreflang; geo-lang senza sacrificare l'indicizzazione;
-superficie d'attacco minima finché non serve un runtime; portabilità del contenuto
-(content collections) indipendente dall'host.
+**Upsides**: a single platform (Workers) for static, edge and future AI/RAG; SEO and AEO
+maximised by static plus hreflang; geo-language without sacrificing indexing; a minimal attack
+surface until a runtime is actually needed; content portability (content collections) that does
+not depend on the host.
 
-**Contro / da presidiare**: il Worker di geo-redirect va testato contro i crawler
-(rischio SEO se mal fatto); la migrazione degli header da `vercel.json` a CF va
-verificata; Vectorize/Workers AI sono nuovi nello stack di Marco (docs prima
-dell'uso).
+**Downsides and things to watch**: the geo-redirect Worker needs testing against crawlers (an
+SEO risk if done badly); migrating the headers from `vercel.json` to CF needs verification;
+Vectorize and Workers AI are new to Marco's stack (docs before use).
 
-## Riferimenti (docs consultati)
+## References (docs consulted)
 
-- Cloudflare — Deploy Astro / Workers static assets / migrazione Pages→Workers:
+- Cloudflare, Deploy Astro / Workers static assets / Pages to Workers migration:
   <https://developers.cloudflare.com/workers/static-assets/migration-guides/migrate-from-pages/>
-- Cloudflare — Pages framework guide (Astro):
+- Cloudflare, Pages framework guide (Astro):
   <https://developers.cloudflare.com/pages/framework-guides/deploy-an-astro-site/>
-- Astro — Internationalization (i18n) routing:
+- Astro, internationalization (i18n) routing:
   <https://docs.astro.build/en/guides/internationalization/>
-- Google Search Central — Managing multi-regional and multilingual sites
-  (sconsiglia l'auto-redirect per IP; usa hreflang + scelta utente):
+- Google Search Central, managing multi-regional and multilingual sites (advises against
+  auto-redirecting by IP; use hreflang plus user choice):
   <https://developers.google.com/search/docs/specialty/international/managing-multi-regional-sites>

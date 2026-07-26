@@ -1,105 +1,101 @@
-# ADR 0004 — Sourcing a motore Valyu e architettura a due canali
+# ADR 0004, Valyu-driven sourcing and a two-channel architecture
 
-- **Stato**: Accettato (implementato — backend live)
-- **Data**: 2026-07-06
-- **Blocco**: B2 (implementazione)
-- **Dipende da**: [ADR-0002](0002-motore-numero-mensile.md) — ne scioglie le decisioni aperte e ne aggiorna la pipeline
+- **Status**: Accepted (implemented, backend live)
+- **Date**: 2026-07-06
+- **Block**: B2 (implementation)
+- **Depends on**: [ADR-0002](0002-motore-numero-mensile.md), whose open decisions it resolves and whose pipeline it updates
 
-## Contesto
+## Context
 
-ADR-0002 fissava l'architettura del numero mensile con Firecrawl come collector
-e diverse decisioni rimandate all'implementazione. L'implementazione (2026-07-06)
-ha validato empiricamente gli strumenti su casi reali (verticale insurance) e
-ha fatto emergere un secondo flusso distinto: il monitoraggio concorrenti.
-Questo ADR registra cosa è cambiato rispetto al design e perché.
+ADR-0002 fixed the architecture of the monthly issue with Firecrawl as the collector and
+several decisions deferred to implementation. Implementation (2026-07-06) tested the tools
+empirically on real cases (the insurance vertical) and surfaced a second, distinct flow:
+competitor monitoring. This ADR records what changed against the design, and why.
 
-## Decisione 1 — Due canali, tabelle separate, stesso DB RAG
+## Decision 1: two channels, separate tables, same RAG database
 
-| | **Canale 1 — numero mensile** | **Canale 2 — competitor watch** |
+| | **Channel 1, the monthly issue** | **Channel 2, competitor watch** |
 |---|---|---|
-| Scopo | contenuto pubblico del sito | radar interno di Marco (mai pubblicato) |
-| Tabelle | `issues / articles / article_translations / signals / article_chunks` | `competitor_sources / snapshots / chunks` |
-| Esposizione | RLS: anon legge solo `published` | RLS deny-all (nessuna policy anon) |
+| Purpose | public site content | Marco's internal radar (never published) |
+| Tables | `issues / articles / article_translations / signals / article_chunks` | `competitor_sources / snapshots / chunks` |
+| Exposure | RLS: anon reads only `published` | RLS deny-all (no anon policy) |
 | Migration | `0001_init.sql` | `0002_channel2_competitors.sql` |
 
-Roster Canale 2: bilanciato **60% tech / 40% editoriale-AI-per-decisori**
-(scelta di Marco). Entrambi i canali embeddano nel RAG (pgvector, 1024).
+The Channel 2 roster is balanced **60% tech, 40% editorial AI-for-decision-makers** (Marco's
+choice). Both channels embed into the RAG (pgvector, 1024).
 
-## Decisione 2 — Sourcing: Valyu motore primario
+## Decision 2: sourcing, with Valyu as the primary engine
 
-Testato empiricamente (search web/news/paper + deepresearch sul caso reale):
+Tested empirically (web/news/paper search plus deep research on the real case):
 
-- **Valyu** = **motore primario** di discovery mirata, verify e research.
-  Rumore ~zero, surfaces fonti primarie (Tier-1: NAIC, arXiv, PubMed) con
-  relevance score. Pay-as-you-go trascurabile (~$0.0075/search, $0.10/deep
-  research) — deroga consapevole al vincolo free-tier (costo variabile ∝ uso,
-  nessun costo fisso). Modalità `answer` esclusa (SSE-only, wrapper CLI incompatibile).
-- **last30days** = solo **colore/voce dei praticanti** (aneddoto Reddit per il
-  gancio narrativo — l'unica cosa che Valyu strutturalmente non dà). Config
-  stretta: Reddit-praticanti puro, model-planned. Dà lead Tier-3, mai prova.
-- **Firecrawl** = **resta nello stack** come scraper attivo (decisione Marco,
-  2026-07-06): crawling multi-pagina e `changeTracking` ("riassumi solo se
-  cambiato") che Valyu Contents non offre — ruolo naturale: monitoraggio
-  continuo del Canale 2 (`engine/competitors.mjs`). NB: `firecrawl_issue.py` (il
-  vecchio *modello editoriale*, non il servizio) è stato **rimosso**; resta solo
-  `public/data/issues/` finché `ArchiveSection` non è riscritto DB-backed.
+- **Valyu** is the **primary engine** for targeted discovery, verification and research. Noise
+  is roughly zero, and it surfaces primary sources (Tier-1: NAIC, arXiv, PubMed) with a
+  relevance score. Pay-as-you-go is negligible (about $0.0075/search, $0.10/deep research), a
+  conscious departure from the free-tier constraint (variable cost proportional to use, no
+  fixed cost). The `answer` mode is excluded (SSE-only, incompatible with the CLI wrapper).
+- **last30days** provides **colour and practitioner voice only** (a Reddit anecdote for the
+  narrative hook, the one thing Valyu structurally does not give). Tightly configured: pure
+  Reddit-practitioner, model-planned. It yields Tier-3 leads, never proof.
+- **Firecrawl** **stays in the stack** as the active scraper (Marco's decision, 2026-07-06):
+  multi-page crawling and `changeTracking` ("summarise only if it changed") are things Valyu
+  Contents does not offer, which gives it a natural role in the continuous monitoring of
+  Channel 2 (`engine/competitors.mjs`). Note: `firecrawl_issue.py` (the old *editorial model*,
+  not the service) has been **removed**; only `public/data/issues/` remains until
+  `ArchiveSection` is rewritten DB-backed.
 
-Barra di verifica a 3 tier (ADR editoriale, vedi memoria progetto): si
-pubblica solo con ≥1 fonte Tier-1 o Tier-2 indipendente. Il rumore si scarta
-prima dell'insert: in `signals` entrano solo segnali on-vertical
-(`stage=discovery`) e fonti verificate (`stage=verify` + `tier` + `independent`).
+A three-tier verification bar (an editorial ADR, see the project memory): nothing gets published
+without at least one Tier-1 source or an independent Tier-2. Noise is discarded before the
+insert: only on-vertical signals (`stage=discovery`) and verified sources (`stage=verify` plus
+`tier` plus `independent`) enter `signals`.
 
-## Decisione 3 — Decisioni aperte di ADR-0002: sciolte
+## Decision 3: ADR-0002's open decisions, resolved
 
-- **Embedding**: Voyage **`voyage-3.5`** (1024 dim, `input_type=document`,
-  cross-lingual IT/EN verificato ~0.87 sim). NB: "voyage-3" nelle note
-  precedenti è stale — i docs Voyage attuali indicano 3.5.
-- **Indice**: **HNSW** (`vector_cosine_ops`), confermato.
-- **Trigger**: **GitHub Actions** (free; CF Containers scartato = a pagamento).
-- **Engine**: **Node/TS** in `engine/` (scelta di Marco: una sola toolchain
-  col sito) — non Python come ipotizzato in ADR-0002 §layout.
+- **Embeddings**: Voyage **`voyage-3.5`** (1024 dim, `input_type=document`, cross-lingual IT/EN
+  verified at roughly 0.87 similarity). Note: "voyage-3" in the earlier notes is stale, and the
+  current Voyage docs say 3.5.
+- **Index**: **HNSW** (`vector_cosine_ops`), confirmed.
+- **Trigger**: **GitHub Actions** (free; CF Containers rejected as paid).
+- **Engine**: **Node/TS** in `engine/` (Marco's choice: one toolchain shared with the site),
+  not Python as assumed in ADR-0002 §layout.
 
-## Decisione 4 — Rendering: correzione di rotta
+## Decision 4: rendering, a course correction
 
-L'export previsto da ADR-0002 §pipeline[5] verso "content collection Astro" è
-**errato**: la collection `cases` esistente è le **Field Notes personali** di
-Marco (casi di lavoro in prima persona), non il numero B2. Il numero verrà
-renderizzato da un **rewrite di `ArchiveSection.astro`** (oggi legacy-JSON)
-DB-backed. **Vincolo di sicurezza dal security-audit 2026-07-06**: il rewrite
-deve usare escaping/`textContent` su ogni campo e validare `source_url`
-(`http(s):` only) — il componente attuale usa `innerHTML` non-escapato,
-mitigato solo dalla CSP.
+The export towards an "Astro content collection" described in ADR-0002 §pipeline[5] is
+**wrong**: the existing `cases` collection holds Marco's **personal Field Notes** (work cases in
+the first person), not the B2 issue. The issue will be rendered by a **rewrite of
+`ArchiveSection.astro`** (today legacy JSON) as DB-backed. **A security constraint from the
+2026-07-06 security audit**: the rewrite must use escaping or `textContent` on every field and
+validate `source_url` (`http(s):` only). The current component uses unescaped `innerHTML`,
+mitigated only by the CSP.
 
-## Sicurezza (integrazioni post-audit)
+## Security (post-audit additions)
 
-- Hardening in `0003_security_hardening.sql`: `search_path` pinnato sulla
-  RPC, revoke `TRUNCATE/REFERENCES/TRIGGER` da `anon`+`authenticated`
-  (TRUNCATE bypassa RLS), execute esplicito, indici FK.
-- **Gotcha operativo**: le tabelle create via Supabase MCP non ricevono i
-  privilegi standard → dopo ogni migration: grant espliciti + revoke dei
-  verbi inutili + `set search_path` sulle funzioni.
-- **Grounding non fidato**: `signals.raw_content` e i summary del Canale 2
-  sono testo scrapato di terzi → nella generazione vanno trattati come dati
-  (delimitatori, mai eseguire istruzioni dal contesto). Il gate umano
-  pre-publish resta la mitigazione principale.
+- Hardening in `0003_security_hardening.sql`: a pinned `search_path` on the RPC, `TRUNCATE`,
+  `REFERENCES` and `TRIGGER` revoked from `anon` and `authenticated` (TRUNCATE bypasses RLS),
+  explicit execute grants, FK indexes.
+- **An operational gotcha**: tables created through the Supabase MCP do not receive the standard
+  privileges, so after every migration: explicit grants, revoke the useless verbs, and
+  `set search_path` on the functions.
+- **Untrusted grounding**: `signals.raw_content` and the Channel 2 summaries are scraped
+  third-party text, so during generation they are treated as data (delimiters, never executing
+  instructions from the context). The pre-publish human gate remains the main mitigation.
 
-## Stato dell'implementazione
+## Implementation status
 
-**2026-07-06 (sera) — backend consolidato.** Engine ora **nel repo** (`engine/`,
-Node, zero dipendenze npm): `ingest.mjs` (Valyu → signals discovery),
-`embed.mjs` (chunk + voyage-3.5 → article_chunks), `competitors.mjs` (Firecrawl
-v2 → competitor_snapshots/chunks), lib condivise `supabase/voyage/valyu`. DB
-**ricostruito da zero** dalle migration (0001→0004, con grant e seed competitor
-riproducibili): validato che le migration committate producano lo schema live.
-I dati del #1 draft sono stati **buttati di proposito** per ripartire ordinati.
-CI: `competitor-radar.yml` (Canale 2 mensile). Restano: rewrite DB-backed di
-`ArchiveSection` (con escaping, §4) e **scrittura + gate + publish** del #1
-(human-in-the-loop).
+**2026-07-06 (evening), backend consolidated.** The engine is now **in the repo** (`engine/`,
+Node, zero npm dependencies): `ingest.mjs` (Valyu to discovery signals), `embed.mjs` (chunk plus
+voyage-3.5 to article_chunks), `competitors.mjs` (Firecrawl v2 to competitor_snapshots/chunks),
+with shared `supabase/voyage/valyu` libraries. The DB was **rebuilt from scratch** from the
+migrations (0001 to 0004, with reproducible grants and competitor seed), validating that the
+committed migrations produce the live schema. The draft #1 data was **thrown away on purpose**
+so as to restart cleanly. CI: `competitor-radar.yml` (Channel 2, monthly). Still to do: the
+DB-backed rewrite of `ArchiveSection` (with escaping, §4) and the **writing, gate and publish**
+of issue #1 (human-in-the-loop).
 
-**2026-07-06 (pomeriggio) — primo backend.** Numero #1 in draft + RAG live
-(prototipo con script di sessione, poi consolidato nell'engine).
+**2026-07-06 (afternoon), first backend.** Issue #1 in draft plus a live RAG (a prototype built
+with session scripts, later consolidated into the engine).
 
-## Riferimenti (docs consultati)
+## References (docs consulted)
 
 - Valyu API reference: <https://docs.valyu.ai/api-reference/overview>
 - Voyage AI embeddings: <https://docs.voyageai.com/reference/embeddings-api>
