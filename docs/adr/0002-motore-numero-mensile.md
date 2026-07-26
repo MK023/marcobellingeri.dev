@@ -1,111 +1,105 @@
-# ADR 0002 — Motore del numero mensile (human-in-the-loop, Supabase RAG)
+# ADR 0002, the monthly issue engine (human-in-the-loop, Supabase RAG)
 
-- **Stato**: Accettato — **integrato/superato in parte da [ADR-0004](0004-sourcing-due-canali.md)**
-  (2026-07-06: sourcing → Valyu, engine → Node/TS, export §pipeline[5] corretto,
-  decisioni aperte sciolte; il cardine human-in-the-loop e il modello dati restano validi)
-- **Data**: 2026-07-05
-- **Blocco**: B2 (motore del "numero mensile")
-- **Dipende da**: [ADR-0001](0001-architettura-hosting-i18n.md)
+- **Status**: Accepted, **partly absorbed and superseded by [ADR-0004](0004-sourcing-due-canali.md)**
+  (2026-07-06: sourcing moved to Valyu, the engine to Node/TS, export §pipeline[5] corrected,
+  open decisions resolved; the human-in-the-loop hinge and the data model still stand)
+- **Date**: 2026-07-05
+- **Block**: B2 (the "monthly issue" engine)
+- **Depends on**: [ADR-0001](0001-architettura-hosting-i18n.md)
 
-## Contesto
+## Context
 
-Ogni mese un "numero" (stile magazine anni '90): articoli reali **caso →
-applicazione → soluzione**, **bilingui IT+EN**. I visitatori possono richiamare i
-numeri precedenti (archivio statico). Marco non ha ancora le chiavi (Firecrawl,
-Anthropic, Supabase, embedding): questo ADR fissa **l'architettura**, non
-l'implementazione.
+One "issue" a month, in the style of a 90s magazine: real articles following **case,
+application, solution**, **bilingual IT+EN**. Visitors can pull up past issues (a static
+archive). Marco does not have the keys yet (Firecrawl, Anthropic, Supabase, embeddings), so
+this ADR fixes **the architecture**, not the implementation.
 
-## Decisione cardine: human-in-the-loop, SEMPRE
+## The hinge decision: human-in-the-loop, ALWAYS
 
-L'agente produce **bozze**; **Marco approva ogni numero prima della
-pubblicazione**. Mai auto-publish. Motivo: il sito è una business card verso un
-pubblico senior anglosassone su casi reali — un errore pubblicato al buio brucia
-credibilità. Questo si traduce in stati di dominio: `draft → approved →
-published`.
+The agent produces **drafts**; **Marco approves every issue before publication**. Never
+auto-publish. The reason: the site is a business card aimed at a senior English-speaking
+audience, built on real cases, and a mistake published blind burns credibility. In domain
+terms this becomes the states `draft → approved → published`.
 
 ## Pipeline
 
 ```
-[1] COLLECT   Firecrawl scrape SOURCES ──► signals (raw) in Supabase
-[2] GENERATE  Claude redige bozza articoli (IT+EN), caso→applicazione→soluzione,
-              grounded via RAG retrieval sull'archivio esistente (evita
-              ripetizioni, cita casi passati) ──► status=draft
-[3] EMBED     chunk + embedding degli articoli ──► pgvector (per RAG e ricerca)
-[4] REVIEW    Marco rivede/corregge le bozze ──► status=approved   ◄── GATE UMANO
-[5] EXPORT    numero approvato ──► content collection Astro bilingue (MD/JSON)
+[1] COLLECT   Firecrawl scrapes SOURCES ──► signals (raw) in Supabase
+[2] GENERATE  Claude drafts the articles (IT+EN), case→application→solution,
+              grounded through RAG retrieval over the existing archive (avoids
+              repetition, cites past cases) ──► status=draft
+[3] EMBED     chunk + embed the articles ──► pgvector (for RAG and search)
+[4] REVIEW    Marco reviews and corrects the drafts ──► status=approved  ◄── HUMAN GATE
+[5] EXPORT    approved issue ──► bilingual Astro content collection (MD/JSON)
               ──► commit ──► Workers Build ──► deploy   (status=published)
-[6] (futuro)  componente live "chiedi all'archivio": Worker interroga pgvector
-              via match_* — solo righe published. Differito (YAGNI).
+[6] (future)  a live "ask the archive" component: the Worker queries pgvector
+              through match_* over published rows only. Deferred (YAGNI).
 ```
 
-- **Confine statico/dinamico**: il sito è **statico**; legge i numeri come content
-  collections al build. Supabase è **source-of-truth + draft/review + RAG store**,
-  non interrogato a runtime dal sito (finché non arriva il componente live).
-- **Trigger** (dettaglio in implementazione): GitHub Action mensile *oppure*
-  Cloudflare Cron Trigger. La generazione produce solo bozze: nessun deploy senza
-  l'approvazione umana.
+- **The static/dynamic boundary**: the site is **static** and reads issues as content
+  collections at build time. Supabase is the **source of truth, the draft/review workspace and
+  the RAG store**, and the site does not query it at runtime (until the live component
+  arrives).
+- **Trigger** (detail during implementation): a monthly GitHub Action *or* a Cloudflare Cron
+  Trigger. Generation only produces drafts, so there is no deploy without human approval.
 
-## Meccanismo di review (step 4)
+## The review mechanism (step 4)
 
-Inizialmente **Supabase Studio** (table editor) per approvare — zero codice, zero
-superficie esposta. Upgrade successivo: pagina admin dietro **Cloudflare Access
-(Zero Trust)** se serve una UI di review dedicata. Non costruire l'admin ora
-(YAGNI).
+Initially **Supabase Studio** (the table editor) for approvals: zero code, zero exposed
+surface. A later upgrade: an admin page behind **Cloudflare Access (Zero Trust)** if a
+dedicated review UI turns out to be needed. Do not build the admin now (YAGNI).
 
-## Modello dati (Supabase / Postgres + pgvector)
+## Data model (Supabase / Postgres + pgvector)
 
-Vedi `supabase/migrations/0001_init.sql`. In sintesi:
+See `supabase/migrations/0001_init.sql`. In short:
 
-- `issues` — un numero: `period`, `number`, `status(draft|approved|published)`,
-  timestamp di ciclo vita.
-- `articles` — un articolo del numero (slug, stat opzionale). Lo stato vive sul
-  numero (approvazione per-numero).
-- `article_translations` — `(article_id, locale∈{it,en})` con
-  `title/problem/application/solution/body`. Tabella di traduzione normalizzata:
-  EN e IT pari livello, EN primario ([[ADR-0001]] §3-4).
-- `signals` — output grezzo Firecrawl che alimenta la generazione (tracciabilità).
-- `article_chunks` — chunk + `embedding vector(N)` per il RAG (pgvector).
-- **RLS**: service role scrive tutto; `anon` legge **solo** ciò il cui numero è
-  `published`. Protegge il futuro percorso di query live; l'export usa il service
-  role.
-- **`match_article_chunks(...)`**: similarity search cosine (`<=>`) filtrata a
-  `published` — per la generazione grounded e per il componente live futuro.
+- `issues`: one issue, with `period`, `number`, `status(draft|approved|published)` and
+  lifecycle timestamps.
+- `articles`: one article within an issue (slug, optional stat). The state lives on the issue
+  (approval is per issue).
+- `article_translations`: `(article_id, locale∈{it,en})` with
+  `title/problem/application/solution/body`. A normalised translation table: EN and IT are
+  peers, EN is primary ([[ADR-0001]] §3-4).
+- `signals`: the raw Firecrawl output feeding generation (traceability).
+- `article_chunks`: chunks plus `embedding vector(N)` for the RAG (pgvector).
+- **RLS**: the service role writes everything; `anon` reads **only** rows whose issue is
+  `published`. This protects the future live query path, and the export uses the service role.
+- **`match_article_chunks(...)`**: cosine similarity search (`<=>`) filtered to `published`,
+  for grounded generation and for the future live component.
 
-## Decisioni aperte (sub-nodi, da sciogliere in implementazione)
+## Open decisions (sub-nodes, to resolve during implementation)
 
-- **Modello di embedding** → dimensione del `vector(N)`: Voyage `voyage-3` (1024,
-  già usato in monferrinoAI) vs OpenAI `text-embedding-3-small` (1536) vs Cohere.
-  Lo schema parametrizza la dimensione; **da decidere con i docs** prima di
-  implementare.
-- **Indice pgvector**: HNSW (default consigliato per qualità/latency) vs IVFFlat.
-- **Trigger**: GitHub Action vs CF Cron.
+- **Embedding model**, which sets the `vector(N)` dimension: Voyage `voyage-3` (1024, already
+  used in monferrinoAI) versus OpenAI `text-embedding-3-small` (1536) versus Cohere. The schema
+  parameterises the dimension; **to be decided against the docs** before implementing.
+- **pgvector index**: HNSW (the recommended default for quality and latency) versus IVFFlat.
+- **Trigger**: GitHub Action versus CF Cron.
 
-## Sicurezza
+## Security
 
-- Chiavi (`FIRECRAWL_API_KEY`, `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
-  embedding) **solo** in secret/env server-side, **mai** nel repo né nel client.
-  Vedi `.env.example`. Il `SUPABASE_SERVICE_ROLE_KEY` non tocca mai il browser.
-- RLS attiva su tutte le tabelle; il client pubblico (se mai userà Supabase)
-  vede solo `published`.
-- Il secret-guard gitleaks (`.githooks/`) resta la rete pre-commit.
+- Keys (`FIRECRAWL_API_KEY`, `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, embeddings) live
+  **only** in server-side secrets and env, **never** in the repo or the client. See
+  `.env.example`. The `SUPABASE_SERVICE_ROLE_KEY` never touches the browser.
+- RLS is on for every table; the public client (if it ever uses Supabase) sees only
+  `published`.
+- The gitleaks secret guard (`.githooks/`) stays as the pre-commit net.
 
-## Layout target del repo (monorepo)
+## Target repo layout (monorepo)
 
 ```
-astro-project/        frontend (sito statico Astro)
-supabase/migrations/  schema DB (applicato via Supabase CLI)
-engine/               pipeline Python (collect/generate/embed/export) — B2 impl
-.env.example          contratto delle variabili d'ambiente
-docs/adr/             questi ADR
+astro-project/        frontend (static Astro site)
+supabase/migrations/  DB schema (applied through the Supabase CLI)
+engine/               Python pipeline (collect/generate/embed/export), B2 impl
+.env.example          the environment variable contract
+docs/adr/             these ADRs
 ```
 
-I file esistenti (`astro-project/firecrawl_issue.py`, la GitHub Action) si
-riorganizzano in `engine/` in fase di implementazione — non ora (cambio
-chirurgico rimandato).
+The existing files (`astro-project/firecrawl_issue.py`, the GitHub Action) get reorganised into
+`engine/` during implementation, not now (a surgical change, deferred).
 
-## Riferimenti (docs consultati)
+## References (docs consulted)
 
-- Supabase — Vector columns (pgvector, RLS service-role/published):
+- Supabase, vector columns (pgvector, RLS service-role/published):
   <https://supabase.com/docs/guides/ai/vector-columns>
-- Astro — Content Collections (target dell'export):
+- Astro, content collections (the export target):
   <https://docs.astro.build/en/guides/content-collections/>

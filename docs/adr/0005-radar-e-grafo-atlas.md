@@ -1,39 +1,40 @@
-# ADR 0005 — Radar e grafo Atlas: pagine vive, stessa infrastruttura
+# ADR 0005, the Radar and the Atlas graph: living pages, same infrastructure
 
-Data: 2026-07-22 · Stato: accettata
+Date: 2026-07-22 · Status: accepted
 
-## Contesto
+## Context
 
-Due richieste di Marco nello stesso giorno: un globo degli eventi di sicurezza mondiali
-("che si vedano i problemi che stanno succedendo nel mondo") e una pagina che mostri la
-sua knowledge base personale come rete viva. Entrambe sono *pagine che dimostrano* — la
-filosofia del sito — ma toccano dati esterni (feed) e dati privati (la wiki).
+Two requests from Marco on the same day: a globe of security events worldwide ("so you can see
+the problems happening in the world") and a page showing his personal knowledge base as a living
+network. Both are *pages that demonstrate*, which is the site's philosophy, but they touch
+external data (feeds) and private data (the wiki).
 
-## Decisione
+## Decision
 
-**Radar**: i feed li aggrega il Worker (`/api/radar`, same-origin) con cache edge 30′ e
-fail-open per fonte; il browser riceve un JSON già sanificato. **Una fonte entra solo se
-la sua licenza permette per iscritto l'uso commerciale** (il sito vende): il registro è
-`docs/FONTI.md` + `src/data/radar-fonti.js`, e un test in CI lo fa rispettare. Rendering
-canvas 2D con proiezione ortografica (Natural Earth nel repo, ~55KB): niente WebGL.
-Conseguenza della regola: fuori Cloudflare Radar (CC BY-NC), abuse.ch, ransomware.live,
-AI Incident DB e — ironia — l'ACN italiana (vieta l'uso commerciale); dentro CISA
-(pubblico dominio/CC0), NCSC UK (OGL v3), CERT-FR (Licence Ouverte 2.0), Commissione UE
-(Decisione 2011/833), MITRE ATLAS (Apache 2.0, per usi futuri).
+**Radar**: the Worker aggregates the feeds (`/api/radar`, same-origin) with a 30-minute edge
+cache and per-source fail-open, and the browser receives JSON that is already sanitised. **A
+source gets in only if its licence permits commercial use in writing** (the site sells): the
+registry is `docs/FONTI.md` plus `src/data/radar-fonti.js`, and a CI test enforces it. Rendering
+is 2D canvas with an orthographic projection (Natural Earth in the repo, about 55KB), so no
+WebGL. What the rule implies: out go Cloudflare Radar (CC BY-NC), abuse.ch, ransomware.live, the
+AI Incident DB and, ironically, the Italian ACN (which forbids commercial use); in come CISA
+(public domain/CC0), NCSC UK (OGL v3), CERT-FR (Licence Ouverte 2.0), the European Commission
+(Decision 2011/833) and MITRE ATLAS (Apache 2.0, for future use).
 
-**Grafo Atlas**: il grafo si genera **offline e a mano** (`scripts/genera-grafo-atlas.mjs`)
-dai soli layer `concepts/` + `entities/tools/`; i wikilink verso i layer privati sono
-contati, mai nominati. Il JSON (20KB, layout precalcolato) è committato: la PR è il punto
-di revisione umana di ciò che diventa pubblico. Tre guardie di privacy (throw nel
-generatore, test allowlist, test anti-stringhe sul JSON grezzo).
+**Atlas graph**: the graph is generated **offline and by hand**
+(`scripts/genera-grafo-atlas.mjs`) from the `concepts/` and `entities/tools/` layers only, and
+wikilinks towards the private layers are counted, never named. The JSON (20KB, precomputed
+layout) is committed, which makes the PR the point of human review over what becomes public.
+Three privacy guards: a throw in the generator, an allowlist test, and an anti-string test over
+the raw JSON.
 
-## Alternative scartate
+## Rejected alternatives
 
-- *Fetch dei feed dal browser*: aprirebbe la CSP a domini terzi e moltiplicherebbe il
-  traffico verso le agenzie per visitatore. No.
-- *three.js per il globo*: ~600KB per un wireframe che si disegna con ~30 righe di
-  trigonometria. No.
-- *Grafo Atlas generato in CI*: servirebbe una credenziale long-lived verso il repo
-  privato e sparirebbe la revisione umana del diff. No: la frizione qui è una feature.
-- *"Real time" sbandierato*: gli advisory escono a cadenza giornaliera; la pagina dice
-  "aggiornato N minuti fa" invece di "LIVE". L'onestà sulla freschezza è parte del patto.
+- *Fetching the feeds from the browser*: it would open the CSP to third-party domains and
+  multiply traffic towards the agencies per visitor. No.
+- *three.js for the globe*: roughly 600KB for a wireframe that about 30 lines of trigonometry
+  can draw. No.
+- *Generating the Atlas graph in CI*: it would need a long-lived credential towards the private
+  repo and the human review of the diff would disappear. No: the friction here is a feature.
+- *Waving a "real time" banner*: advisories come out daily, so the page says "updated N minutes
+  ago" instead of "LIVE". Honesty about freshness is part of the deal.

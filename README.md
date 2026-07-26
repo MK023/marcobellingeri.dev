@@ -1,7 +1,7 @@
 # marcobellingeri.dev
 
-Sito personale di **Marco Bellingeri** — Cloud Platform & AI Security Engineer.
-Astro statico, bilingue EN/IT, con un magazine mensile alimentato da una pipeline RAG.
+Personal site of **Marco Bellingeri**, Cloud Platform & AI Security Engineer.
+Static Astro, bilingual EN/IT, with a monthly magazine fed by a RAG pipeline.
 
 [![Site CI](https://github.com/MK023/marcobellingeri.dev/actions/workflows/site-ci.yml/badge.svg)](https://github.com/MK023/marcobellingeri.dev/actions/workflows/site-ci.yml)
 [![Backend CI](https://github.com/MK023/marcobellingeri.dev/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/MK023/marcobellingeri.dev/actions/workflows/backend-ci.yml)
@@ -9,229 +9,221 @@ Astro statico, bilingue EN/IT, con un magazine mensile alimentato da una pipelin
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=MK023_marcobellingeri.dev&metric=coverage)](https://sonarcloud.io/component_measures?id=MK023_marcobellingeri.dev&metric=coverage)
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
 
-Il sito fa l'audit di sé stesso: la sezione *Security* non dichiara gli header di
-sicurezza, li **rilegge dalla risposta HTTP** che il browser ha appena ricevuto. È il
-motivo per cui la Content Security Policy di questo repository è costruita con gli hash
-degli script anziché con `unsafe-inline`, ed è verificata in CI su `dist/` — non sul
-sorgente.
+The site audits itself. The *Security* section does not declare the security headers, it
+**reads them back out of the HTTP response** the browser has just received. That is why the
+Content Security Policy in this repository is built from script hashes instead of
+`unsafe-inline`, and why it is verified in CI against `dist/` rather than the source.
 
 ---
 
-## Struttura
+## Layout
 
-| Directory | Cosa contiene |
+| Directory | What it holds |
 | --- | --- |
-| `astro-project/` | Il sito. Astro statico, i18n EN/IT, componenti, CSP, test. **Si parte da qui.** |
-| `engine/` | Pipeline Node del numero mensile: sourcing → verifica → generazione → embed → export → judge (LLM-as-a-judge sulla PR di contenuto) → radar competitor. Più la distribuzione: `devto` (draft al merge, publish alla `date` del frontmatter), `edicola` (card automatiche). Zero dipendenze esterne. |
-| `supabase/` | Migration, seed e policy RLS del database RAG (Postgres + pgvector). Ricostruibile da zero. |
-| `docs/adr/` | Le decisioni architetturali e il perché. In `docs/FONTI.md` il registro licenze delle fonti del Radar (con guardia in CI). |
-| `mock-html-singolo/` | Il prototipo HTML da cui è nato tutto. Riferimento storico, non si tocca. |
+| `astro-project/` | The site. Static Astro, EN/IT i18n, components, CSP, tests. **Start here.** |
+| `engine/` | The Node pipeline behind the monthly issue: sourcing, verification, generation, embed, export, judge (LLM-as-a-judge on the content PR), competitor radar. Plus distribution: `devto` (draft at merge, publish on the frontmatter `date`) and `edicola` (automatic cards). No external dependencies. |
+| `supabase/` | Migrations, seed and RLS policies for the RAG database (Postgres + pgvector). Rebuildable from scratch. |
+| `docs/adr/` | The architectural decisions and the reasoning. `docs/FONTI.md` holds the licence registry for the Radar sources (with a guard in CI). |
+| `mock-html-singolo/` | The HTML prototype everything grew out of. Historical reference, not to be touched. |
 
-## Farlo girare
+## Running it
 
 ```bash
 cd astro-project
 npm install
-npm run dev          # sviluppo
-npm run check        # type-check dei .astro (tsconfig strict)
-npm run lint         # ESLint, gli unici occhi sui .astro
-npm run build        # build statica in dist/
-npm run test:csp     # i test girano su dist/, non sul sorgente
+npm run dev          # development
+npm run check        # type-check the .astro files (strict tsconfig)
+npm run lint         # ESLint, the only eyes on the .astro files
+npm run build        # static build into dist/
+npm run test:csp     # tests run against dist/, not the source
 ```
 
-`check` e `lint` girano anche in CI **e sulla strada del deploy**, non solo in `Site
-CI`: quel workflow è separato e il deploy non lo aspetta, quindi un gate che stesse
-solo lì non fermerebbe niente.
+`check` and `lint` also run in CI **and on the path to deploy**, not just in `Site CI`. That
+workflow is separate and the deploy does not wait for it, so a gate living only there would
+stop nothing.
 
-Per servire il sito **con gli header veri** — quelli di `public/_headers`, che
-`astro preview` non applica:
+To serve the site **with the real headers**, the ones from `public/_headers` that
+`astro preview` does not apply:
 
 ```bash
 npx wrangler dev
 ```
 
-La pipeline richiede i segreti da Doppler:
+The pipeline needs its secrets from Doppler:
 
 ```bash
 cd engine
 doppler run -- npm run ingest
-npm test             # unit + integration, zero rete
+npm test             # unit + integration, no network
 ```
 
-## Sicurezza
+## Security
 
-La CSP non ammette `unsafe-inline` su `script-src`: gli script bundled sono
-autorizzati per hash, calcolati da Astro in build, e l'hash dello script anti-FOUC
-— che è `is:inline` e quindi Astro non tocca — è dichiarato a mano in
-`astro.config.mjs`. Se qualcuno lo modifica, `npm run test:csp` fallisce e dice
-esattamente quale hash mettere.
+The CSP allows no `unsafe-inline` on `script-src`: bundled scripts are authorised by hash,
+computed by Astro at build time, and the hash of the anti-FOUC script (which is `is:inline`,
+so Astro leaves it alone) is declared by hand in `astro.config.mjs`. Change it and
+`npm run test:csp` fails, telling you exactly which hash to use.
 
-`frame-ancestors` è l'unica direttiva CSP che resta in `public/_headers`: dentro un
-`<meta>` verrebbe ignorata per specifica. Tutto il resto vive nel meta generato in
-build, perché è l'unico posto dove gli hash sono calcolabili.
+`frame-ancestors` is the only CSP directive left in `public/_headers`, because a `<meta>`
+would ignore it by spec. Everything else lives in the meta tag generated at build time, the
+only place where the hashes can be computed.
 
-Altre reti:
+Other nets:
 
-- **Quality gate SonarQube Cloud sulla strada del deploy**: in `deploy.yml` il job
-  di analisi precede la pubblicazione (`sonar.qualitygate.wait=true`) — gate rosso,
-  niente produzione. Sulle PR l'analisi arriva come check, quando la modifica si
-  può ancora discutere. La coverage la calcola il test runner di Node, nessuna
-  dipendenza in più.
-- **`astro check` + ESLint**, perché Sonar da solo lasciava scoperta **più di metà
-  del sito**: non ha un parser per Astro, e i 20 file `.astro` (~2800 righe, più di
-  tutto ciò che Sonar analizza) passavano senza alcun controllo statico — proprio
-  dove vive la logica lato browser: form di contatto, palette comandi, terminale.
-  Il `tsconfig` era già `strict`, ma nessuno lo eseguiva: severità decorativa.
-  **Niente Prettier**: formatta, non trova bug — e le liti sullo stile si fanno in
-  due. Nella config di ESLint non c'è **nessuna regola disattivata**: le due sole
-  eccezioni sono sulla riga, con il motivo accanto (la regex anti header-injection
-  del Worker, dove i caratteri di controllo sono il bersaglio e non l'errore).
-- **gitleaks** sull'intera storia a ogni push su `main`, e in pre-commit locale.
-- **Push protection** del secret scanning: GitHub rifiuta un push che contiene un
-  segreto, invece di scoprirlo dopo.
-- **RLS su tutte le tabelle**, verificata in CI ricostruendo il database da zero e
-  facendo mordere il *publish gate* — un numero non può passare a `published` senza
-  la prova delle fonti.
-- Segreti su **Doppler**, mai nel repository. `.env` è ignorato.
+- **SonarQube Cloud quality gate on the path to deploy**: in `deploy.yml` the analysis job
+  runs before publication (`sonar.qualitygate.wait=true`), so a red gate means no production.
+  On PRs the analysis arrives as a check, while the change can still be discussed. Coverage
+  is computed by the Node test runner, with no extra dependency.
+- **`astro check` + ESLint**, because Sonar on its own left **more than half the site**
+  uncovered: it has no Astro parser, and the 20 `.astro` files (roughly 2800 lines, more than
+  everything Sonar does analyse) passed with no static checking at all. That is exactly where
+  the browser-side logic lives: contact form, command palette, terminal. The `tsconfig` was
+  already `strict`, but nobody ran it, which is decorative severity. **No Prettier**: it
+  formats, it does not find bugs, and style arguments take two people. The ESLint config
+  disables **no rules at all**. The only two exceptions sit on the line itself with the
+  reason next to them (the Worker's anti-header-injection regex, where control characters are
+  the target rather than the mistake).
+- **gitleaks** across the whole history on every push to `main`, and in a local pre-commit hook.
+- **Push protection** from secret scanning: GitHub refuses a push containing a secret instead
+  of discovering it afterwards.
+- **RLS on every table**, verified in CI by rebuilding the database from scratch and making
+  the *publish gate* bite. An issue cannot reach `published` without proof of its sources.
+- Secrets on **Doppler**, never in the repository. `.env` is ignored.
 
-### Il livello di pipeline, dichiarato
+### The pipeline level, declared
 
-La pipeline si ferma a un **Livello 3 su misura** (gate bloccanti applicativi *e* di
-filiera), e ogni fermata ha un perché:
+The pipeline stops at a **tailored Level 3** (blocking gates on both the application and the
+supply chain), and every stop has a reason:
 
-- **Niente approval gate umano sulla produzione**: `main` *è* la produzione per
-  scelta — il costo di un errore è basso, il rollback Cloudflare è immediato, e i
-  gate automatici (Sonar, CSP su dist, gitleaks, ruleset) stanno tutti sulla strada
-  del deploy.
-- **Niente OIDC verso Cloudflare**: non per pigrizia — Cloudflare non espone
-  federazione OIDC per i token API. Il compenso è un token con scope minimo. È un
-  ceiling dichiarato, non un debito.
-- **Niente canary/progressive delivery**: su questo traffico un canary al 5% non
-  raggiunge significatività statistica prima della fine del rollout. Teatro, non gate.
-- **Supply chain attiva**: action pinnate a SHA (aggiornate da Dependabot), SBOM
-  CycloneDX a ogni deploy, **attestation di provenance firmata** (keyless, OIDC) e
-  verificata, SAST dei workflow stessi (zizmor, blocca su High), permessi del
-  `GITHUB_TOKEN` minimi per job.
-- **Politica dei gate**: ogni gate dichiara cosa blocca nel commento accanto — un
-  gate senza politica scritta è un futuro `continue-on-error`.
+- **No human approval gate on production**: `main` *is* production, by choice. The cost of a
+  mistake is low, the Cloudflare rollback is immediate, and the automatic gates (Sonar, CSP on
+  dist, gitleaks, ruleset) all sit on the path to deploy.
+- **No OIDC towards Cloudflare**: not out of laziness. Cloudflare does not expose OIDC
+  federation for API tokens. The compensating control is a minimally scoped token. This is a
+  declared ceiling, not debt.
+- **No canary or progressive delivery**: at this traffic level a 5% canary cannot reach
+  statistical significance before the rollout ends. Theatre, not a gate.
+- **Active supply chain**: actions pinned to SHA (kept current by Dependabot), a CycloneDX
+  SBOM on every deploy, a **signed provenance attestation** (keyless, OIDC) that is verified,
+  SAST on the workflows themselves (zizmor, blocking on High), and minimal `GITHUB_TOKEN`
+  permissions per job.
+- **Gate policy**: every gate declares what it blocks in the comment beside it. A gate with no
+  written policy is a future `continue-on-error`.
 
-Vulnerabilità: **non aprire una issue pubblica**, vedi [SECURITY.md](SECURITY.md).
+Vulnerabilities: **do not open a public issue**, see [SECURITY.md](SECURITY.md).
 
-Attiva l'hook anti-segreti una volta per clone:
+Enable the anti-secret hook once per clone:
 
 ```bash
 git config core.hooksPath .githooks
 brew install gitleaks
 ```
 
-## Osservabilità
+## Observability
 
-Sentry, piano free, region DE. Il principio è che si accende solo ciò che, quando
-suona, dice qualcosa che non si sarebbe saputo altrimenti.
+Sentry, free plan, DE region. The principle: only turn on what, when it rings, says something
+you would not have known otherwise.
 
-- **Errori** su client e Worker. Sul Worker `withSentry` cattura le eccezioni non
-  gestite; i fallimenti *gestiti* del form (Turnstile senza secret, Resend che
-  risponde male) passano dall'hook `__SEGNALA_SENTRY__`, perché `withSentry` da solo
-  non li vedrebbe mai — sono `return`, non `throw`.
-  Sul client il SDK si carica **pigro** (prima interazione o primo idle): il suo
-  costo stava tutto nel percorso critico ed era l'ultimo motivo per cui il TBT
-  mobile non era zero. Gli errori pre-caricamento finiscono in un buffer e partono
-  appena il SDK arriva (`sentry.client.config.js`).
-- **Tracing solo su `/api/contact`.** Con `run_worker_first` ogni asset statico passa
-  dal Worker: un sample rate globale traccerebbe a tappeto il servizio di file dalla
-  cache edge, cioè spenderebbe quota per scoprire che la CDN è veloce. L'unica rotta
-  la cui latenza può degradare davvero è il form, che parla con due terzi.
-- **Cron monitor sul keepalive Supabase.** Il workflow apre già una issue se il ping
-  *fallisce*; nessuno però si accorge se il job **non parte affatto** — ed è lo
-  scenario che manda in pausa il database (GitHub spegne gli schedule dopo 60 giorni
-  di inattività sul repo). Un cron monitor è l'unico strumento che rende osservabile
-  un'assenza, e sta **fuori** da GitHub: non condivide il dominio di guasto che
-  sorveglia. Il check-in non può far fallire il ping — un guardiano che uccide ciò
-  che sorveglia è peggio di nessun guardiano.
-- **Niente session replay**, per scelta: registrerebbe il DOM di un form dove si
-  scrivono nome, email e brief, su un sito che dichiara di non tracciare — in cambio
-  di 50 sessioni al mese, cioè di un campione che non risponde a nessuna domanda.
+- **Errors** on the client and the Worker. On the Worker, `withSentry` catches unhandled
+  exceptions; the form's *handled* failures (Turnstile with no secret, Resend answering badly)
+  go through the `__SEGNALA_SENTRY__` hook, because `withSentry` alone would never see them.
+  They are `return`s, not `throw`s. On the client the SDK loads **lazily** (first interaction
+  or first idle): its whole cost sat on the critical path and it was the last reason mobile
+  TBT was not zero. Errors raised before it loads land in a buffer and leave as soon as the
+  SDK arrives (`sentry.client.config.js`).
+- **Tracing on `/api/contact` only.** With `run_worker_first`, every static asset passes
+  through the Worker, so a global sample rate would blanket-trace file serving from the edge
+  cache, spending quota to discover that the CDN is fast. The one route whose latency can
+  genuinely degrade is the form, which talks to two third parties.
+- **Cron monitor on the Supabase keepalive.** The workflow already opens an issue when the
+  ping *fails*; nobody notices when the job **never runs at all**, and that is the scenario
+  that pauses the database (GitHub disables schedules after 60 days of inactivity on the
+  repo). A cron monitor is the only instrument that makes an absence observable, and it sits
+  **outside** GitHub so it does not share the failure domain it watches. The check-in cannot
+  make the ping fail: a watchman that kills what it watches is worse than no watchman.
+- **No session replay**, by choice. It would record the DOM of a form where people type their
+  name, email and brief, on a site that says it does not track, in exchange for 50 sessions a
+  month, which is a sample that answers no question at all.
 
-Il percorso Worker → Sentry è stato **verificato end-to-end**, non dedotto: eseguendo
-il Worker senza secret si ottengono i due eventi attesi in Sentry. Vale la pena dirlo
-perché per settimane quel percorso è esistito senza che nessuno lo avesse mai visto
-funzionare.
+The Worker to Sentry path was **verified end to end**, not inferred: running the Worker
+without its secrets produces the two expected events in Sentry. That is worth saying because
+for weeks the path existed without anyone ever having seen it work.
 
-Sul motore, il tracing è Langfuse e gli errori vanno a Sentry con una lib
-zero-dep fail-open — ogni script ha un catch top-level che racconta il crash
-(stack, script, environment `engine`) senza cambiarne la semantica esterna
-(vedi [engine/README.md](engine/README.md)).
+In the engine, tracing goes to Langfuse and errors go to Sentry through a zero-dep fail-open
+library. Every script has a top-level catch that reports the crash (stack, script, `engine`
+environment) without changing its external semantics (see [engine/README.md](engine/README.md)).
 
-## Contribuire
+## Contributing
 
-Branch `<tipo>/<slug>`, Conventional Commits con oggetto in italiano, `main` protetta
-da ruleset: niente push diretti, niente force-push, PR con CI verde.
-Tutto in [CONTRIBUTING.md](CONTRIBUTING.md).
+Branches named `<type>/<slug>`, Conventional Commits with the subject in Italian, `main`
+protected by a ruleset: no direct pushes, no force-pushes, PRs with green CI.
+Everything is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Decisioni
+## Decisions
 
-- [ADR 0001](docs/adr/0001-architettura-hosting-i18n.md) — hosting, i18n, rilevamento lingua
-- [ADR 0002](docs/adr/0002-motore-numero-mensile.md) — motore del numero mensile, human-in-the-loop
-- [ADR 0003](docs/adr/0003-componenti-nuovi.md) — componenti "show-off"
-- [ADR 0004](docs/adr/0004-sourcing-due-canali.md) — sourcing Valyu, architettura a due canali
+- [ADR 0001](docs/adr/0001-architettura-hosting-i18n.md): hosting, i18n, language detection
+- [ADR 0002](docs/adr/0002-motore-numero-mensile.md): the monthly issue engine, human-in-the-loop
+- [ADR 0003](docs/adr/0003-componenti-nuovi.md): the "show-off" components
+- [ADR 0004](docs/adr/0004-sourcing-due-canali.md): Valyu sourcing, two-channel architecture
+- [ADR 0005](docs/adr/0005-radar-e-grafo-atlas.md): Radar and the Atlas graph
 
 ## Versioning
 
-Schema leggero: un sito non ha consumatori di API, il semver rigido non serve.
+A light scheme: a site has no API consumers, so strict semver buys nothing.
 
-- `v0.x` — fase di costruzione
-- `v1.0.0` — **go-live**, primo deploy pubblico su Cloudflare
-- **minor** per blocco chiuso · **patch** per fix
+- `v0.x`: build phase
+- `v1.0.0`: **go-live**, first public deploy on Cloudflare
+- **minor** for a closed block, **patch** for a fix
 
-Si tagga a milestone, non a ogni commit. Le
-[Releases](https://github.com/MK023/marcobellingeri.dev/releases) fanno da changelog;
-il tracking dei task vive su Notion, non su GitHub Issues.
+Tags go on milestones, not on every commit. The
+[Releases](https://github.com/MK023/marcobellingeri.dev/releases) act as the changelog; task
+tracking lives in Notion, not in GitHub Issues.
 
 ## Roadmap
 
-- [x] **Foundation** (`v0.1.0`) — Astro statico bilingue, i18n e sitemap, componenti, segreti su Doppler, postura GDPR
-- [x] **Backend e RAG** — due canali su Supabase pgvector ([ADR 0004](docs/adr/0004-sourcing-due-canali.md)): sourcing Valyu → verifica a tre livelli → bozza human-in-the-loop → embed voyage-3.5
-- [x] **Engine nel repo** — `engine/` (ingest, generate, embed, export, radar competitor), database ricostruibile da migration, tracing Langfuse
-- [x] **Sito sbloccato** (`v0.2.0`) — CSP risolta con gli hash, hosting Cloudflare configurato, CI sul frontend, repository pubblico
-- [x] **Primo numero** (`2026-07-12`) — Magazine DB-backed, numero #1 pubblicato («AI insurance governance», NAIC Model Bulletin). La sezione non si renderizza finché non esiste un numero vero: un magazine con dentro un segnaposto vale meno di un magazine assente
-- [x] **Go-live** (`v1.0.0`, 2026-07-10) — [marcobellingeri.dev](https://marcobellingeri.dev) su Cloudflare, deploy automatico da `main`, www e anti-spoofing email configurati
-- [x] **Distribuzione canonical-first** — il sito è la casa canonical; dev.to è lo specchio primario (import RSS nativo, `canonical_url` che punta qui). Long-form ospitato sul sito (collection `writing`) ed Edicola delle firme esterne
-- [x] **Terminale C1** (`2026-07-21`) — interfaccia RAG reale (`ask`): endpoint `/api/ask` con Turnstile, rate-limit per IP, cap sul body, anon key gated a `published`, citazioni e disclosure AI Act art. 50 nel payload
-- [x] **Automazioni editoriali** (`2026-07-21`) — il ciclo editoriale gira da solo, i gate umani restano: draft dev.to in CI al merge di un articolo (`devto-draft.yml`), card Edicola dal cron che interroga dev.to e porta la PR in produzione a gate verdi (`edicola-card.yml`), magazine in autopilot (ingest mensile a rotazione + advance giornaliero che esegue lo stadio sbloccato dall'ultimo gesto umano in Studio; la PR di contenuto la merge Marco). Errori dell'engine su Sentry (`lib/sentry.mjs`, zero-dep, fail-open)
+- [x] **Foundation** (`v0.1.0`): bilingual static Astro, i18n and sitemap, components, secrets on Doppler, GDPR posture
+- [x] **Backend and RAG**: two channels on Supabase pgvector ([ADR 0004](docs/adr/0004-sourcing-due-canali.md)): Valyu sourcing, three-tier verification, human-in-the-loop draft, voyage-3.5 embeddings
+- [x] **Engine in the repo**: `engine/` (ingest, generate, embed, export, competitor radar), a database rebuildable from migrations, Langfuse tracing
+- [x] **Site unblocked** (`v0.2.0`): CSP solved with hashes, Cloudflare hosting configured, frontend CI, repository made public
+- [x] **First issue** (`2026-07-12`): DB-backed magazine, issue #1 published ("AI insurance governance", NAIC Model Bulletin). The section does not render until a real issue exists: a magazine with a placeholder inside is worth less than no magazine
+- [x] **Go-live** (`v1.0.0`, 2026-07-10): [marcobellingeri.dev](https://marcobellingeri.dev) on Cloudflare, automatic deploy from `main`, www and email anti-spoofing configured
+- [x] **Canonical-first distribution**: the site is the canonical home; dev.to is the primary mirror (native RSS import, `canonical_url` pointing back here). Long-form pieces are hosted on the site (the `writing` collection) with a Newsstand of external bylines
+- [x] **C1 terminal** (`2026-07-21`): a real RAG interface (`ask`), with the `/api/ask` endpoint behind Turnstile, per-IP rate limiting, a body cap, an anon key gated to `published`, plus citations and the AI Act article 50 disclosure in the payload
+- [x] **Editorial automation** (`2026-07-21`): the editorial cycle runs itself and the human gates stay. A dev.to draft is created in CI when an article is merged (`devto-draft.yml`); Newsstand cards come from a cron that queries dev.to and carries the PR to production once the gates are green (`edicola-card.yml`); the magazine runs on autopilot (monthly rotating ingest plus a daily advance that runs the stage unlocked by the last human action in Studio, with Marco merging the content PR). Engine errors go to Sentry (`lib/sentry.mjs`, zero-dep, fail-open)
 
-- [x] **Uscita programmata** (`2026-07-22`) — i pezzi dell'Edicola si scrivono in anticipo e si mergiano insieme: escono da soli su dev.to alla `date` del frontmatter (`devto-publish-due.yml`, preavviso via issue 24h prima — il silenzio pubblica, l'approvazione umana resta una sola: il merge)
-- [x] **Judge** (`2026-07-22`) — LLM-as-a-judge sulla PR di contenuto del magazine: rubrica a 5 criteri ancorati, politica di gate scritta e testata (`engine/lib/judge.mjs`), referto in commento, tracing Langfuse. Il merge resta umano
-- [x] **Radar** (`2026-07-22`) — [/radar](https://marcobellingeri.dev/en/radar/): i bollettini delle autorità di sicurezza (CISA, NCSC UK, CERT-FR + strato regole UE) su un globo interattivo. Solo fonti con licenza commerciale-compatibile verificata per iscritto (`docs/FONTI.md`); `/api/radar` nel Worker con cache edge, fail-open per fonte, link ammessi solo sui domini della fonte
-- [x] **Grafo Atlas** (`2026-07-22`) — [/atlas](https://marcobellingeri.dev/en/atlas/): il grafo vero della knowledge base personale, 138 nodi, layout precalcolato, 20KB. Solo i layer tecnici: i 373 link verso i layer privati sono contati, mai nominati — tre guardie di privacy (generatore, test allowlist, test anti-stringhe)
+- [x] **Scheduled release** (`2026-07-22`): Newsstand pieces are written ahead of time and merged together, then go out on dev.to by themselves on the frontmatter `date` (`devto-publish-due.yml`, with a 24-hour notice by issue). Silence publishes, and the one human approval left is the merge
+- [x] **Judge** (`2026-07-22`): LLM-as-a-judge on the magazine's content PR, with five anchored criteria, a written and tested gate policy (`engine/lib/judge.mjs`), a report in a comment, and Langfuse tracing. The merge stays human
+- [x] **Radar** (`2026-07-22`): [/radar](https://marcobellingeri.dev/en/radar/), the bulletins from security authorities (CISA, NCSC UK, CERT-FR plus an EU rules layer) on an interactive globe. Only sources whose commercially compatible licence has been verified in writing (`docs/FONTI.md`); `/api/radar` in the Worker with edge cache, per-source fail-open, and links accepted only on the source's own domains
+- [x] **Atlas graph** (`2026-07-22`): [/atlas](https://marcobellingeri.dev/en/atlas/), the real graph of the personal knowledge base, 138 nodes, precomputed layout, 20KB. Technical layers only: the 373 links towards the private layers are counted and never named, behind three privacy guards (generator, allowlist test, anti-string test)
 
-## Architettura in un colpo d'occhio
+## The architecture at a glance
 
 ```mermaid
 flowchart LR
     subgraph EDGE["Cloudflare Worker"]
-        W["/  → lingua"]
+        W["/  → language"]
         C["/api/contact"]
         A["/api/ask (RAG)"]
-        R["/api/radar (cache 30')"]
+        R["/api/radar (30' cache)"]
     end
-    subgraph SITO["Astro statico (main = produzione)"]
-        HOME["home + sezioni"]
-        RAD["/radar — globo"]
-        ATL["/atlas — grafo wiki"]
+    subgraph SITE["Static Astro (main = production)"]
+        HOME["home + sections"]
+        RAD["/radar: globe"]
+        ATL["/atlas: wiki graph"]
         WRI["writing / magazine"]
     end
-    subgraph ENGINE["engine/ (cron GitHub Actions)"]
+    subgraph ENGINE["engine/ (GitHub Actions cron)"]
         ING["ingest (Valyu)"] --> GEN["generate (Claude)"]
-        GEN --> EMB["embed (Voyage)"] --> EXP["export → PR contenuto"]
-        EXP --> JUD["judge → referto in PR"]
-        DUE["devto --due (publish alla date)"]
-        CARD["edicola (card dalla pila)"]
+        GEN --> EMB["embed (Voyage)"] --> EXP["export → content PR"]
+        EXP --> JUD["judge → report in PR"]
+        DUE["devto --due (publish on date)"]
+        CARD["edicola (cards from the stack)"]
     end
-    DB[("Supabase pgvector<br/>publish gate nel DB")]
-    CERT["feed CERT ufficiali<br/>CISA · NCSC UK · CERT-FR"]
-    DEVTO["dev.to (canonical → sito)"]
+    DB[("Supabase pgvector<br/>publish gate in the DB")]
+    CERT["official CERT feeds<br/>CISA · NCSC UK · CERT-FR"]
+    DEVTO["dev.to (canonical → site)"]
 
-    R -->|"fetch fail-open"| CERT
+    R -->|"fail-open fetch"| CERT
     A --> DB
     ING --> DB
     EMB --> DB
@@ -239,17 +231,17 @@ flowchart LR
     DUE --> DEVTO
     CARD --> DEVTO
     RAD --> R
-    HOME -.->|"gate umani: verify · approva · merge"| ENGINE
+    HOME -.->|"human gates: verify · approve · merge"| ENGINE
 ```
 
-I gate umani non sono nel diagramma per modestia: **sono il diagramma** — niente
-passa a `published` senza un gesto di Marco, e il blocco vive nel database, non
-in una policy.
+The human gates are not in the diagram out of modesty. **They are the diagram**: nothing
+reaches `published` without an action from Marco, and the block lives in the database, not in
+a policy.
 
-## Licenza
+## Licence
 
-Il **codice** è [MIT](LICENSE): prendilo, imparaci sopra, riusalo.
+The **code** is [MIT](LICENSE): take it, learn from it, reuse it.
 
-I **contenuti** no. Testi, design, tipografia, fotografie e i numeri del magazine
-restano © 2026 Marco Bellingeri, tutti i diritti riservati. Il codice è un esempio di
-come è fatto; il sito è di una persona sola.
+The **content** is not. Text, design, typography, photographs and the magazine issues remain
+© 2026 Marco Bellingeri, all rights reserved. The code is an example of how it is built; the
+site belongs to one person.
