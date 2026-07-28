@@ -83,8 +83,11 @@ jobs:
   # Non è un gate indebolito, è un gate che su quelle PR non può tornare verde.
   # Stesso trattamento già dato a gitleaks e CodeQL; un bump non tocca il sorgente,
   # e il merge resta coperto dal Deploy come descritto sopra.
+  # L'autore della PR, non `github.actor`: quest'ultimo cambia a ogni push sul
+  # branch, quindi un `update-branch` riaprirebbe in silenzio un job che questa
+  # riga vuole chiuso. `pull_request.user.login` resta l'autore per tutta la PR.
   sonar:
-    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
