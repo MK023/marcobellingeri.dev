@@ -13,7 +13,7 @@ Nothing is ever committed straight to `main`. Every piece of work starts on a br
 ```
 
 where `<type>` comes from the same set as the commit types: `feat`, `fix`, `chore`, `ci`,
-`docs`, `test`. Real examples: `feat/design-refresh`, `fix/csp-e-cloudflare`.
+`docs`, `test`. Real examples: `feat/magazine-export`, `fix/hsts-worker-responses`.
 
 Dependabot branches (`dependabot/…`) do not follow this rule. GitHub generates them.
 
@@ -81,6 +81,8 @@ Never in the repository. `.env` is ignored, and `doppler.yaml` holds only projec
 names. Locally, secrets come from `doppler run`; in CI, from scoped service tokens. gitleaks
 runs over the full history on every push to `main`.
 
-On Dependabot PRs gitleaks is skipped on purpose: GitHub policy restricts the `GITHUB_TOKEN`,
-so the action would fail when it calls the API. Every merge is still covered by the scan on
+On Dependabot PRs gitleaks is skipped, but the skip is a leftover, not a necessity. The
+historical failure came from the missing `pull-requests: read` permission, which made the
+action die on **every** PR, not from the actor; the permission is now granted. The skip stays
+until it is verified on a real Dependabot PR. Every merge is still covered by the scan on
 `main`.

@@ -12,10 +12,9 @@ declared, not hidden.
 the Info items remain, none of them actionable. Details in the sections below.
 
 **Update 2026-07-12 (audit round 2):** a second audit across the whole repo (including the
-engine, which came into scope after this report) found 1 High (personal data hardcoded in
-`scripts/genera-cv.py`, now replaced by sha256 digests, though the data remains in the
-history), 5 Medium and a tail of Low and Info items: **every actionable one was fixed in the
-same PR**. Details in the round 2 audit commits.
+engine, which came into scope after this report) found 1 High (personal data hardcoded in a
+generation script, now replaced by sha256 digests), 5 Medium and a tail of Low and Info items:
+**every actionable one was fixed in the same PR**. Details in the round 2 audit commits.
 
 **Update 2026-07-13:** triaging the SonarCloud code smells surfaced **M-1**, a real ReDoS in
 `sanitizeSource` (quadratic backtracking over third-party `raw_content` that was not yet
@@ -30,8 +29,8 @@ working in its life, and now it has (see *Method and limits*).
 The codebase is **mature and well defended**. The defences claimed in the comments are
 genuinely implemented and, where they can be checked, they hold: validation at the Worker's
 trust boundary, a hash-based CSP with no `unsafe-inline`, parameterised PostgREST, full RLS on
-Supabase, CI actions pinned to SHA, secrets outside the repo (gitleaks clean across 88
-commits). The "pending" XSS noted in Atlas for `ArchiveSection.astro` **turns out to be
+Supabase, CI actions pinned to SHA, secrets outside the repo (gitleaks full-history clean as of
+2026-07-11). The "pending" XSS noted in Atlas for `ArchiveSection.astro` **turns out to be
 already closed** (node-by-node DOM construction plus a protocol whitelist, with no raw HTML
 writes).
 
@@ -45,15 +44,15 @@ from the same seam: not an open hole but a hidden cost on an input nobody was ca
 | Severity | Open | Resolved |
 |----------|------|----------|
 | Critical | 0 | — |
-| High     | 0 | — |
-| Medium   | 0 | 1 (M-1, ReDoS, 2026-07-13) |
+| High     | 0 | 1 (round 2, 2026-07-12) |
+| Medium   | 0 | 6 (5 in round 2, plus M-1, ReDoS, 2026-07-13) |
 | Low      | 0 | 3 (L-1, L-2, L-3) |
-| Info     | 4 | — |
+| Info     | 3 | 1 (I-1, 2026-07-18) |
 
-Checks performed: `npm run build` (green) · `npm run test:csp` (**53/53 pass**, including the
-anti-header-injection test) · the engine suite (**93 tests**, 100% of lines) ·
-`gitleaks detect` full-history (**no leaks**) · zero `.map` files in `dist/` · security headers
-confirmed as served on `/it/` · the Worker to Sentry path proven end to end.
+Checks performed: `npm run build` (green) · `npm run test:csp` (**106/106 pass**, including the
+anti-header-injection test) · the engine suite (**191 tests**, 99.3% of lines) ·
+`gitleaks detect` full-history as of 2026-07-11 (**no leaks**) · zero `.map` files in `dist/` ·
+security headers confirmed as served on `/it/` · the Worker to Sentry path proven end to end.
 
 ---
 
@@ -107,14 +106,14 @@ applies to a chunked body. Low impact, a robustness note.
 `public/_headers` covers only static assets; the responses the Worker generates (the 302 on
 `/` and the `/api/contact` responses) never pass through it and **carry no HSTS**.
 **Strong mitigation:** the domain is `.dev`, a TLD with **mandatory HSTS preload at the TLD
-level**, so browsers force HTTPS regardless. The probe confirms it:
+level**, so browsers force HTTPS regardless. The probe confirms it (at the time of the audit):
 `curl -sI https://marcobellingeri.dev/` (302) has no `Strict-Transport-Security`, while `/it/`
 does. This is consistent with the documented choice ("bare root, preload from the TLD").
 **Recommendation:** no action needed while the domain stays `.dev`. If a non-preload domain
 were ever added, add HSTS to `rispostaJson` and to the 302 as well.
 
 ### M-1, ReDoS in `sanitizeSource`: quadratic backtracking on third-party text (Medium), RESOLVED
-**File:** `engine/lib/guardrails.mjs:69` (PR #53, 2026-07-13)
+**File:** `engine/lib/guardrails.mjs:73`, the pattern on `:76` (PR #53, 2026-07-13)
 The lookahead that neutralises the `<fonte>` delimiter ran over text that was **not yet
 capped**: the 6000-character ceiling is the last link in `sanitizeSource`, so the `.replace()`
 was seeing the **raw** `raw_content` of the scraped source. The pattern
@@ -153,22 +152,22 @@ dependency, **Dependabot would not see it**.
 `npm` entry with `directory: "/engine"`.
 
 ### I-2, `img-src 'self' data:` in the CSP (Info)
-**File:** `astro-project/astro.config.mjs:23`
+**File:** `astro-project/astro.config.mjs:31`
 `data:` in `img-src` is historically a minor XSS vector (data-URI images). In this context (a
 static site with no user input generating `<img>`) the risk is negligible, and it is there for
 inline font and asset subsets. No action.
 
 ### I-3, per-IP rate limiting, approximate and per-location (Info)
-**File:** `astro-project/worker/index.js:57-66`, `wrangler.jsonc:18-20`
+**File:** `astro-project/worker/index.js:127-131`, `wrangler.jsonc:18-20`
 The binding is "eventually consistent, intentionally not accurate" (by Cloudflare's design)
 and keyed on `CF-Connecting-IP`. An attacker with an IPv6 /64 block has plenty of addresses.
 This is defence in depth, not the primary barrier (Turnstile and the honeypot are). Consistent
 with the documentation. No action.
 
 ### I-4, the `reply_to` email does not go through `rigaPulita` (Info, not exploitable)
-**File:** `astro-project/worker/index.js:92, 122`
+**File:** `astro-project/worker/index.js:162, 183`
 The email lands in `reply_to` without passing the control-character filter. It is **not
-exploitable**: the regex `^[^@\s]+@[^@\s]+\.[^@\s]+$` forbids any whitespace (including
+exploitable**: the regex `^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$` forbids any whitespace (including
 `\r\n`) anywhere in the string, so CRLF injection is impossible; on top of that, JSON is sent
 to the Resend API rather than raw SMTP, and Resend handles header encoding. The
 `test/csp.test.mjs` test already covers header injection in the subject. Documented for
@@ -184,13 +183,15 @@ completeness.
 
 - **Worker `/api/contact`**: the checks run in the right order (rate limit, Origin, body cap,
   parse, honeypot, validation, Turnstile, Resend), so the cheap checks precede the expensive
-  ones and the external fetch (Turnstile) comes after local validation. `rigaPulita:36`
+  ones and the external fetch (Turnstile) comes after local validation. `rigaPulita:54`
   neutralises CRLF injection in the subject, **verified by the test**.
-- **Client-side XSS**: a full grep over `src/` finds no `set:html` and no uncontrolled HTML
-  write sink. `ArchiveSection.astro` builds the DOM with
-  `createElement`/`textContent`/`replaceChildren` and filters links with `new URL()` plus an
-  `http/https` whitelist (`:149-160`). `NeonTerminal.astro` uses `innerHTML` only on hardcoded
-  constants; **every** user input goes through `esc()` (`:213, :220`), which covers
+- **Client-side XSS**: a full grep over `src/` finds no uncontrolled HTML write sink. The three
+  `set:html` uses are JSON-LD blocks built server-side from typed content, never from user
+  input. `ArchiveSection.astro`, the runtime DOM build examined here, no longer exists:
+  `MagazineSection.astro` replaced it with a section rendered at build time from the content
+  collection, and its only client script writes through `textContent` (`:114, :129`).
+  `NeonTerminal.astro` uses `innerHTML` only on hardcoded constants; **every** user input goes
+  through `esc()` (defined at `:68`, applied to the model's answer at `:241`), which covers
   `& < > " '`.
 - **CSP**: `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
   **no `unsafe-inline` or `unsafe-eval`**, scripts by SHA-256 hash. External hosts are minimal
@@ -217,7 +218,7 @@ completeness.
   is `BEFORE INSERT OR UPDATE`, so it cannot be bypassed with a direct insert and revalidates
   on every update. The `db-rebuild` job in CI asserts schema, RLS and gate on every push.
 - **Secrets and supply chain**: `.gitignore` excludes `.env*` and `.dev.vars*`; `gitleaks`
-  full-history is **clean** (88 commits); the pre-commit hook runs gitleaks on staged files
+  full-history is **clean** as of 2026-07-11; the pre-commit hook runs gitleaks on staged files
   with a grep fallback; secrets flow from Doppler to GitHub secrets, never through the repo.
 
 ---
@@ -227,9 +228,11 @@ completeness.
 - **Shiki and the CSP**: the first article with code blocks will introduce styles and scripts
   that break the hash-based CSP, and `test:csp` will fail at build. To handle when the first
   content with code arrives (already noted in the project memory).
-- **The public C1 endpoint (ADR-0003)**: once the RAG terminal becomes queryable from the
-  browser, PostgREST query values will come from user input. The `pg` template is already
-  ready, but every interpolation will need to be checked for using it.
+- **The public C1 endpoint (ADR-0003)**: the RAG terminal is queryable from the browser
+  (`POST /api/ask`), so PostgREST values now come from user input. The call goes to
+  `rpc/match_article_chunks` with a JSON body (`astro-project/worker/index.js:261`), with
+  nothing interpolated into a query string. The `pg` template stays ready, and every new
+  interpolation has to be checked for using it.
 - **GitHub's 60-day schedules**: if the repo stays inactive for 60 days, the keepalive cron
   switches off and Supabase pauses. The risk remains (GitHub cannot be forced), but since
   2026-07-13 it is **no longer silent**: a Sentry cron monitor alarms on a missing check-in.
@@ -295,5 +298,6 @@ wikilinks towards the private layers are published as a *count*, never as labels
 manual on purpose: the PR carrying the JSON diff is the point where a human eye sees what is
 about to become public.
 
-**Findings open after the addendum: 0.** (CodeQL raised 2 HIGH on the first version of the title
-sanitisation. Both were well founded, and both were fixed in `9fe593d` with property tests.)
+**Findings open after the addendum: 0 actionable, the 3 Info items above.** (CodeQL raised 2
+HIGH on the first version of the title sanitisation. Both were well founded, and both were
+fixed in `9fe593d` with property tests.)

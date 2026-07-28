@@ -30,9 +30,16 @@ day/night UtilityBar, halftone, custom cursors.
   - **Anti prompt-injection guardrails**: a hardened system prompt, no tool access, output
     confined to the archive, refusal outside scope; user input never enters a privileged
     context.
+  - **Turnstile gate** (added in implementation, not in the original design): the `ask` command
+    runs an invisible Cloudflare Turnstile challenge (`data-action="turnstile-spin-v1"`, its own
+    action distinct from the contact form) and the token travels in the `POST /api/ask` body.
+    The Worker verifies it before touching the RAG, so a scripted client pays the challenge
+    before it costs a Voyage embedding and an Anthropic call.
   - No PII collected; a dedicated CSP for the endpoint.
 - **Dependencies**: B2 implemented (Supabase plus RAG with published content), the keys
-  (Voyage/Anthropic/Supabase) and the Worker. → **Blocked until the keys exist. Built last.**
+  (Voyage/Anthropic/Supabase) and the Worker.
+- **Status**: **built**. `NeonTerminal.astro` implements `ask` against `/api/ask`
+  (`astro-project/worker/index.js`), gated by Turnstile.
 
 ### C3, the self-referential security card
 - **What**: a panel showing **the site's own security headers** (CSP, HSTS,
@@ -40,16 +47,21 @@ day/night UtilityBar, halftone, custom cursors.
   each.
 - **Demonstrates**: security competence, in a way that is both meta and consistent with the
   noir tone.
-- **Spec**: the values are generated **at build time from the headers' source of truth** (the
-  CF config / `_headers`) rather than from a live fetch, so they are always consistent and add
-  no surface. Bilingual.
+- **Spec**: the values are read **live from the page's own response**, with a `HEAD` on
+  `window.location.href`, plus the `<meta http-equiv>` CSP that Astro emits with its script
+  hashes (the header carries only `frame-ancestors`, so showing one of the two would tell half
+  the truth). It is same-origin and adds no surface: no new endpoint, no third-party domain in
+  the CSP, and the browser only re-reads headers it has already received. The trade-off against
+  a build-time snapshot from `public/_headers` is deliberate, since a snapshot can drift from
+  what production actually serves, which is the one thing this card promises. Rows are built
+  node by node with `textContent`, never `innerHTML`. Bilingual.
 - **Dependencies**: no keys. **Buildable now** (better after the headers have moved to
   Cloudflare, so that it shows the real production ones).
 
 ### C4, the language switcher plus geo banner
 - **What**: an `/it/ ↔ /en/` switcher plus a banner that **suggests** a language based on geo,
-  SEO-safe ([[ADR-0001]] §4): it does not redirect crawlers, it can be overridden by cookie,
-  and both languages stay crawlable.
+  SEO-safe ([ADR-0001](0001-architettura-hosting-i18n.md) §4): it does not redirect crawlers,
+  it can be overridden by cookie, and both languages stay crawlable.
 - **Demonstrates**: i18n and international SEO competence.
 - **Dependencies**: the **Astro i18n foundation** (`/it/`, `/en/`, hreflang, x-default). No
   keys. **Buildable now**, and it is the heart of the bilingual work.
@@ -64,9 +76,15 @@ day/night UtilityBar, halftone, custom cursors.
 1. **Now, without keys**: the i18n foundation, then **C4**; and **C3** (standalone).
 2. **After B2 implementation plus keys**: **C1** (the RAG terminal) with its security spec.
 
-## Observability (open decision, constraint: free)
+## Observability (decided, constraint: free)
 
-- Proposal: **Langfuse** (traces and costs of LLM generation, which Marco already uses) plus
-  **native Cloudflare observability** (edge, free) plus **GitHub Actions logs** (CI).
-- The showcase alternative: self-hosted **Grafana + Loki** (a single dashboard, but with infra
-  cost). To be decided.
+- **Langfuse** for the traces and costs of LLM generation: `astro-project/worker/langfuse.js`
+  on the `ask` path (telemetry without content), and the `LANGFUSE_*` secrets in the engine
+  workflows (`magazine-ingest`, `magazine-advance`, `magazine-judge`, `competitor-radar`,
+  `visibility`).
+- **Sentry** for errors, added later: `astro-project/worker/sentry.js` wraps the Worker, and
+  handled fail-opens are reported explicitly, because `withSentry` only catches what is
+  unhandled. Covered by `engine/test/sentry.test.mjs`.
+- Plus **native Cloudflare observability** (edge, free) and **GitHub Actions logs** (CI).
+- The demo-friendly alternative, self-hosted **Grafana + Loki** (a single dashboard, but with
+  infra cost), was not taken.

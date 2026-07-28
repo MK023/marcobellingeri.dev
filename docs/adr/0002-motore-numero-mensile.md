@@ -59,7 +59,7 @@ See `supabase/migrations/0001_init.sql`. In short:
   (approval is per issue).
 - `article_translations`: `(article_id, locale∈{it,en})` with
   `title/problem/application/solution/body`. A normalised translation table: EN and IT are
-  peers, EN is primary ([[ADR-0001]] §3-4).
+  peers, EN is primary ([ADR-0001](0001-architettura-hosting-i18n.md) §3-4).
 - `signals`: the raw Firecrawl output feeding generation (traceability).
 - `article_chunks`: chunks plus `embedding vector(N)` for the RAG (pgvector).
 - **RLS**: the service role writes everything; `anon` reads **only** rows whose issue is
@@ -69,8 +69,8 @@ See `supabase/migrations/0001_init.sql`. In short:
 
 ## Open decisions (sub-nodes, to resolve during implementation)
 
-- **Embedding model**, which sets the `vector(N)` dimension: Voyage `voyage-3` (1024, already
-  used in monferrinoAI) versus OpenAI `text-embedding-3-small` (1536) versus Cohere. The schema
+- **Embedding model**, which sets the `vector(N)` dimension: Voyage `voyage-3` (1024, already in
+  production use elsewhere) versus OpenAI `text-embedding-3-small` (1536) versus Cohere. The schema
   parameterises the dimension; **to be decided against the docs** before implementing.
 - **pgvector index**: HNSW (the recommended default for quality and latency) versus IVFFlat.
 - **Trigger**: GitHub Action versus CF Cron.
