@@ -40,8 +40,7 @@ Tested empirically (web/news/paper search plus deep research on the real case):
   multi-page crawling and `changeTracking` ("summarise only if it changed") are things Valyu
   Contents does not offer, which gives it a natural role in the continuous monitoring of
   Channel 2 (`engine/competitors.mjs`). Note: `firecrawl_issue.py` (the old *editorial model*,
-  not the service) has been **removed**; only `public/data/issues/` remains until
-  `ArchiveSection` is rewritten DB-backed.
+  not the service) has been **removed**.
 
 A three-tier verification bar (an editorial ADR, see the project memory): nothing gets published
 without at least one Tier-1 source or an independent Tier-2. Noise is discarded before the
@@ -58,15 +57,25 @@ insert: only on-vertical signals (`stage=discovery`) and verified sources (`stag
 - **Engine**: **Node/TS** in `engine/` (Marco's choice: one toolchain shared with the site),
   not Python as assumed in ADR-0002 §layout.
 
-## Decision 4: rendering, a course correction
+## Decision 4: rendering, a course correction, since reversed
 
-The export towards an "Astro content collection" described in ADR-0002 §pipeline[5] is
-**wrong**: the existing `cases` collection holds Marco's **personal Field Notes** (work cases in
-the first person), not the B2 issue. The issue will be rendered by a **rewrite of
-`ArchiveSection.astro`** (today legacy JSON) as DB-backed. **A security constraint from the
-2026-07-06 security audit**: the rewrite must use escaping or `textContent` on every field and
-validate `source_url` (`http(s):` only). The current component uses unescaped `innerHTML`,
-mitigated only by the CSP.
+What this ADR decided on 2026-07-06: the export towards an "Astro content collection" described
+in ADR-0002 §pipeline[5] is **wrong**, because the existing `cases` collection holds Marco's
+**personal Field Notes** (work cases in the first person), not the B2 issue, so the issue would
+be rendered from the DB at request time.
+
+**Reversed, and this is the record of it.** The objection was about reusing `cases`, not about
+content collections as such, so the fix was a **second, dedicated collection**: `engine/export.mjs`
+writes the approved issue as markdown into `astro-project/src/content/magazine/{it,en}/`, and
+`content.config.ts` defines a `magazine` collection (its own schema: `number`, `sector`, `month`,
+`problem/approach/result/lesson`) next to `cases` and `writing`. `MagazineSection.astro` renders
+from that collection, so the published page is static and the DB stays out of the request path.
+The human gate did not move: `export.mjs` writes files, it does not commit them.
+
+**The security constraint from the 2026-07-06 security audit still holds**, now as a constraint
+on `MagazineSection.astro`: every field goes out through Astro's template escaping or
+`textContent`, never `set:html` or `innerHTML`. As of this writing the component satisfies it,
+and the collection schema carries no URL field to validate.
 
 ## Security (post-audit additions)
 
@@ -89,8 +98,8 @@ with shared `supabase/voyage/valyu` libraries. The DB was **rebuilt from scratch
 migrations (0001 to 0004, with reproducible grants and competitor seed), validating that the
 committed migrations produce the live schema. The draft #1 data was **thrown away on purpose**
 so as to restart cleanly. CI: `competitor-radar.yml` (Channel 2, monthly). Still to do: the
-DB-backed rewrite of `ArchiveSection` (with escaping, §4) and the **writing, gate and publish**
-of issue #1 (human-in-the-loop).
+rendering of the issue (§4) and the **writing, gate and publish** of issue #1
+(human-in-the-loop).
 
 **2026-07-06 (afternoon), first backend.** Issue #1 in draft plus a live RAG (a prototype built
 with session scripts, later consolidated into the engine).

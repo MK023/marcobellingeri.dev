@@ -1,4 +1,4 @@
-# FONTI.md, the Radar's data source registry
+# Data source registry, the Radar's sources and their licences
 
 > **The admission rule** (decided on 2026-07-22): a source gets in only if its licence permits
 > reuse on a commercial site **in writing**. This site sells (Services, Booking). Ambiguous
@@ -7,7 +7,8 @@
 > versioned and dated.
 >
 > Every verdict was reached by reading the source's **actual licence page** (not the API docs,
-> not a blog post, not from memory) on 2026-07-22.
+> not a blog post, not from memory). Verdicts are dated per entry: the oldest are from
+> 2026-07-22, when the rule was set, and later rounds carry their own date in the row.
 
 ## Sources in use
 
@@ -50,11 +51,12 @@
 
 ## Approved but not wired
 
-None, as of 2026-07-24: every source that cleared the licence gate is in use above. Those
-without a feed enter as a **point with no bulletins** (the EU style) rather than sitting on
-the bench. A verified licence is the only condition of entry.
+One, as of 2026-07-25: **ACSC** (Australia), whose licence clears but whose wiring is blocked
+by a reachability doubt (detail below). Every other source that cleared the licence gate is in
+use above: those without a feed enter as a **point with no bulletins** (the EU style) rather
+than sitting on the bench, since a verified licence is the only condition of entry.
 
-### Why three of them have no feed
+### Why three of the sources in use have no feed
 
 | Source | What was verified |
 |---|---|
@@ -62,7 +64,7 @@ the bench. A verified licence is the only condition of entry.
 | **International AI Safety Report** | No `rss` in the source (verified by Marco on 2026-07-24) |
 | **White House** | The `/presidential-actions/feed/` feed **exists and is valid** (200, `application/rss+xml`, zero redirects), but it carries *all* presidential actions. Measured on 2026-07-24: **0 items out of 30** concerned AI (June's executive order was already outside the window). A keyword filter would feed an empty point 95% of the time, so no freshness claim is better |
 
-### ACSC (Australia), approved, waiting on a feed
+### ACSC (Australia), approved but not wired
 
 The licence is fine: **CC BY 4.0**, *"All material presented on this website is provided under
 a Creative Commons Attribution 4.0 International licence"*, excluding the Coat of Arms, the
