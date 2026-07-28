@@ -56,7 +56,15 @@ jobs:
     # fallimento storico era il permesso `pull-requests: read` mancante (vedi
     # sopra), non l'attore: senza quello l'action moriva su OGNI PR.
     # Il full-history scan gira su ogni push main, quindi ogni merge resta coperto.
-    if: github.actor != 'dependabot[bot]'
+    #
+    # Si guarda l'AUTORE della PR, non `github.actor`: `actor` e' chi ha innescato
+    # l'evento e cambia a ogni push sul branch (un `update-branch` per soddisfare
+    # la branch protection lo fa diventare un umano, riaprendo in silenzio un job
+    # che questa riga voleva chiuso). `pull_request.user.login` e' immutabile per
+    # la PR ed e' il campo che GitHub usa nei suoi esempi per Dependabot.
+    # Su push e workflow_dispatch il contesto pull_request non esiste: l'espressione
+    # e' null, la condizione resta vera e il job gira come prima.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
