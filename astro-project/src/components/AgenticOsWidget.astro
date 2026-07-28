@@ -1,0 +1,62 @@
+---
+// Agentic OS live: i tre numeri di oggi di Claude Code, letti same-origin da
+// /api/agentic-status (il Worker tiene le credenziali, la CSP resta intatta).
+//
+// Fetch nel client, NON nel frontmatter: il sito è statico: un fetch qui girerebbe
+// a build time e congelerebbe i numeri al momento del deploy — l'opposto di "live".
+// Stessa scelta della pagina Radar.
+//
+// Stato base senza JS (e con l'hub spento): tre trattini. Il widget dichiara
+// "non lo so", non finge uno zero.
+interface Props { head: string; sessioni: string; token: string; costo: string; }
+const { head, sessioni, token, costo } = Astro.props;
+---
+
+<div class="agentic-os" data-agentic-os>
+  <p class="certs-head mono">{head}</p>
+  <dl class="agentic-os-cifre">
+    <div><dt>{sessioni}</dt><dd class="mono" data-campo="sessionsToday">—</dd></div>
+    <div><dt>{token}</dt><dd class="mono" data-campo="tokensToday">—</dd></div>
+    <div><dt>{costo}</dt><dd class="mono" data-campo="costUsdToday">—</dd></div>
+  </dl>
+</div>
+
+<script>
+  // textContent, mai innerHTML: i numeri arrivano dalla rete e la rete è input
+  // non fidato anche quando l'origine è nostra.
+  const formatta = (campo: string, valore: number | null) => {
+    if (valore === null || valore === undefined) return '—';
+    if (campo === 'costUsdToday') return `$${valore.toFixed(2)}`;
+    return new Intl.NumberFormat(document.documentElement.lang || 'it').format(valore);
+  };
+
+  for (const box of document.querySelectorAll<HTMLElement>('[data-agentic-os]')) {
+    fetch('/api/agentic-status')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((dati: Record<string, number | null>) => {
+        for (const cella of box.querySelectorAll<HTMLElement>('[data-campo]')) {
+          const campo = cella.dataset.campo!;
+          cella.textContent = formatta(campo, dati[campo]);
+        }
+      })
+      // I trattini sono già in pagina: un hub giù non lascia niente da fare qui.
+      .catch(() => {});
+  }
+</script>
+
+<style>
+  .agentic-os-cifre {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin: 0;
+  }
+  .agentic-os-cifre dt {
+    font-size: 0.8rem;
+    opacity: 0.7;
+  }
+  .agentic-os-cifre dd {
+    margin: 0;
+    font-size: 1.4rem;
+  }
+</style>
