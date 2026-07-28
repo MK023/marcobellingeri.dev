@@ -2,6 +2,7 @@
 // in wrangler.jsonc). Tutto il resto lo serve l'Asset Worker senza passare di qui.
 import { inviaTracciaAsk } from './langfuse.js';
 import { gestisciRadar } from './radar.js';
+import { gestisciAgenticStatus } from './agentic-status.js';
 //
 // ADR-0001 §4: la scelta della lingua su `/` è demandata all'edge.
 // Italia → italiano, resto del mondo → inglese. Il paese lo dà Cloudflare in
@@ -350,6 +351,7 @@ export default {
     if (url.pathname === '/api/contact') return gestisciContatto(request, env);
     if (url.pathname === '/api/ask') return gestisciAsk(request, env, ctx);
     if (url.pathname === '/api/radar') return gestisciRadar(request, env, ctx);
+    if (url.pathname === '/api/agentic-status') return gestisciAgenticStatus(request, env);
     if (url.pathname !== '/') return env.ASSETS.fetch(request);
 
     const lingua = scegliLingua(request.cf?.country, request.headers.get('cookie'));
