@@ -84,6 +84,9 @@ Always `lint` + `check` + `test` green before saying "done".
 ## References (read on demand)
 
 - `README.md`: full commands, the pipeline/test contract, the roadmap.
+- `DESIGN.md`: the ten colour tokens and what they mean, the three type families and their
+  jobs, the two editions, and why no runtime `style=` is allowed. Read it before touching
+  how a component looks.
 - `SECURITY_AUDIT.md`: the audit (0 open findings), defences confirmed with proof.
 - `docs/adr/`: hosting/i18n, the monthly engine, components, two-channel sourcing, the Radar
   and the knowledge graph.
