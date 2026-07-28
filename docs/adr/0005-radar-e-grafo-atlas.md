@@ -1,6 +1,7 @@
 # ADR 0005, the Radar and the Atlas graph: living pages, same infrastructure
 
-Date: 2026-07-22 · Status: accepted
+- **Status**: Accepted
+- **Date**: 2026-07-22
 
 ## Context
 
@@ -17,9 +18,11 @@ source gets in only if its licence permits commercial use in writing** (the site
 registry is `docs/FONTI.md` plus `src/data/radar-fonti.js`, and a CI test enforces it. Rendering
 is 2D canvas with an orthographic projection (Natural Earth in the repo, about 55KB), so no
 WebGL. What the rule implies: out go Cloudflare Radar (CC BY-NC), abuse.ch, ransomware.live, the
-AI Incident DB and, ironically, the Italian ACN (which forbids commercial use); in come CISA
-(public domain/CC0), NCSC UK (OGL v3), CERT-FR (Licence Ouverte 2.0), the European Commission
-(Decision 2011/833) and MITRE ATLAS (Apache 2.0, for future use).
+AI Incident DB and, ironically, the Italian ACN (which forbids commercial use); in come CISA,
+NCSC UK, CERT-FR, the European Commission and MITRE ATLAS, whose case studies feed the globe's
+AI layer as `itemsStatici` (a committed taxonomy, not a feed). The admitted set has grown since,
+so the roster is not repeated here: the registry above is the single list, and it carries the
+licence quote and the verdict date for each source.
 
 **Atlas graph**: the graph is generated **offline and by hand**
 (`scripts/genera-grafo-atlas.mjs`) from the `concepts/` and `entities/tools/` layers only, and

@@ -21,10 +21,10 @@ finishing touch.
 
 - `astro-project/`: the site **and** the `worker/`. **Start here.**
 - `engine/`: a zero-dependency Node pipeline (native `fetch`): `ingest`, `generate`, `embed`,
-  `export`, `competitors`, `retrieve`, `visibility`, `devto` (`--due` for scheduled releases),
-  `radar-signals` (Radar bulletins into proof candidates), `edicola`, `advance`, `judge`
-  (LLM-as-a-judge on the content PR). The magazine runs on autopilot: the crons run the stage
-  unlocked by the human gates in Studio.
+  `export`, `competitors`, `atlas`, `retrieve`, `visibility`, `devto` (`--due` for scheduled
+  releases), `radar-signals` (Radar bulletins into proof candidates), `edicola`, `advance`,
+  `judge` (LLM-as-a-judge on the content PR). The magazine runs on autopilot: the crons run the
+  stage unlocked by the human gates in Studio.
 - `supabase/`: sequential migrations (`000N_*.sql`), RLS everywhere, a DB rebuildable from
   scratch.
 - `docs/adr/`: architectural decisions (ADRs). *(Process specs and plans are not versioned:
@@ -42,21 +42,17 @@ Always `lint` + `check` + `test` green before saying "done".
 
 ## How we work here (specific to this repo)
 
-- **Every change goes in a branch and a PR, never on `main`** (not even locally). I merge the
-  **code** once the gates are green; Marco merges the **content** (articles).
+- **Every change goes in a branch and a PR, never on `main`** (not even locally). The agent
+  merges the **code** once the gates are green; the author merges the **content** (articles).
 - **`main` is production**: automatic deploy on every push. Autonomy stops at production.
   Migrations on the real DB, secrets, and actions towards the outside world need Marco's
   explicit approval (checking the target of every DDL first).
 - **Verify in the browser, do not trust the reading**: every serious bug came out by running it.
   Serve the build, measure.
-- **Skills we use** (invoke them at the right moment, without waiting to be asked): **graphify**
-  (query the callers before any non-trivial edit, update the graph after merges) ·
-  **verify**/**run** (run it before saying "done") · **test-driven-development** (tests before
-  code, the two MUST models) · **web-perf** (every performance/CWV task) · **ponytail** (minimal
-  diff, the YAGNI → reuse → stdlib → one-liner ladder) · **prompt-master** (every non-trivial
-  prompt, for example the `ask` system prompt) · **humanizer** (every public text: articles,
-  copy, bio; **never** the CVs) · **code-review** (before merging). Proactive note in
-  `.claude/session-skills.md`.
+- **Working rules, applied without being asked**: query the call graph before any non-trivial
+  edit · tests before code · minimal diff (the YAGNI → reuse → stdlib → one-liner ladder) ·
+  every public text (articles, copy, bio) gets a rewrite pass for tone, the CVs **never** do ·
+  review before merging.
 
 ## Code conventions
 
@@ -79,7 +75,7 @@ Always `lint` + `check` + `test` green before saying "done".
 ## What NOT to do (closed decisions, do not reopen without new data)
 
 - The 780ms loader · the CSP in the meta · SRI on the Turnstile loader (a 302 to a rotating
-  build id) · PII in the history (`f731a91`, an accepted risk) · mobile UX at 15.7 screens.
+  build id).
 - The three debts where "the fix is a regression": `UtilityBar` (setInterval), `Projects.astro`
   (`Record<Lang>`), verbose logs in `engine/lib/*`.
 - The `ponytail:` markers are **declared ceilings** with an upgrade path beside them, not debt
@@ -89,6 +85,6 @@ Always `lint` + `check` + `test` green before saying "done".
 
 - `README.md`: full commands, the pipeline/test contract, the roadmap.
 - `SECURITY_AUDIT.md`: the audit (0 open findings), defences confirmed with proof.
-- `docs/adr/`: hosting/i18n, the monthly engine, components, two-channel sourcing.
-- Cross-session ground truth: Atlas (private repo `MK023/Atlas`) →
-  `projects/marcobellingeri-dev.md`.
+- `docs/adr/`: hosting/i18n, the monthly engine, components, two-channel sourcing, the Radar
+  and the knowledge graph.
+- Cross-session ground truth lives in the author's private knowledge base, not in this repo.

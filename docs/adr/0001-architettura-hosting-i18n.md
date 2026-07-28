@@ -62,8 +62,8 @@ B2.
 
 ### 6. RAG store: **Supabase (pgvector)**, decided
 Update (2026-07-05): **Supabase pgvector** was chosen (not Vectorize) as the RAG store and the
-source of truth for drafts and review. Marco already knows it well (monferrinoAI/rubble).
-Pipeline and schema detail in **ADR-0002**.
+source of truth for drafts and review, on the strength of existing production experience with
+it. Pipeline and schema detail in **ADR-0002**.
 
 ### 7. Security by design
 Cloudflare WAF and managed rules; security headers carried over from `vercel.json` to
@@ -73,14 +73,12 @@ and rulesets for free).
 
 ## Notes on using Firecrawl
 
-- **Role**: structured scraping of the sources (competitors, market, security) that feed issue
-  generation. Today: `astro-project/firecrawl_issue.py`, run by a monthly GitHub Action, writes
-  static JSON into `public/data/issues/` for the browser to read.
-- **Sources** (`SOURCES` in the script): Troy Hunt, Julia Evans, Simon Willison, Corey Quinn
-  (Last Week in AWS) and others, to be revisited against the real positioning.
-- **Key**: `FIRECRAWL_API_KEY` lives **only** in secrets (GitHub Secrets today, Workers env
-  later), **never** in the repo. The script reads it through `os.environ`; the `fc-xxxxxxxx` in
-  the comments is a placeholder.
+- **Role**: structured scraping of the sources that feed issue generation. The Python script
+  described here was replaced by `engine/competitors.mjs`, which scrapes the competitor set
+  into Supabase instead of writing static JSON for the browser.
+- **Sources**: the admitted set and its licences live in `docs/FONTI.md`, which is the single
+  registry. Channel design is in **ADR-0004**.
+- **Key**: `FIRECRAWL_API_KEY` lives **only** in secrets, **never** in the repo.
 - **Evolution (B2)**: from "scrape to JSON" towards "scrape, generate with an LLM, store (RAG),
   bilingual issue". Firecrawl stays the collection layer, with generation (Claude/Python) and
   possible Vectorize indexing on top.

@@ -21,8 +21,8 @@ public.
 
 Since 2026-07-21 the cycle runs on **autopilot** (the monthly `magazine-ingest` workflow plus
 the daily `magazine-advance`): automation only runs the stage that the last human action in
-Studio unlocked. Signals verified unlocks `generate`, approval unlocks `embed` and `export`,
-which produces the content PR. The gates do not move. The copy-pasting does.
+Supabase Studio unlocked. Signals verified unlocks `generate`, approval unlocks `embed` and
+`export`, which produces the content PR. The gates do not move. The copy-pasting does.
 
 ## Secrets (through Doppler, never in plaintext in the repo)
 
@@ -31,6 +31,7 @@ Every command runs under `doppler run --`. Expected environment:
 | Env | Use |
 |-----|-----|
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | DB writes over REST |
+| `ANTHROPIC_API_KEY` | Messages client (`lib/anthropic.mjs`): generation and judge |
 | `EMBEDDING_API_KEY` | Voyage voyage-3.5 (1024-dim embeddings) |
 | `VALYU_API_KEY` | Channel 1 sourcing |
 | `FIRECRAWL_API_KEY` | Channel 2 competitor scraping |

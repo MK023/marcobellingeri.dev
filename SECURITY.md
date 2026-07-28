@@ -22,4 +22,4 @@ I will reply within **72 hours** and work with you to fix it before any public d
 
 ## Security audits
 
-The project is audited periodically. The latest audit (round 2, 2026-07-12) found 1 High, 5 Medium and a handful of Low findings: every actionable item was fixed the same day. The history lives in [SECURITY_AUDIT.md](SECURITY_AUDIT.md).
+The project is audited periodically. Round 2 (2026-07-12) found 1 High, 5 Medium and a handful of Low findings: every actionable item was fixed the same day, and no finding from that round is still open. Later passes (2026-07-13, 2026-07-18) and an addendum (2026-07-22) are recorded as well; 3 non-actionable Info items stay open by choice. The history lives in [SECURITY_AUDIT.md](SECURITY_AUDIT.md).

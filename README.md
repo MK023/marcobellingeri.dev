@@ -23,7 +23,7 @@ Content Security Policy in this repository is built from script hashes instead o
 | `astro-project/` | The site. Static Astro, EN/IT i18n, components, CSP, tests. **Start here.** |
 | `engine/` | The Node pipeline behind the monthly issue: sourcing, verification, generation, embed, export, judge (LLM-as-a-judge on the content PR), competitor radar. Plus distribution: `devto` (draft at merge, publish on the frontmatter `date`) and `edicola` (automatic cards). No external dependencies. |
 | `supabase/` | Migrations, seed and RLS policies for the RAG database (Postgres + pgvector). Rebuildable from scratch. |
-| `docs/adr/` | The architectural decisions and the reasoning. `docs/FONTI.md` holds the licence registry for the Radar sources (with a guard in CI). |
+| `docs/adr/` | The architectural decisions and the reasoning. `docs/FONTI.md` holds the licence registry for the Radar sources, every one with a verified licence; the guard in CI runs on the machine-readable registry, `src/data/radar-fonti.js`. |
 | `mock-html-singolo/` | The HTML prototype everything grew out of. Historical reference, not to be touched. |
 
 ## Running it
@@ -75,13 +75,13 @@ Other nets:
   On PRs the analysis arrives as a check, while the change can still be discussed. Coverage
   is computed by the Node test runner, with no extra dependency.
 - **`astro check` + ESLint**, because Sonar on its own left **more than half the site**
-  uncovered: it has no Astro parser, and the 20 `.astro` files (roughly 2800 lines, more than
+  uncovered: it has no Astro parser, and the 27 `.astro` files (roughly 4600 lines, more than
   everything Sonar does analyse) passed with no static checking at all. That is exactly where
   the browser-side logic lives: contact form, command palette, terminal. The `tsconfig` was
   already `strict`, but nobody ran it, which is decorative severity. **No Prettier**: it
   formats, it does not find bugs, and style arguments take two people. The ESLint config
-  disables **no rules at all**. The only two exceptions sit on the line itself with the
-  reason next to them (the Worker's anti-header-injection regex, where control characters are
+  disables **no rules at all**. The only exception sits on the line itself with the
+  reason next to it (the Worker's anti-header-injection regex, where control characters are
   the target rather than the mistake).
 - **gitleaks** across the whole history on every push to `main`, and in a local pre-commit hook.
 - **Push protection** from secret scanning: GitHub refuses a push containing a secret instead
@@ -185,12 +185,11 @@ tracking lives in Notion, not in GitHub Issues.
 - [x] **Backend and RAG**: two channels on Supabase pgvector ([ADR 0004](docs/adr/0004-sourcing-due-canali.md)): Valyu sourcing, three-tier verification, human-in-the-loop draft, voyage-3.5 embeddings
 - [x] **Engine in the repo**: `engine/` (ingest, generate, embed, export, competitor radar), a database rebuildable from migrations, Langfuse tracing
 - [x] **Site unblocked** (`v0.2.0`): CSP solved with hashes, Cloudflare hosting configured, frontend CI, repository made public
-- [x] **First issue** (`2026-07-12`): DB-backed magazine, issue #1 published ("AI insurance governance", NAIC Model Bulletin). The section does not render until a real issue exists: a magazine with a placeholder inside is worth less than no magazine
 - [x] **Go-live** (`v1.0.0`, 2026-07-10): [marcobellingeri.dev](https://marcobellingeri.dev) on Cloudflare, automatic deploy from `main`, www and email anti-spoofing configured
+- [x] **First issue** (`2026-07-12`): DB-backed magazine, issue #1 published ("AI insurance governance", NAIC Model Bulletin). The section does not render until a real issue exists: a magazine with a placeholder inside is worth less than no magazine
 - [x] **Canonical-first distribution**: the site is the canonical home; dev.to is the primary mirror (native RSS import, `canonical_url` pointing back here). Long-form pieces are hosted on the site (the `writing` collection) with a Newsstand of external bylines
 - [x] **C1 terminal** (`2026-07-21`): a real RAG interface (`ask`), with the `/api/ask` endpoint behind Turnstile, per-IP rate limiting, a body cap, an anon key gated to `published`, plus citations and the AI Act article 50 disclosure in the payload
 - [x] **Editorial automation** (`2026-07-21`): the editorial cycle runs itself and the human gates stay. A dev.to draft is created in CI when an article is merged (`devto-draft.yml`); Newsstand cards come from a cron that queries dev.to and carries the PR to production once the gates are green (`edicola-card.yml`); the magazine runs on autopilot (monthly rotating ingest plus a daily advance that runs the stage unlocked by the last human action in Studio, with Marco merging the content PR). Engine errors go to Sentry (`lib/sentry.mjs`, zero-dep, fail-open)
-
 - [x] **Scheduled release** (`2026-07-22`): Newsstand pieces are written ahead of time and merged together, then go out on dev.to by themselves on the frontmatter `date` (`devto-publish-due.yml`, with a 24-hour notice by issue). Silence publishes, and the one human approval left is the merge
 - [x] **Judge** (`2026-07-22`): LLM-as-a-judge on the magazine's content PR, with five anchored criteria, a written and tested gate policy (`engine/lib/judge.mjs`), a report in a comment, and Langfuse tracing. The merge stays human
 - [x] **Radar** (`2026-07-22`): [/radar](https://marcobellingeri.dev/en/radar/), the bulletins from security authorities (CISA, NCSC UK, CERT-FR plus an EU rules layer) on an interactive globe. Only sources whose commercially compatible licence has been verified in writing (`docs/FONTI.md`); `/api/radar` in the Worker with edge cache, per-source fail-open, and links accepted only on the source's own domains
