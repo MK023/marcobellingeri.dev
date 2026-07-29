@@ -1,6 +1,6 @@
-// /api/agentic-status: l'hub Agentic OS è un VPS a mesi, che può non esserci.
-// Il contratto qui è "degrada, non rompe": campi a null e pagina viva, mai un
-// errore al visitatore. E le due credenziali devono partire entrambe — Access
+// /api/agentic-status: l'hub Agentic OS (Railway, dietro Cloudflare Tunnel) è
+// un esperimento che può venire spento. Il contratto qui è "degrada, non
+// rompe": campi a null e pagina viva, mai un errore al visitatore. E le due credenziali devono partire entrambe — Access
 // davanti, token della status API dietro.
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

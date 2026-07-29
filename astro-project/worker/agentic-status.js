@@ -2,9 +2,10 @@
 // token, costo di oggi). Il browser chiama same-origin: la CSP resta intatta e
 // le credenziali Access non lasciano mai l'edge.
 //
-// L'hub è un VPS che può non esserci (esperimento a mesi, `terraform destroy`
-// previsto): il fallimento è NORMALE, non eccezionale. Fail-open a campi `null`
-// — il widget mostra "—", la pagina non se ne accorge, mai un 500 al visitatore.
+// L'hub gira su Railway dietro un Cloudflare Tunnel (il VPS è morto il
+// 2026-07-29) ed è un esperimento che può venire spento: il fallimento è
+// NORMALE, non eccezionale. Fail-open a campi `null` — il widget mostra "—",
+// la pagina non se ne accorge, mai un 500 al visitatore.
 //
 // Due credenziali, non una: Cloudflare Access lascia passare la richiesta
 // (CF-Access-Client-*), la status API ha comunque il SUO token (Authorization).
