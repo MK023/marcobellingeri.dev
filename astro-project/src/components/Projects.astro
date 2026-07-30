@@ -11,8 +11,14 @@ const t = useTranslations(lang);
 // alla sezione. Vive fuori dal <button> del toggle (un link dentro un bottone
 // è HTML invalido), nella riga dei chip.
 const portali: Record<Lang, Record<string, { path: string; label: string }>> = {
-  it: { 'case-atlas': { path: 'atlas', label: 'IL GRAFO, LIVE →' } },
-  en: { 'case-atlas': { path: 'atlas', label: 'THE GRAPH, LIVE →' } },
+  it: {
+    'case-atlas': { path: 'atlas', label: 'IL GRAFO, LIVE →' },
+    'case-agentic-os': { path: 'agentic-os', label: 'I NUMERI, LIVE →' },
+  },
+  en: {
+    'case-atlas': { path: 'atlas', label: 'THE GRAPH, LIVE →' },
+    'case-agentic-os': { path: 'agentic-os', label: 'THE NUMBERS, LIVE →' },
+  },
 };
 
 type Project = {
@@ -61,19 +67,19 @@ const projects: Record<Lang, Project[]> = {
         '51 test tra unit, integration ed e2e con testcontainer, CI/CD e threat model documentato in SECURITY.md. Prossimo traguardo: portarla su Apple App Store come app nativa.',
     },
     {
-      id: 'case-jobsearch',
-      name: 'JobSearch',
-      status: 'shipped',
-      statusLabel: 'VALIDATO',
+      id: 'case-agentic-os',
+      name: 'Agentic OS',
+      status: 'active',
+      statusLabel: 'LIVE',
       swatchClass: 'p-violet',
       summary:
-        'La caccia al lavoro con un cervello AI: legge le offerte, dà un voto secco alla compatibilità col CV (0–100), dice cosa manca davvero e scrive lettere, follow-up e domande da colloquio. Validato nel modo più onesto possibile: su di me.',
+        'Quanto lavoro faccio davvero con l’AI, misurato invece che raccontato. Claude Code manda la sua telemetria a un hub mio — cinque servizi dietro un tunnel — e in questa pagina tre numeri veri si aggiornano da soli.',
       problem:
-        'Le candidature andavano a caso: stesso CV per annunci molto diversi, nessun modo onesto di misurare quali competenze mancassero davvero rispetto a un ruolo.',
+        'Del lavoro assistito dall’AI si parla per aneddoti. Non sapevo quanto ne facessi, con quali modelli, a che costo — e nessuno strumento me lo diceva senza spedire le mie sessioni a qualcun altro.',
       approach:
-        "Architettura a microservizi (FastAPI + Nginx + PostgreSQL + Redis, con server MCP per l'agente AI). Punteggio di compatibilità, gap analysis con severity e piani d'azione, CRM recruiter — nessun abbellimento, nemmeno su se stesso.",
+        'OpenTelemetry da Claude Code verso un Collector che autentica l’ingest e applica una allow-list sulle label: ciò che non è dichiarato sicuro non diventa mai una metrica. Prometheus conserva, Grafana mostra dietro Cloudflare Access, e una status API espone esattamente tre numeri aggregati — nessuna query libera, nessun contenuto di sessione.',
       result:
-        'OWASP Top 10 audit completo, 342 test, mypy strict a zero errori, deploy su Fly.io con CI/CD a 8 stage. Il metodo si generalizza: funziona su qualunque CV.',
+        'In produzione su Railway dietro un Cloudflare Tunnel, con nessun servizio esposto su un dominio pubblico della piattaforma. La allow-list è nata da una misura, non da una lettura: la mia email vera arrivava come label di Prometheus, e la correzione ovvia perdeva dati in silenzio.',
     },
     {
       id: 'case-atlas',
@@ -88,7 +94,7 @@ const projects: Record<Lang, Project[]> = {
       approach:
         'Un grafo di conoscenza personale su Obsidian, pensato non solo come archivio ma come domanda aperta su come memoria e identità si costruiscono nel tempo.',
       result:
-        "Deprioritizzato come prodotto rispetto a JobSearch, ma resta lo strumento di pensiero più usato — e l'idea di una versione SaaS con RAG resta sul tavolo.",
+        "Deprioritizzato come prodotto rispetto a ciò che stava spedendo, ma resta lo strumento di pensiero più usato — e l'idea di una versione SaaS con RAG resta sul tavolo.",
     },
   ],
   en: [
@@ -123,19 +129,19 @@ const projects: Record<Lang, Project[]> = {
         '51 tests across unit, integration and e2e with testcontainers, CI/CD and a threat model documented in SECURITY.md. Next milestone: bringing it to the Apple App Store as a native app.',
     },
     {
-      id: 'case-jobsearch',
-      name: 'JobSearch',
-      status: 'shipped',
-      statusLabel: 'VALIDATED',
+      id: 'case-agentic-os',
+      name: 'Agentic OS',
+      status: 'active',
+      statusLabel: 'LIVE',
       swatchClass: 'p-violet',
       summary:
-        "The job hunt with an AI brain: it reads listings, gives your CV a blunt fit score (0–100), tells you what's actually missing and writes the letters, follow-ups and interview questions. Validated the most honest way there is: on me.",
+        'How much work I actually do with AI, measured instead of claimed. Claude Code ships its telemetry to a hub of my own — five services behind a tunnel — and on this page three real numbers update by themselves.',
       problem:
-        'Applications went out at random: the same CV for very different roles, with no honest way to measure which skills were actually missing for a given role.',
+        'AI-assisted work gets discussed in anecdotes. I had no idea how much of it I was doing, with which models, at what cost — and no tool would tell me without shipping my sessions to somebody else.',
       approach:
-        'Microservice architecture (FastAPI + Nginx + PostgreSQL + Redis, with an MCP server for the AI agent). Compatibility score, gap analysis with severity and action plans, recruiter CRM — no embellishment, not even on myself.',
+        'OpenTelemetry from Claude Code into a Collector that authenticates the ingest and applies an allow-list on labels: anything not declared safe never becomes a metric. Prometheus stores, Grafana displays behind Cloudflare Access, and a status API exposes exactly three aggregate numbers — no free-form queries, no session content.',
       result:
-        'Full OWASP Top 10 audit, 342 tests, mypy strict at zero errors, deployed on Fly.io with an 8-stage CI/CD. The method generalises: it works on any CV.',
+        'In production on Railway behind a Cloudflare Tunnel, with no service exposed on a public platform domain. The allow-list came from a measurement, not from a reading: my real email address was arriving as a Prometheus label, and the obvious fix silently lost data.',
     },
     {
       id: 'case-atlas',
@@ -150,7 +156,7 @@ const projects: Record<Lang, Project[]> = {
       approach:
         'A personal knowledge graph on Obsidian, meant not just as an archive but as an open question about how memory and identity are built over time.',
       result:
-        'Deprioritised as a product against JobSearch, but it remains the thinking tool I use most — and the idea of a SaaS version with RAG is still on the table.',
+        'Deprioritised as a product against whatever was actually shipping, but it remains the thinking tool I use most — and the idea of a SaaS version with RAG is still on the table.',
     },
   ],
 };

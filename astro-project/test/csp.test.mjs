@@ -10,19 +10,32 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
-// La 404 è servita da Cloudflare per ogni percorso inesistente: è la pagina che un
-// visitatore sbagliato vede per prima, e vale la stessa CSP delle altre.
-// Le privacy vanno coperte anche loro: un inline specifico di pagina andrebbe
-// live senza hash con i test verdi, e sarebbe la pagina legale a rompersi.
-const PAGES = [
-  'dist/it/index.html',
-  'dist/en/index.html',
-  'dist/404.html',
-  'dist/it/privacy/index.html',
-  'dist/en/privacy/index.html',
-];
+// OGNI pagina costruita, non un elenco scritto a mano. L'elenco era la falla: le
+// pagine dedicate (atlas, ai, radar, agentic-os) non erano coperte, e un inline
+// specifico di una di quelle sarebbe andato live senza hash con i test verdi —
+// cioè esattamente il caso per cui questo file esiste. Una pagina nuova adesso
+// entra nel controllo da sola, senza che nessuno si ricordi di aggiungerla.
+// La 404 è servita da Cloudflare per ogni percorso inesistente, quindi vale la
+// stessa CSP delle altre e il glob la prende insieme al resto.
+const htmlSotto = (dir) =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((voce) =>
+    voce.isDirectory()
+      ? htmlSotto(join(dir, voce.name))
+      : voce.name.endsWith('.html')
+        ? [join(dir, voce.name)]
+        : [],
+  );
+
+const PAGES = htmlSotto('dist');
+
+// Senza questa, `dist/` assente significa zero test registrati e suite verde: un
+// gate che non può fallire non è un gate.
+test('la build ha prodotto pagine da controllare', () => {
+  assert.ok(PAGES.length > 0, 'nessun .html sotto dist/: eseguire `npm run build` prima dei test');
+});
 
 const sha256 = (s) => 'sha256-' + createHash('sha256').update(s).digest('base64');
 const cspOf = (html) =>
@@ -38,14 +51,27 @@ const inlineScripts = (html) =>
     .filter((m) => !/type="application\/ld\+json"/i.test(m[1]))
     .map((m) => m[2]);
 
+// Il canary "il selettore funziona ancora" è GLOBALE, non per pagina: con
+// l'elenco scritto a mano tutte le pagine passavano da BaseLayout e portavano il
+// suo inline anti-FOUC, quindi pretenderlo ovunque era lecito. Sul glob non lo è
+// più — `dist/index.html` è il fallback nudo del meta-refresh, non passa dal
+// layout, non ha script e non ha CSP, e in produzione non viene mai servito
+// (worker/index.js la intercetta, run_worker_first). Una pagina senza inline non
+// ha niente da dimostrare; se però NESSUNA ne ha, è la regex a essere rotta.
+const inlineTotali = PAGES.reduce((n, p) => n + inlineScripts(readFileSync(p, 'utf8')).length, 0);
+
+test('il selettore degli script inline non è rotto', () => {
+  assert.ok(inlineTotali > 0, 'nessuno script inline in tutta dist/: la regex non trova più niente');
+});
+
 for (const page of PAGES) {
   test(`${page}: ogni script inline ha il suo hash in script-src`, () => {
     const html = readFileSync(page, 'utf8');
-    const csp = cspOf(html);
-    assert.notEqual(csp, '', 'nessun <meta> CSP: security.csp non sta girando');
-
     const scripts = inlineScripts(html);
-    assert.ok(scripts.length > 0, 'nessuno script inline trovato: il selettore è rotto?');
+    if (scripts.length === 0) return;
+
+    const csp = cspOf(html);
+    assert.notEqual(csp, '', 'pagina con script inline ma senza <meta> CSP: quegli script sono bloccati in produzione');
 
     for (const body of scripts) {
       const hash = sha256(body);
