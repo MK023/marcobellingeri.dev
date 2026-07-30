@@ -26,7 +26,7 @@ const copy = {
     legenda: { concept: 'concetto', tool: 'strumento' },
     fallbackH: 'I nodi più connessi',
     generato: `generato dalla wiki il ${grafo.generatoIl}`,
-    back: 'Torna alla home',
+    back: 'Torna ai progetti',
   },
   en: {
     title: 'Atlas — the knowledge graph',
@@ -37,11 +37,13 @@ const copy = {
     legenda: { concept: 'concept', tool: 'tool' },
     fallbackH: 'Most connected nodes',
     generato: `generated from the wiki on ${grafo.generatoIl}`,
-    back: 'Back to home',
+    back: 'Back to projects',
   },
 }[lang];
 
-const backHref = getRelativeLocaleUrl(lang, '');
+// #projects e non la radice: si arriva qui dal chip nella card dei Progetti, e il
+// ritorno deve rimettere il lettore dov'era invece che in cima alla home.
+const backHref = `${getRelativeLocaleUrl(lang, '')}#projects`;
 const top = [...grafo.nodes].sort((a, b) => b.degree - a.degree).slice(0, 20);
 ---
 

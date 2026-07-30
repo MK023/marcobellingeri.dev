@@ -13,78 +13,87 @@ export function getStaticPaths() {
 const { lang } = Astro.params as { lang: Lang };
 
 // Il portale della card Agentic OS, stessa forma di atlas.astro: la card racconta
-// l'hub, questa pagina lo MOSTRA. I numeri non sono renderizzati qui — il sito è
-// statico e un fetch nel frontmatter li congelerebbe al momento del deploy. Li
-// prende il widget nel client, same-origin da /api/agentic-status.
+// l'hub, questa pagina lo mostra. I numeri non si renderizzano qui, perché il sito
+// è statico e un fetch nel frontmatter li congelerebbe al deploy. Li prende il
+// widget nel client, same-origin da /api/agentic-status.
+//
+// Impaginazione e classi vengono da global.css e da atlas.astro, non da un foglio
+// nuovo: .certs-head per la sopra-testata, .display per il titolo, .case-block con
+// .label mono per le note, .util-btn per il ritorno. Lo scoped qui sotto contiene
+// solo ciò che non esiste già.
 const copy = {
   it: {
-    title: 'Agentic OS — i numeri di oggi',
-    tagline: "L'osservabilità del mio lavoro con l'AI, in tre numeri che non scrivo io.",
+    title: 'Agentic OS, i numeri di oggi',
+    h1: 'I numeri di oggi',
+    tagline: "Quanto lavoro faccio con l'AI, misurato dal mio hub invece che raccontato.",
     intro:
-      'Claude Code, sul mio computer, esporta telemetria OpenTelemetry verso un hub che ho costruito: Collector, Prometheus, Grafana e una piccola API, cinque servizi su Railway dietro un Cloudflare Tunnel. Questi tre numeri arrivano da lì, adesso.',
-    widget: { head: 'ULTIME ~25 ORE', sessioni: 'Sessioni', token: 'Token', costo: 'Costo' },
-    finestraH: 'Perché “~25 ore” e non “oggi”',
+      'Claude Code gira sul mio computer e manda la sua telemetria a un hub che ho costruito: Collector, Prometheus, Grafana e una piccola API, cinque servizi su Railway dietro un Cloudflare Tunnel. I tre numeri qui sotto arrivano da lì mentre leggi.',
+    widget: { sessioni: 'Sessioni', token: 'Token', costo: 'Costo' },
+    finestraH: 'PERCHÉ 25 ORE E NON "OGGI"',
     finestra:
-      'Ogni sessione è una serie a sé, un contatore che cresce finché la sessione vive e poi resta fermo per sempre. La finestra la dà il Collector, che smette di esporre una serie un giorno dopo il suo ultimo aggiornamento. Quindi non è un giorno di calendario: è l’attività delle ultime venticinque ore circa, che è ciò che questi numeri sanno dire onestamente.',
-    confineH: 'Cosa non esce di qui',
+      'Ogni sessione è una serie a sé: un contatore che cresce finché la sessione vive, e poi resta fermo. La finestra la decide il Collector, che smette di esporre una serie un giorno dopo il suo ultimo aggiornamento. Non è un giorno di calendario, è l\'attività delle ultime venticinque ore circa. Tanto quanto questi numeri possono dire senza barare.',
+    confineH: 'COSA NON ESCE DA QUI',
     confine:
-      'Escono tre numeri aggregati e nient’altro: nessun prompt, nessuna risposta, nessuna query libera sul database delle metriche. L’identità non arriva nemmeno all’archivio — il Collector tiene una allow-list sulle label, così un attributo che nessuno ha dichiarato sicuro viene scartato per difetto invece di essere cancellato dopo. È una scelta nata da una misura, non da una lettura: la mia email vera arrivava come label di Prometheus, e la correzione ovvia perdeva dati in silenzio.',
-    trattiniH: 'Se vedi tre trattini',
+      "Tre numeri aggregati, e basta. Nessun prompt, nessuna risposta, nessuna query libera sul database delle metriche. L'identità non arriva nemmeno all'archivio, perché il Collector tiene una allow-list sulle label: un attributo che nessuno ha dichiarato sicuro viene scartato per difetto, invece di essere cancellato dopo. La scelta nasce da una misura, non da una lettura. La mia email vera arrivava come label di Prometheus, e la correzione ovvia perdeva dati senza dirlo.",
+    trattiniH: 'SE VEDI TRE TRATTINI',
     trattini:
-      'Vuol dire che l’hub non ha risposto. Preferisco dichiarare che non lo so, invece di mostrare uno zero che sembra una risposta.',
-    back: 'Torna alla home',
+      "L'hub non ha risposto. Preferisco dire che non lo so, piuttosto che mostrare uno zero che sembrerebbe una risposta.",
+    back: 'Torna ai progetti',
   },
   en: {
-    title: 'Agentic OS — today’s numbers',
-    tagline: 'Observability of my own AI-assisted work, in three numbers I do not write.',
+    title: 'Agentic OS, today’s numbers',
+    h1: 'Today’s numbers',
+    tagline: 'How much work I do with AI, measured by my own hub instead of claimed.',
     intro:
-      'Claude Code, on my machine, exports OpenTelemetry data to a hub I built: Collector, Prometheus, Grafana and a small API, five services on Railway behind a Cloudflare Tunnel. These three numbers come from there, right now.',
-    widget: { head: 'LAST ~25 HOURS', sessioni: 'Sessions', token: 'Tokens', costo: 'Cost' },
-    finestraH: 'Why “~25 hours” and not “today”',
+      'Claude Code runs on my machine and sends its telemetry to a hub I built: Collector, Prometheus, Grafana and a small API, five services on Railway behind a Cloudflare Tunnel. The three numbers below come from there while you read this.',
+    widget: { sessioni: 'Sessions', token: 'Tokens', costo: 'Cost' },
+    finestraH: 'WHY 25 HOURS AND NOT "TODAY"',
     finestra:
-      'Each session is its own series, a counter that grows while the session lives and then stays flat forever. The window comes from the Collector, which stops exposing a series a day after its last update. So this is not a calendar day: it is roughly the last twenty-five hours of activity, which is what these numbers can honestly claim.',
-    confineH: 'What does not leave the hub',
+      'Every session is its own series: a counter that grows while the session lives, then stops. The window comes from the Collector, which stops exposing a series one day after its last update. This is not a calendar day, it is roughly the last twenty five hours of activity. As much as these numbers can claim without cheating.',
+    confineH: 'WHAT DOES NOT LEAVE THIS HUB',
     confine:
-      'Three aggregate numbers and nothing else: no prompts, no answers, no free-form queries against the metrics database. Identity never even reaches storage — the Collector keeps an allow-list on labels, so an attribute nobody declared safe is dropped by default rather than deleted afterwards. That choice came from a measurement, not from a reading: my real email address was arriving as a Prometheus label, and the obvious fix silently lost data.',
-    trattiniH: 'If you see three dashes',
+      'Three aggregate numbers, and nothing else. No prompts, no answers, no free-form queries against the metrics database. Identity never even reaches storage, because the Collector keeps an allow-list on labels: an attribute nobody declared safe is dropped by default, rather than deleted afterwards. That choice came from a measurement, not from a reading. My real email address was arriving as a Prometheus label, and the obvious fix lost data without saying so.',
+    trattiniH: 'IF YOU SEE THREE DASHES',
     trattini:
-      'It means the hub did not answer. I would rather say I do not know than show a zero that looks like an answer.',
-    back: 'Back to home',
+      'The hub did not answer. I would rather say I do not know than show a zero, which would look like an answer.',
+    back: 'Back to projects',
   },
 }[lang];
 
-const backHref = getRelativeLocaleUrl(lang, '');
+// Ancora #projects e non la radice: a questa pagina si arriva dal chip nella card
+// dei Progetti, quindi il ritorno deve rimettere il lettore dov'era. Riportarlo in
+// cima alla home gli fa riscorrere tutto per ritrovare il punto da cui è partito.
+const backHref = `${getRelativeLocaleUrl(lang, '')}#projects`;
 ---
 
 <BaseLayout lang={lang} title={copy.title} description={copy.tagline} path="agentic-os">
   <UtilityBar />
   <main id="main-content">
     <article class="ao-wrap">
-      <p class="ao-cred mono">AGENTIC OS</p>
-      <h1 class="ao-title">{copy.title}</h1>
+      <p class="certs-head mono">AGENTIC OS</p>
+      <h1 class="display ao-title">{copy.h1}</h1>
       <p class="ao-intro">{copy.intro}</p>
 
       <AgenticOsWidget
-        head={copy.widget.head}
         sessioni={copy.widget.sessioni}
         token={copy.widget.token}
         costo={copy.widget.costo}
       />
 
-      <section class="ao-nota">
-        <h2>{copy.finestraH}</h2>
-        <p>{copy.finestra}</p>
-      </section>
-
-      <section class="ao-nota">
-        <h2>{copy.confineH}</h2>
-        <p>{copy.confine}</p>
-      </section>
-
-      <section class="ao-nota">
-        <h2>{copy.trattiniH}</h2>
-        <p>{copy.trattini}</p>
-      </section>
+      <div class="ao-note">
+        <div class="case-block">
+          <span class="label mono">{copy.finestraH}</span>
+          <p>{copy.finestra}</p>
+        </div>
+        <div class="case-block">
+          <span class="label mono">{copy.confineH}</span>
+          <p>{copy.confine}</p>
+        </div>
+        <div class="case-block">
+          <span class="label mono">{copy.trattiniH}</span>
+          <p>{copy.trattini}</p>
+        </div>
+      </div>
 
       <a class="util-btn ao-back" href={backHref}>← {copy.back}</a>
     </article>
@@ -93,37 +102,13 @@ const backHref = getRelativeLocaleUrl(lang, '');
 </BaseLayout>
 
 <style>
-  /* Solo impaginazione: i colori stanno nei token di global.css, qui non se ne
-     inventano (DESIGN.md). */
-  .ao-wrap {
-    max-width: 46rem;
-    margin: 0 auto;
-    padding: 3rem 1.25rem 4rem;
-  }
-  .ao-cred {
-    font-size: 0.75rem;
-    letter-spacing: 0.12em;
-    opacity: 0.7;
-    margin: 0 0 0.5rem;
-  }
-  .ao-title {
-    margin: 0 0 0.75rem;
-  }
-  .ao-intro {
-    margin: 0 0 2rem;
-  }
-  .ao-nota {
-    margin-top: 2.5rem;
-  }
-  .ao-nota h2 {
-    font-size: 1.05rem;
-    margin: 0 0 0.5rem;
-  }
-  .ao-nota p {
-    margin: 0;
-  }
-  .ao-back {
-    display: inline-block;
-    margin-top: 3rem;
-  }
+  /* Stesse misure di atlas.astro: le pagine dedicate hanno già una forma. */
+  .ao-wrap{ max-width:960px; margin:0 auto; padding:56px 24px 48px; }
+  .ao-title{ font-size:clamp(28px, 5.5vw, 48px); line-height:0.98; margin:0 0 16px; }
+  .ao-intro{ font-size:16px; line-height:1.65; max-width:640px; margin:0 0 28px; }
+  .ao-note{ margin-top:36px; max-width:640px; }
+  .ao-note p{ font-size:15px; line-height:1.7; margin:0; }
+  /* Come .atl-back: senza questo il link eredita il sottolineato del browser,
+     che .util-btn da solo non toglie. */
+  .ao-back{ display:inline-block; margin-top:36px; text-decoration:none; }
 </style>
