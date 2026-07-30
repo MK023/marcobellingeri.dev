@@ -10,6 +10,7 @@ const copy = {
     title: 'Stack',
     certsHead: 'Certificazioni · ognuna verificabile alla fonte',
     certAnthropic: 'Anthropic · 15 corsi · 2026',
+    certMongo: 'MongoDB · 8 corsi · 2026',
     newTab: 'si apre in una nuova scheda',
     cards: [
       ['CORE', 'Python & Backend', 'La lingua di casa: backend e API con Clean Architecture e DDD (FastAPI, Flask, Falcon). Frontend: Astro e Vite, questo sito incluso; React e TypeScript quando serve una SPA.'],
@@ -26,6 +27,7 @@ const copy = {
     title: 'Stack',
     certsHead: 'Certifications · each verifiable at the source',
     certAnthropic: 'Anthropic · 15 courses · 2026',
+    certMongo: 'MongoDB · 8 courses · 2026',
     newTab: 'opens in a new tab',
     cards: [
       ['CORE', 'Python & Backend', 'Home turf: back-ends and APIs built on Clean Architecture and DDD (FastAPI, Flask, Falcon). Frontend: Astro and Vite, this site included; React and TypeScript when a SPA is called for.'],
@@ -55,12 +57,17 @@ const certs = [
   { label: 'AI Security & Governance', sub: 'Securiti Education · 2026', href: 'https://education.securiti.ai/verification/14B137A88-14B135575-144EF5CD6/' },
   { label: 'Foundations of AI Security', sub: 'AttackIQ Academy · 2026', href: 'https://www.academy.attackiq.com/certificates/certificate-template?resource=11843&type=course&title=Foundations%20of%20AI%20Security&cert_id=6711' },
   { label: 'Secure AI/ML-Driven Software Development', sub: 'OpenSSF · Linux Foundation · 2026', href: LF_CERT('c13ddfe5-838d-4746-86b2-19c680ca9756') },
+  // Unica LF che linka Credly e non il PDF: l'ID del certificato non è stato
+  // ripreso. Il badge Credly è comunque una verifica puntuale, non il profilo.
+  { label: 'Securing Your Software Supply Chain with Sigstore', sub: 'Linux Foundation · 2026', href: 'https://www.credly.com/badges/1ec97ced-7a04-48af-8c7d-d2abb8f94c20' },
   { label: 'Automating Supply Chain Security: SBOMs & Signatures', sub: 'OpenSSF · Linux Foundation · 2026', href: LF_CERT('a293b447-ef0e-49be-815c-00e903d807b2') },
   { label: 'Understanding the EU Cyber Resilience Act (CRA)', sub: 'OpenSSF · Linux Foundation · 2026', href: LF_CERT('9302380f-be95-4491-acef-0382ba853655') },
   { label: 'Introduction to Zero Trust', sub: 'Linux Foundation · 2026', href: LF_CERT('5f6c1e79-a93d-4cef-8761-91e6f8a3da77') },
   { label: 'Anthropic Academy', sub: copy.certAnthropic, href: CREDLY },
-  { label: 'Google AI Professional Certificate', sub: 'Google Career Certificates · 2026', href: CREDLY },
-  { label: 'Using Voyage Models with MongoDB', sub: 'MongoDB · 2026', href: CREDLY },
+  // Otto corsi MongoDB in una riga sola, come Anthropic: presi uno a uno sono
+  // corsi di prodotto, presi insieme sono "RAG in produzione", che è la cosa
+  // che il sito dimostra. Elencarli separati sarebbe il muro di badge.
+  { label: 'AI, RAG & Security', sub: copy.certMongo, href: CREDLY },
   { label: 'GitHub Foundations', sub: 'GitHub · 2025', href: CREDLY },
 ];
 ---
