@@ -22,7 +22,7 @@ const copy = {
     tagline: 'La wiki personale, vista come la vede una macchina.',
     intro:
       'Ogni nodo è una pagina vera della mia knowledge base; ogni filo è un link che esiste davvero. Non è un disegno: è il grafo generato dalla wiki, con le posizioni calcolate dalla struttura. I nodi grossi sono i concetti che tengono insieme il resto.',
-    filtro: `Vista filtrata: solo concetti e strumenti (${grafo.nodes.length} nodi, ${grafo.edges.length} collegamenti). Gli strati personali — carriera, persone, progetti — non sono in questa vista: ${grafo.linkEsclusi} collegamenti verso di loro sono contati ma non mostrati. L'igiene dei dati si pratica, non si dichiara soltanto.`,
+    filtro: `Vista filtrata: solo concetti e strumenti (${grafo.nodes.length} nodi, ${grafo.edges.length} collegamenti). Gli strati personali (carriera, persone, progetti) non sono in questa vista: ${grafo.linkEsclusi} collegamenti verso di loro sono contati ma non mostrati. L'igiene dei dati si pratica, non si dichiara soltanto.`,
     legenda: { concept: 'concetto', tool: 'strumento' },
     fallbackH: 'I nodi più connessi',
     generato: `generato dalla wiki il ${grafo.generatoIl}`,
@@ -33,7 +33,7 @@ const copy = {
     tagline: 'A personal wiki, seen the way a machine sees it.',
     intro:
       'Every node is a real page of my knowledge base; every thread is a link that actually exists. This is not an illustration: it is the graph generated from the wiki, positions computed from its structure. The big nodes are the concepts holding everything else together.',
-    filtro: `Filtered view: concepts and tools only (${grafo.nodes.length} nodes, ${grafo.edges.length} links). The personal layers — career, people, projects — are not in this view: ${grafo.linkEsclusi} links pointing to them are counted but not shown. Data hygiene is practiced, not just declared.`,
+    filtro: `Filtered view: concepts and tools only (${grafo.nodes.length} nodes, ${grafo.edges.length} links). The personal layers (career, people, projects) are not in this view: ${grafo.linkEsclusi} links pointing to them are counted but not shown. Data hygiene is practiced, not just declared.`,
     legenda: { concept: 'concept', tool: 'tool' },
     fallbackH: 'Most connected nodes',
     generato: `generated from the wiki on ${grafo.generatoIl}`,
@@ -251,7 +251,9 @@ const top = [...grafo.nodes].sort((a, b) => b.degree - a.degree).slice(0, 20);
   .atl-dot-concept{ background:var(--violet); }
   .atl-dot-tool{ background:var(--orange); }
   .atl-generato{ font-size:10px; opacity:0.6; margin:8px 0 0; }
-  .atl-top{ margin-top:36px; }
+  /* <section> eredita il padding-bottom globale delle sezioni della home: qui
+     sono 56px di vuoto fra l'elenco e il bottone, misurati nel browser. */
+  .atl-top{ margin-top:36px; padding-bottom:0; }
   .atl-top h2{
     font-family:'Anton', sans-serif; text-transform:uppercase;
     font-size:clamp(20px, 3.5vw, 28px); margin:0 0 10px;
