@@ -26,14 +26,16 @@ const slug = magazineSlug(entry);
 // da una persona prima del publish (gate in DB) — la pagina lo dice, con link
 // alla pagina di trasparenza.
 const copy = {
-  it: { problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA', back: 'Torna al magazine', aiLabel: 'Generato con IA, revisionato da una persona' },
-  en: { problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED', back: 'Back to the magazine', aiLabel: 'AI-generated, human-reviewed' },
+  it: { problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA', back: 'Torna alla home', index: 'Tutti i numeri', aiLabel: 'Generato con IA, revisionato da una persona' },
+  en: { problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED', back: 'Back to home', index: 'All the issues', aiLabel: 'AI-generated, human-reviewed' },
 }[lang];
 const aiUrl = getRelativeLocaleUrl(lang, 'ai');
 
 // Meta description: incipit del problema, troncato pulito.
 const description = d.problem.length > 155 ? d.problem.slice(0, 152).trimEnd() + '…' : d.problem;
 const backHref = getRelativeLocaleUrl(lang, '') + '#magazine';
+// Il numero e' una foglia: senza l'elenco l'unica uscita e' la home.
+const indexHref = getRelativeLocaleUrl(lang, 'magazine');
 
 // JSON-LD dell'articolo: dà a Google headline, data e autore che il grafo
 // Person+Service del layout non porta. L'autore si aggancia all'@id #person
@@ -65,7 +67,10 @@ const articleLd = JSON.stringify({
         <div class="case-block"><span class="label mono">{copy.result}</span><p>{d.result}</p></div>
         <div class="case-block"><span class="label mono">{copy.lesson}</span><p>{d.lesson}</p></div>
       </div>
-      <a class="util-btn mag-back" href={backHref}>← {copy.back}</a>
+      <nav class="mag-uscite">
+        <a class="util-btn mag-back" href={indexHref}>← {copy.index}</a>
+        <a class="util-btn mag-back" href={backHref}>{copy.back}</a>
+      </nav>
     </article>
   </main>
   <SiteFooter />
@@ -81,7 +86,8 @@ const articleLd = JSON.stringify({
     font-size:clamp(30px, 6vw, 52px); line-height:0.96;
     margin:8px 0 28px; letter-spacing:0.01em;
   }
-  .mag-back{ display:inline-block; margin-top:36px; text-decoration:none; }
+  .mag-back{ display:inline-block; text-decoration:none; }
+  .mag-uscite{ display:flex; flex-wrap:wrap; gap:10px; margin-top:36px; }
   .mag-ai-label{ font-size:11px; letter-spacing:0.1em; text-transform:uppercase; opacity:0.65; margin:-16px 0 24px; }
   .mag-ai-label a{ color:inherit; }
 </style>

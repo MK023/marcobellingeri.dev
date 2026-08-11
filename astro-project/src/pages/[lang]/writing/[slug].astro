@@ -25,11 +25,14 @@ const slug = writingSlug(entry);
 const { Content } = await render(entry);
 
 const copy = {
-  it: { back: 'Torna alla home' },
-  en: { back: 'Back to home' },
+  it: { back: 'Torna alla home', index: 'Tutti gli articoli' },
+  en: { back: 'Back to home', index: 'All the writing' },
 }[lang];
 
 const backHref = getRelativeLocaleUrl(lang, '');
+// Chi arriva qui dal canonical su dev.to atterra su una foglia: senza questo
+// link l'unica uscita e' la home, e l'elenco degli altri pezzi non esiste.
+const indexHref = getRelativeLocaleUrl(lang, 'writing');
 const dateLabel = d.date.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', {
   year: 'numeric',
   month: 'long',
@@ -61,7 +64,10 @@ const articleLd = JSON.stringify({
       <div class="wr-body">
         <Content />
       </div>
-      <a class="util-btn wr-back" href={backHref}>← {copy.back}</a>
+      <nav class="wr-uscite">
+        <a class="util-btn wr-back" href={indexHref}>← {copy.index}</a>
+        <a class="util-btn wr-back" href={backHref}>{copy.back}</a>
+      </nav>
     </article>
   </main>
   <SiteFooter />
@@ -111,5 +117,6 @@ const articleLd = JSON.stringify({
   .wr-body :global(pre code){
     background:none; border:0; padding:0; font-size:0.85em;
   }
-  .wr-back{ display:inline-block; margin-top:36px; text-decoration:none; }
+  .wr-back{ display:inline-block; text-decoration:none; }
+  .wr-uscite{ display:flex; flex-wrap:wrap; gap:10px; margin-top:36px; }
 </style>
