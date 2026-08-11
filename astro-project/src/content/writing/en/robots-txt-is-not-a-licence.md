@@ -4,7 +4,7 @@ title: "A permissive robots.txt is not a licence"
 date: 2026-08-18
 description: "I audited ten sources my scraper had been reading for a month. Two passed. The one that let every crawler in granted me nothing, and the one that blocked bots would have been fine."
 tags: [webdev, legal, ai, opensource]
-edicola: "robots.txt e licenze"
+edicola: "robots.txt is no licence"
 ---
 
 I have a scraper that watches ten sites I consider adjacent to my work. It has been running since early July. The output goes into a vector store that nothing currently reads, which is the only reason this story ends without a lawyer in it.

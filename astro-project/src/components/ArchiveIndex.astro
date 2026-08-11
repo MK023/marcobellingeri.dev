@@ -1,0 +1,53 @@
+---
+// L'archivio di una collection (writing, magazine): sopra-testata, titolo,
+// intro, lista per data, uscita verso la home. Un componente solo perche' i due
+// indici erano gemelli riga per riga e gia' divergevano di un margine: la forma
+// dell'archivio si decide qui, una volta.
+// `ai`: la riga art. 50 AI Act, solo dove il contenuto e' generato (magazine).
+interface Voce { href: string; etichetta: string; datetime: string; titolo: string; sotto: string }
+interface Props {
+  head: string;
+  titolo: string;
+  intro: string;
+  voci: Voce[];
+  back: { href: string; label: string };
+  ai?: { href: string; label: string };
+}
+const { head, titolo, intro, voci, back, ai } = Astro.props;
+---
+
+<div class="idx-wrap">
+  <p class="certs-head mono">{head}</p>
+  <h1 class="display idx-title">{titolo}</h1>
+  <p class="idx-intro">{intro}</p>
+  {ai && <p class="idx-ai mono"><a href={ai.href}>{ai.label}</a></p>}
+
+  <ol class="idx-list">
+    {voci.map((v) => (
+      <li class="idx-item">
+        <time class="idx-date mono" datetime={v.datetime}>{v.etichetta}</time>
+        <h2 class="idx-item-title"><a href={v.href}>{v.titolo}</a></h2>
+        <p class="idx-desc">{v.sotto}</p>
+      </li>
+    ))}
+  </ol>
+
+  <a class="util-btn idx-back" href={back.href}>← {back.label}</a>
+</div>
+
+<style>
+  /* Stesse misure delle altre pagine dedicate (agentic-os, atlas): l'indice non
+     porta un impianto suo. Lo <style> scoped viene hashato nella CSP. */
+  .idx-wrap{ max-width:760px; margin:0 auto; padding:56px 24px 48px; }
+  .idx-title{ font-size:clamp(28px, 5.5vw, 48px); line-height:0.98; margin:0 0 16px; }
+  .idx-intro{ font-size:16px; line-height:1.65; margin:0 0 10px; opacity:0.85; }
+  .idx-ai{ font-size:11px; letter-spacing:0.06em; opacity:0.7; margin:0 0 8px; }
+  .idx-list{ list-style:none; margin:0; padding:0; }
+  .idx-item{ border-top:3px double var(--ink); padding:26px 0 4px; }
+  .idx-date{ font-size:11px; letter-spacing:0.08em; opacity:0.65; }
+  .idx-item-title{ font-size:22px; line-height:1.2; margin:6px 0 8px; }
+  .idx-item-title a{ text-decoration:none; }
+  .idx-item-title a:hover{ color:var(--orange-text); text-decoration:underline; }
+  .idx-desc{ font-size:15px; line-height:1.6; margin:0 0 18px; opacity:0.82; }
+  .idx-back{ display:inline-block; margin-top:36px; text-decoration:none; }
+</style>
