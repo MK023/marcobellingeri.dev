@@ -63,7 +63,10 @@ test("CLI advance: solo bozza con segnali verificati -> stampa 'generate <sector
     { match: "status=eq.approved", body: [] },
     { match: "status=eq.draft", body: [{ id: 3, sector: "devsecops" }] },
     { match: "articles?select", body: [] },
-    { match: "signals?select", body: [{ id: 9 }] },
+    // La barra editoriale si chiede alla vista (0012), non a signals: il match
+    // è sul path pieno, altrimenti "signals?select" combacerebbe per substring
+    // anche se il predicato tornasse inline qui.
+    { match: "verified_signals?select", body: [{ id: 9 }] },
   ]);
   assert.equal(r.code, 0);
   assert.equal(r.stdout.trim(), "generate devsecops");

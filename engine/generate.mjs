@@ -114,12 +114,12 @@ async function main() {
     const [already] = await select(pg`articles?select=slug&issue_id=eq.${issue.id}&limit=1`);
     if (already) throw new Error(`il numero #${issue.number} ha già un articolo ("${already.slug}")`);
 
-    // 2) fonti: i signal 'verify' DEL NUMERO che superano la barra editoriale
-    //    (Tier-1, oppure Tier-2 indipendente). Il verify+tier è il passo umano.
+    // 2) fonti: i signal DEL NUMERO che superano la barra editoriale. La barra
+    //    è la vista verified_signals (migration 0012), la stessa che il gate a
+    //    DB interroga: qui non si riscrive. Il verify+tier resta il passo umano.
     const rows = await select(
-      pg`signals?select=id,source_url,source_name,tier,independent,relevance,raw_content` +
-        pg`&issue_id=eq.${issue.id}&stage=eq.verify` +
-        pg`&or=(tier.eq.1,and(tier.eq.2,independent.is.true))` +
+      pg`verified_signals?select=id,source_url,source_name,tier,independent,relevance,raw_content` +
+        pg`&issue_id=eq.${issue.id}` +
         pg`&order=relevance.desc.nullslast&limit=${String(MAX_SOURCES)}`,
     );
     if (!rows.length) throw new Error(`numero #${issue.number}: nessun signal 'verify' Tier-1/2-indip — fai il verify pass (tagga i signal in Studio)`);
