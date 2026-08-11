@@ -4,7 +4,7 @@ title: "Thirteen PRs in one afternoon, and the boring rule that made it possible
 date: 2026-04-15
 description: "I planned six changes and expected to finish two. Six hours later thirteen were live, and the thing that kept it upright was not the speed."
 tags: [ai, python, claude, programming]
-edicola: "Tredici PR"
+edicola: "Thirteen PRs"
 ---
 
 I sat down one afternoon with a list of six things I wanted to ship to JobSearch, the job hunting tool I wrote for my own job hunt and then kept running in production for exactly one user. Three small features, two pieces of tech debt, and one refactor I had been avoiding for a month because it deleted a safety net and replaced it with a promise.

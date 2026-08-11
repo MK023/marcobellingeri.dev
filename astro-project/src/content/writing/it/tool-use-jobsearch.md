@@ -50,7 +50,7 @@ data = block.input  # un dict, parsato dall'SDK, niente testo di mezzo
 
 Il refactor è atterrato il 14 aprile in un commit solo: tutte le chiamate AI del codebase migrate, i cinque parser cancellati, il fallback di auto-riparazione cancellato, il file di test sul JSON spazzatura cancellato con loro. Il messaggio di commit dice meno 200 righe e si tiene basso, perché le righe uscite erano proprio quelle che dovevo rileggermi ogni volta che qualcosa si rompeva.
 
-Era la PR che faceva paura, in mezzo a un pomeriggio in cui io e Claude ne abbiamo portate in produzione tredici. Di quel giorno ho scritto [a parte](/it/writing/thirteen-prs-one-afternoon). Dodici erano ordinaria amministrazione. Questa cancellava una rete di sicurezza e la sostituiva con la promessa di un'API, nello stesso diff.
+Era la PR che faceva paura, in mezzo a un pomeriggio in cui io e Claude ne abbiamo portate in produzione tredici. Di quel giorno ho scritto [a parte](https://marcobellingeri.dev/it/writing/thirteen-prs-one-afternoon). Dodici erano ordinaria amministrazione. Questa cancellava una rete di sicurezza e la sostituiva con la promessa di un'API, nello stesso diff.
 
 Una cosa l'ho tenuta: la validazione Pydantic dopo la chiamata. Lo schema garantisce la forma, non il senso. Un punteggio di 950 su un campo 0-100 è JSON perfettamente conforme allo schema ed è comunque spazzatura, e l'output del modello resta input non fidato in qualunque confezione arrivi. Il contratto si è spostato dentro l'API; il controllo è rimasto dalla mia parte.
 

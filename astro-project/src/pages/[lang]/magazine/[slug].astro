@@ -4,7 +4,8 @@ import { getRelativeLocaleUrl } from 'astro:i18n';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import UtilityBar from '../../../components/UtilityBar.astro';
 import SiteFooter from '../../../components/SiteFooter.astro';
-import { magazineSlug } from '../../../lib/magazine';
+import { magazineSlug, tronca } from '../../../lib/magazine';
+import { ldJson } from '../../../lib/jsonld';
 import type { Lang } from '../../../i18n/ui';
 
 // Una pagina propria per ogni numero, in entrambe le lingue: è il canonical a cui
@@ -32,8 +33,10 @@ const copy = {
 const aiUrl = getRelativeLocaleUrl(lang, 'ai');
 
 // Meta description: incipit del problema, troncato pulito.
-const description = d.problem.length > 155 ? d.problem.slice(0, 152).trimEnd() + '…' : d.problem;
-const backHref = getRelativeLocaleUrl(lang, '') + '#magazine';
+const description = tronca(d.problem, 155);
+// Senza ancora: l'etichetta dice "home" e la destinazione deve essere la home.
+// La sezione #magazine e' gia' coperta dall'altra uscita, "Tutti i numeri".
+const backHref = getRelativeLocaleUrl(lang, '');
 // Il numero e' una foglia: senza l'elenco l'unica uscita e' la home.
 const indexHref = getRelativeLocaleUrl(lang, 'magazine');
 
@@ -41,7 +44,7 @@ const indexHref = getRelativeLocaleUrl(lang, 'magazine');
 // Person+Service del layout non porta. L'autore si aggancia all'@id #person
 // già definito in BaseLayout, non lo duplica.
 const canonical = new URL(getRelativeLocaleUrl(lang, `magazine/${slug}`), Astro.site).href;
-const articleLd = JSON.stringify({
+const articleLd = ldJson({
   '@context': 'https://schema.org',
   '@type': 'Article',
   headline: d.title,

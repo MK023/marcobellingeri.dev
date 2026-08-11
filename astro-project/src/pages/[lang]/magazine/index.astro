@@ -4,7 +4,9 @@ import { getRelativeLocaleUrl } from 'astro:i18n';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import UtilityBar from '../../../components/UtilityBar.astro';
 import SiteFooter from '../../../components/SiteFooter.astro';
-import { magazineSlug } from '../../../lib/magazine';
+import ArchiveIndex from '../../../components/ArchiveIndex.astro';
+import { magazineSlug, tronca } from '../../../lib/magazine';
+import { ldJson } from '../../../lib/jsonld';
 import type { Lang } from '../../../i18n/ui';
 
 // Stessa ragione dell'indice degli articoli: /it/magazine era un segmento di URL
@@ -39,20 +41,20 @@ const copy = {
 
 const voci = numeri.map((n) => ({
   href: getRelativeLocaleUrl(lang, `magazine/${magazineSlug(n)}`),
-  title: n.data.title,
-  label: `N.${String(n.data.number).padStart(2, '0')} · ${n.data.month.toUpperCase()} · ${n.data.sector}`,
-  date: n.data.date,
-  problem: n.data.problem.length > 200 ? n.data.problem.slice(0, 197).trimEnd() + '…' : n.data.problem,
+  titolo: n.data.title,
+  etichetta: `N.${String(n.data.number).padStart(2, '0')} · ${n.data.month.toUpperCase()} · ${n.data.sector}`,
+  datetime: n.data.date.toISOString().slice(0, 10),
+  sotto: tronca(n.data.problem, 200),
 }));
 
-const listaLd = JSON.stringify({
+const listaLd = ldJson({
   '@context': 'https://schema.org',
   '@type': 'ItemList',
   itemListElement: voci.map((v, i) => ({
     '@type': 'ListItem',
     position: i + 1,
     url: new URL(v.href, Astro.site).href,
-    name: v.title,
+    name: v.titolo,
   })),
 });
 
@@ -65,39 +67,14 @@ const aiUrl = getRelativeLocaleUrl(lang, 'ai');
   <script type="application/ld+json" set:html={listaLd} slot="head" />
   <UtilityBar />
   <main id="main-content">
-    <div class="idx-wrap">
-      <p class="certs-head mono">{copy.head}</p>
-      <h1 class="display idx-title">{copy.title}</h1>
-      <p class="idx-intro">{copy.intro}</p>
-      <p class="idx-ai mono"><a href={aiUrl}>{copy.aiLabel}</a></p>
-
-      <ol class="idx-list">
-        {voci.map((v) => (
-          <li class="idx-item">
-            <time class="idx-date mono" datetime={v.date.toISOString().slice(0, 10)}>{v.label}</time>
-            <h2 class="idx-item-title"><a href={v.href}>{v.title}</a></h2>
-            <p class="idx-desc">{v.problem}</p>
-          </li>
-        ))}
-      </ol>
-
-      <a class="util-btn idx-back" href={getRelativeLocaleUrl(lang, '')}>← {copy.back}</a>
-    </div>
+    <ArchiveIndex
+      head={copy.head}
+      titolo={copy.title}
+      intro={copy.intro}
+      voci={voci}
+      back={{ href: getRelativeLocaleUrl(lang, ''), label: copy.back }}
+      ai={{ href: aiUrl, label: copy.aiLabel }}
+    />
   </main>
   <SiteFooter />
 </BaseLayout>
-
-<style>
-  .idx-wrap{ max-width:760px; margin:0 auto; padding:56px 24px 48px; }
-  .idx-title{ font-size:clamp(28px, 5.5vw, 48px); line-height:0.98; margin:0 0 16px; }
-  .idx-intro{ font-size:16px; line-height:1.65; margin:0 0 10px; opacity:0.85; }
-  .idx-ai{ font-size:11px; letter-spacing:0.06em; opacity:0.7; margin:0 0 8px; }
-  .idx-list{ list-style:none; margin:0; padding:0; }
-  .idx-item{ border-top:3px double var(--ink); padding:26px 0 4px; }
-  .idx-date{ font-size:11px; letter-spacing:0.08em; opacity:0.65; }
-  .idx-item-title{ font-size:22px; line-height:1.2; margin:6px 0 8px; }
-  .idx-item-title a{ text-decoration:none; }
-  .idx-item-title a:hover{ color:var(--orange-text); text-decoration:underline; }
-  .idx-desc{ font-size:15px; line-height:1.6; margin:0 0 18px; opacity:0.82; }
-  .idx-back{ display:inline-block; margin-top:36px; text-decoration:none; }
-</style>

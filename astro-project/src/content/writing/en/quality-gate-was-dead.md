@@ -4,7 +4,7 @@ title: "My quality gate wasn't strict. It was dead."
 date: 2026-08-11
 description: "An LLM-as-a-judge gate failed every content PR for weeks. It looked like a high bar. It was a 400 from the API, and the error message only named half the problem."
 tags: [testing, ai, devops, api]
-edicola: "Il gate morto"
+edicola: "The dead gate"
 ---
 
 There is a job in my CI called `judge`. It reads the monthly issue my content pipeline writes, scores it against a rubric with five criteria, and blocks the merge if anything comes back at 2 out of 5 or lower. An LLM grading an LLM, with a written policy about what counts as broken.

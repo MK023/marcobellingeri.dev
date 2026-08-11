@@ -5,7 +5,8 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import UtilityBar from '../../../components/UtilityBar.astro';
 import SiteFooter from '../../../components/SiteFooter.astro';
 import { writingSlug } from '../../../lib/writing';
-import type { Lang } from '../../../i18n/ui';
+import { ldJson } from '../../../lib/jsonld';
+import { dateLocale, type Lang } from '../../../i18n/ui';
 
 // Una pagina propria per ogni articolo, in entrambe le lingue: è l'URL stabile a
 // cui l'eventuale canonical del cross-post (dev.to) punta. Il body è Markdown a
@@ -33,7 +34,7 @@ const backHref = getRelativeLocaleUrl(lang, '');
 // Chi arriva qui dal canonical su dev.to atterra su una foglia: senza questo
 // link l'unica uscita e' la home, e l'elenco degli altri pezzi non esiste.
 const indexHref = getRelativeLocaleUrl(lang, 'writing');
-const dateLabel = d.date.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', {
+const dateLabel = d.date.toLocaleDateString(dateLocale[lang], {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
@@ -42,7 +43,7 @@ const dateLabel = d.date.toLocaleDateString(lang === 'it' ? 'it-IT' : 'en-GB', {
 // JSON-LD BlogPosting: headline, data e autore (agganciato all'@id #person del
 // layout) che il grafo Person+Service non porta sulle pagine-articolo.
 const canonical = new URL(getRelativeLocaleUrl(lang, `writing/${slug}`), Astro.site).href;
-const articleLd = JSON.stringify({
+const articleLd = ldJson({
   '@context': 'https://schema.org',
   '@type': 'BlogPosting',
   headline: d.title,

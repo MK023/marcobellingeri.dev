@@ -61,6 +61,9 @@ const bylines = (edicola as Card[]).map((c) => ({
   label: c.label[lang],
   sub: c.sub[lang],
   href: c.href ?? getRelativeLocaleUrl(lang, c.path),
+  // Una card con `path` sta in casa: niente nuova scheda ne' "(si apre in una
+  // nuova scheda)" nell'aria-label per una pagina dello stesso sito.
+  sameTab: !c.href,
 }));
 
 // Gli arretrati come voci della pila: la copertina è titolo + numero e mese.

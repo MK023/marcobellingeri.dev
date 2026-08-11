@@ -1,7 +1,7 @@
 import type { APIContext } from 'astro';
 import { getCollection } from 'astro:content';
 import { getAbsoluteLocaleUrl } from 'astro:i18n';
-import { magazineSlug } from '../../lib/magazine';
+import { magazineSlug, tronca } from '../../lib/magazine';
 import type { Lang } from '../../i18n/ui';
 
 // Feed per lingua: /en/rss.xml e /it/rss.xml. dev.to (e ogni importer) usa il
@@ -41,7 +41,7 @@ export async function GET(context: APIContext) {
       const body = ([['problem', d.problem], ['approach', d.approach], ['result', d.result], ['lesson', d.lesson]] as const)
         .map(([k, v]) => `<h2>${esc(l[k])}</h2><p>${esc(v)}</p>`)
         .join('\n');
-      const excerpt = d.problem.length > 280 ? d.problem.slice(0, 277).trimEnd() + '…' : d.problem;
+      const excerpt = tronca(d.problem, 280);
       return `    <item>
       <title>${esc(d.title)}</title>
       <link>${url}</link>
