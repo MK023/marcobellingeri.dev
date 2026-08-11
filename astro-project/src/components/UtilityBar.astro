@@ -1,6 +1,7 @@
 ---
 import { getRelativeLocaleUrl } from 'astro:i18n';
 import { languages, defaultLang, useTranslations, type Lang } from '../i18n/ui';
+import { siglaTestata } from '../lib/testata';
 
 const current = (Astro.currentLocale ?? defaultLang) as Lang;
 const t = useTranslations(current);
@@ -16,7 +17,9 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
 ---
 
 <div class="utility-bar mono">
-  <span>{t('ub.issue')}</span>
+  {/* Il valore del build è già giusto al deploy; lo script lo rinfresca perché
+      il mese può scattare senza che nessuno pubblichi niente. */}
+  <span id="testata-sigla">{siglaTestata()}</span>
   <span>{t('ub.place')} · <span id="live-clock">--:--:--</span></span>
   <div class="utility-actions">
     <div class="lang-switcher" role="group" aria-label="Language / Lingua">
@@ -61,8 +64,20 @@ const langOptions = (Object.keys(languages) as Lang[]).map((l) => ({
 
 <script>
   import { dateLocale, type Lang } from '../i18n/ui';
+  import { siglaTestata } from '../lib/testata';
 
   const lang = (document.documentElement.lang || 'en') as Lang;
+
+  // ---- sigla della testata (VOL/NO) ----
+  // Il valore stampato al build è corretto il giorno del deploy. Una scheda
+  // lasciata aperta a cavallo del mese, o un mese senza pubblicazioni, la
+  // renderebbero vecchia: un controllo all'ora costa nulla e chiude il caso.
+  const siglaEl = document.getElementById('testata-sigla');
+  function tickSigla() {
+    if (siglaEl) siglaEl.textContent = siglaTestata();
+  }
+  tickSigla();
+  setInterval(tickSigla, 3_600_000);
 
   // ---- live clock (Europe/Rome) ----
   const clockEl = document.getElementById('live-clock');
