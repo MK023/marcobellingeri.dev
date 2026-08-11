@@ -9,9 +9,16 @@ import edicola from '../data/edicola.json';
 
 const lang = (Astro.currentLocale ?? defaultLang) as Lang;
 
+// Ordine: il più recente per primo. Il mese in testa alla sezione esce da qui,
+// non da una costante: pubblicare il numero di settembre è ciò che fa dire
+// "Settembre" al sito. Niente data da ricordare a mano ogni mese.
 const issues = (await getCollection('magazine', (c) => c.data.lang === lang)).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
 );
+// Il numero del mese si legge aperto; gli arretrati stanno in pila, come
+// l'Edicola. Con un solo numero la pila non compare: `arretrati` è vuoto e la
+// sezione resta identica a com'era prima che il secondo numero uscisse.
+const [corrente, ...arretrati] = issues;
 
 // Edicola: dove la firma di Marco esce anche fuori dal sito. Reso come una PILA
 // da edicola (newsstand stack) — le firme impilate come giornali, sfalsate e
@@ -27,6 +34,7 @@ const copy = {
     permalink: 'Apri la pagina →',
     edicolaHead: 'Edicola · dove la firma esce anche fuori',
     newTab: 'si apre in una nuova scheda',
+    arretratiHead: 'Numeri arretrati · la pila di quelli usciti prima',
   },
   en: {
     intro: 'One real case a month on AI, security and governance at work: the problem, the call made, what changed. A pipeline writes it, checked against the sources. The first one is point zero: ideas get better as you go.',
@@ -35,6 +43,7 @@ const copy = {
     permalink: 'Open the page →',
     edicolaHead: 'Edicola · where the byline also runs',
     newTab: 'opens in a new tab',
+    arretratiHead: 'Back issues · the stack of the ones before',
   },
 }[lang];
 
@@ -53,6 +62,13 @@ const bylines = (edicola as Card[]).map((c) => ({
   sub: c.sub[lang],
   href: c.href ?? getRelativeLocaleUrl(lang, c.path),
 }));
+
+// Gli arretrati come voci della pila: la copertina è titolo + numero e mese.
+const pilaArretrati = arretrati.map((issue) => ({
+  label: issue.data.title,
+  sub: `N.${String(issue.data.number).padStart(2, '0')} · ${issue.data.month}`,
+  href: getRelativeLocaleUrl(lang, `magazine/${magazineSlug(issue)}`),
+}));
 ---
 
 <section id="magazine" class="reveal">
@@ -62,39 +78,43 @@ const bylines = (edicola as Card[]).map((c) => ({
   </div>
   <p class="case-archive-note">{copy.intro}</p>
   <div class="mag-list">
-    {issues.map((issue, i) => (
+    {corrente && (
       <details class="mag-item">
         <summary class="mag-summary">
           <div class="mag-stat-col">
-            {issue.data.stat != null ? (
+            {corrente.data.stat != null ? (
               <div
                 class="mag-stat display"
-                id={`mag-stat-${i}`}
-                data-target={issue.data.stat}
-                data-suffix={issue.data.statSuffix ?? ''}
+                id="mag-stat-0"
+                data-target={corrente.data.stat}
+                data-suffix={corrente.data.statSuffix ?? ''}
               >
-                0{issue.data.statSuffix ?? ''}
+                0{corrente.data.statSuffix ?? ''}
               </div>
             ) : (
-              <div class="mag-number display">N.{String(issue.data.number).padStart(2, '0')}</div>
+              <div class="mag-number display">N.{String(corrente.data.number).padStart(2, '0')}</div>
             )}
-            <span class="mag-cred mono">{issue.data.month.toUpperCase()} · {issue.data.sector}</span>
+            <span class="mag-cred mono">{corrente.data.month.toUpperCase()} · {corrente.data.sector}</span>
           </div>
           <div class="mag-summary-main">
-            <h3 class="mag-title">{issue.data.title}</h3>
+            <h3 class="mag-title">{corrente.data.title}</h3>
             <span class="mag-toggle mono">{copy.toggle}</span>
           </div>
         </summary>
         <div class="mag-body">
-          <div class="case-block"><span class="label mono">{copy.problem}</span><p>{issue.data.problem}</p></div>
-          <div class="case-block"><span class="label mono">{copy.approach}</span><p>{issue.data.approach}</p></div>
-          <div class="case-block"><span class="label mono">{copy.result}</span><p>{issue.data.result}</p></div>
-          <div class="case-block"><span class="label mono">{copy.lesson}</span><p>{issue.data.lesson}</p></div>
-          <a class="mono" href={getRelativeLocaleUrl(lang, `magazine/${magazineSlug(issue)}`)}>{copy.permalink}</a>
+          <div class="case-block"><span class="label mono">{copy.problem}</span><p>{corrente.data.problem}</p></div>
+          <div class="case-block"><span class="label mono">{copy.approach}</span><p>{corrente.data.approach}</p></div>
+          <div class="case-block"><span class="label mono">{copy.result}</span><p>{corrente.data.result}</p></div>
+          <div class="case-block"><span class="label mono">{copy.lesson}</span><p>{corrente.data.lesson}</p></div>
+          <a class="mono" href={getRelativeLocaleUrl(lang, `magazine/${magazineSlug(corrente)}`)}>{copy.permalink}</a>
         </div>
       </details>
-    ))}
+    )}
   </div>
+
+  {pilaArretrati.length > 0 && (
+    <Newsstand head={copy.arretratiHead} items={pilaArretrati} newTab={copy.newTab} sameTab />
+  )}
 
   <Newsstand head={copy.edicolaHead} items={bylines} newTab={copy.newTab} />
 </section>
