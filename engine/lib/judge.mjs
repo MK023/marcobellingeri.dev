@@ -35,6 +35,19 @@ export function parseCaso(md) {
 }
 
 // Schema imposto al modello: un voto motivato per ogni criterio, più una nota.
+//
+// Nessun vincolo su voto e lunghezze, e non per distrazione: la structured
+// output di Anthropic rifiuta i vincoli numerici E quelli di lunghezza, e
+// l'11-08-2026 il gate era morto per questo — non bocciava il contenuto, non
+// riusciva a partire. L'API si ferma al primo difetto (segnalava minimum e
+// maximum, taceva sui tre maxLength), quindi toglierli uno per volta sarebbe
+// stato un giro di 400 alla volta.
+//
+// I limiti vivono dove l'API non li rifiuta: la scala 1-5 e la lunghezza dei
+// motivi nel prompt, che li descrive voto per voto, e in verdetto(), che tratta
+// un voto fuori scala come una risposta illeggibile — fail-closed, come il
+// criterio assente. test/schema-anthropic.test.mjs verifica il contratto su
+// OGNI schema che mandiamo, non solo su questo.
 export const SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -50,15 +63,17 @@ export const SCHEMA = {
           additionalProperties: false,
           required: ["voto", "motivo"],
           properties: {
-            voto: { type: "integer", minimum: 1, maximum: 5 },
-            motivo: { type: "string", maxLength: 300 },
+            voto: { type: "integer" },
+            motivo: { type: "string" },
           },
         }]),
       ),
     },
-    nota: { type: "string", maxLength: 400 },
+    nota: { type: "string" },
   },
 };
+
+const fuoriScala = (v) => !Number.isInteger(v) || v < 1 || v > 5;
 
 export function verdetto({ difetti, criteri }) {
   const motivi = [...difetti];
@@ -67,6 +82,12 @@ export function verdetto({ difetti, criteri }) {
     const r = criteri?.[c];
     if (!r || typeof r.voto !== "number") {
       motivi.push(`${c}: criterio assente dalla risposta del giudice (fail-closed)`);
+      continue;
+    }
+    // Il vincolo 1-5 non può stare nello schema: se il modello esce dalla scala
+    // la risposta e' illeggibile, e una rubrica illeggibile non promuove.
+    if (fuoriScala(r.voto)) {
+      motivi.push(`${c}: voto ${r.voto} fuori dalla scala 1-5 (fail-closed)`);
       continue;
     }
     if (r.voto <= 2) motivi.push(`${c} (${r.voto}/5): ${r.motivo}`);
