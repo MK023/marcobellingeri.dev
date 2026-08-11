@@ -138,7 +138,34 @@ jobs:
             exception when others then
               if sqlerrm not like 'gate:%' then raise; end if;
             end;
-            raise notice 'db-rebuild OK: schema, RLS, seed, gate verificati';
+            -- 0012: la barra editoriale sta SOLO in verified_signals. Se il
+            -- trigger torna a nominare tier in casa, la regola e' di nuovo
+            -- duplicata: e' esattamente il bug che 0012 chiude.
+            if not exists (select 1 from pg_views where schemaname='public' and viewname='verified_signals') then
+              raise exception 'vista verified_signals assente';
+            end if;
+            if pg_get_functiondef((select oid from pg_proc where proname='enforce_issue_gate')) ~ '\mtier\M' then
+              raise exception 'barra editoriale duplicata: enforce_issue_gate non usa verified_signals';
+            end if;
+
+            -- La vista discrimina davvero: Tier-2 NON indipendente non e' prova,
+            -- Tier-1 si'. Senza queste due, una vista che passa tutto sarebbe verde.
+            insert into signals (issue_id, source_url, stage, tier, independent)
+              select id, 'https://ci.test/t2-dipendente', 'verify', 2, false from issues where period='2099-01';
+            begin
+              update issues set status='approved' where period='2099-01';
+              raise exception 'il gate ha accettato un Tier-2 NON indipendente';
+            exception when others then
+              if sqlerrm not like 'gate:%' then raise; end if;
+            end;
+            insert into signals (issue_id, source_url, stage, tier, independent)
+              select id, 'https://ci.test/t1', 'verify', 1, null from issues where period='2099-01';
+            update issues set status='approved' where period='2099-01';
+            if (select approved_at from issues where period='2099-01') is null then
+              raise exception 'approved_at non valorizzato dal gate';
+            end if;
+
+            raise notice 'db-rebuild OK: schema, RLS, seed, gate e barra unica verificati';
           end $$;
           SQL
 

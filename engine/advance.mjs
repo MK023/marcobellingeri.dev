@@ -28,10 +28,9 @@ const [boz] = approvato ? [] : await select("issues?select=id,sector&status=eq.d
 let bozza = null;
 if (boz) {
   const [art] = await select(pg`articles?select=id&issue_id=eq.${boz.id}&limit=1`);
-  const [sig] = await select(
-    pg`signals?select=id&issue_id=eq.${boz.id}&stage=eq.verify` +
-      pg`&or=(tier.eq.1,and(tier.eq.2,independent.is.true))&limit=1`,
-  );
+  // La barra editoriale non si riscrive qui: vive nella vista verified_signals
+  // (migration 0012), la stessa che il gate a DB interroga.
+  const [sig] = await select(pg`verified_signals?select=id&issue_id=eq.${boz.id}&limit=1`);
   bozza = { sector: boz.sector, conArticolo: Boolean(art), conSegnaliVerificati: Boolean(sig) };
 }
 
