@@ -3,9 +3,12 @@
 // che si aprono a ventaglio su hover / focus da tastiera / tap (mobile). Usata sia
 // dall'Edicola (firme esterne) sia dalle Certificazioni. Data-driven: una voce =
 // un oggetto in `items`. Solo link in uscita (nuova scheda).
+// `sameTab`: la pila nasce per le firme in uscita, ma i numeri arretrati del
+// magazine stanno in casa e una nuova scheda per restare sul sito è rumore.
+// Opzionale e default false: i due chiamanti storici non cambiano di una virgola.
 interface Item { label: string; sub: string; href: string; }
-interface Props { head: string; items: Item[]; newTab: string; }
-const { head, items, newTab } = Astro.props;
+interface Props { head: string; items: Item[]; newTab: string; sameTab?: boolean }
+const { head, items, newTab, sameTab = false } = Astro.props;
 ---
 
 <div class="newsstand">
@@ -17,9 +20,9 @@ const { head, items, newTab } = Astro.props;
       <a
         class="paper"
         href={b.href}
-        target="_blank"
-        rel="noopener"
-        aria-label={`${b.label} — ${b.sub} (${newTab})`}
+        target={sameTab ? undefined : '_blank'}
+        rel={sameTab ? undefined : 'noopener'}
+        aria-label={sameTab ? `${b.label} — ${b.sub}` : `${b.label} — ${b.sub} (${newTab})`}
       >
         <span class="paper-source mono">{b.sub}</span>
         <span class="paper-title">{b.label}</span>

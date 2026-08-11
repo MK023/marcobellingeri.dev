@@ -35,7 +35,6 @@ export const ui = {
     'sec.intro': 'This page audits itself. The table below is not a claim — it is read live from the response headers your browser just received.',
 
     // ---- utility bar ----
-    'ub.issue': 'VOL. 01 — NO. 07',
     'ub.place': 'CASALE MONFERRATO, IT',
     'ub.editionDay': '☀ DAY EDITION',
     'ub.editionNight': '☾ NIGHT EDITION',
@@ -119,7 +118,6 @@ export const ui = {
     'sec.intro': 'Questa pagina fa l’audit di sé stessa. La tabella qui sotto non è una dichiarazione: è letta dal vivo dagli header di risposta che il tuo browser ha appena ricevuto.',
 
     // ---- utility bar ----
-    'ub.issue': 'VOL. 01 — NO. 07',
     'ub.place': 'CASALE MONFERRATO, IT',
     'ub.editionDay': '☀ EDIZIONE GIORNO',
     'ub.editionNight': '☾ EDIZIONE NOTTE',
