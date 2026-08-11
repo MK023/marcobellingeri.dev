@@ -19,8 +19,11 @@ async function main() {
   const r = await fetch(API, { signal: AbortSignal.timeout(15_000), redirect: "manual" });
   if (!r.ok) throw new Error(`radar-signals: /api/radar -> HTTP ${r.status}`);
   const { fonti } = await r.json();
+  const totale = (fonti ?? []).reduce((n, f) => n + (f.items ?? []).length, 0);
   const mapped = mapRadar(fonti);
-  console.log(`radar-signals: ${mapped.length} bollettini dal Radar.`);
+  // Il numero degli scartati va detto: un filtro silenzioso sembra un Radar
+  // vuoto il giorno in cui il vaglio sbaglia, e nessuno va a guardare.
+  console.log(`radar-signals: ${mapped.length} bollettini a tema su ${totale} dal Radar (${totale - mapped.length} fuori tema o gia' visti).`);
 
   if (dry) {
     for (const m of mapped) console.log(`  [dry] ${logsafe(m.source_url)}  ·  ${logsafe(m.source_name)}`);
