@@ -36,7 +36,7 @@ const LOCALE_SCHEMA = {
     lesson: { type: "string" },
   },
 };
-const SCHEMA = {
+export const SCHEMA = {
   type: "object",
   additionalProperties: false,
   required: ["it", "en"],
@@ -215,9 +215,13 @@ async function main() {
   }
 }
 
-try {
-  await main();
-} catch (e) {
-  console.error(`generate: ${e.message}`);
-  process.exit(1);
+// Stessa guardia di ingest.mjs: importare il modulo (per esempio per validare
+// SCHEMA nei test) non deve far partire la generazione di un numero.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  try {
+    await main();
+  } catch (e) {
+    console.error(`generate: ${e.message}`);
+    process.exit(1);
+  }
 }

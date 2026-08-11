@@ -69,6 +69,16 @@ test("verdetto: il 3 è un avviso, non una bocciatura (il gate boccia il rotto, 
   assert.match(v.avvisi.join(" "), /stile/);
 });
 
+// Il contratto della structured output (quali keyword l'API accetta) è
+// verificato su tutti gli schemi in test/schema-anthropic.test.mjs. Qui resta
+// la conseguenza: senza il vincolo nello schema, il controllo è solo questo.
+test("verdetto: un voto fuori dalla scala 1-5 -> bocciato (fail-closed)", () => {
+  for (const voto of [0, 6, 3.5, -1]) {
+    const v = verdetto({ difetti: [], criteri: { ...TUTTI_5, stile: { voto, motivo: "x" } } });
+    assert.equal(v.esito, "bocciato", `voto ${voto} accettato: senza il vincolo nello schema resta solo questo controllo`);
+  }
+});
+
 test("verdetto: criterio assente dalla risposta del modello -> bocciato (fail-closed)", () => {
   const { ancoraggio: _via, ...monchi } = TUTTI_5;
   const v = verdetto({ difetti: [], criteri: monchi });
