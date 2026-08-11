@@ -137,9 +137,14 @@ const { head, items, newTab, sameTab = false } = Astro.props;
     font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
     opacity:0.62; padding-bottom:5px; border-bottom:1.5px solid var(--ink);
   }
+  /* Tre righe e poi taglia: il titolo di un numero arretrato ne riempiva cinque e
+     il foglio cresceva del 50% rispetto agli altri della pila. In edicola si legge
+     l'inizio del titolo, non tutto. Le certificazioni stanno sotto le tre righe. */
   .paper-title{
     font-family:'Source Serif 4', serif;
     font-size:16px; font-weight:600; line-height:1.25;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+    overflow:hidden;
   }
   /* :hover e :focus-visible in regole SEPARATE: un browser senza :focus-visible
      (Safari ≤ 15.3) butta l'intera lista di selettori, e con la virgola

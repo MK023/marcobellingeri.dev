@@ -1241,7 +1241,7 @@
   .mag-item:first-child{ border-top:none; }
   .mag-summary{
     display:grid; grid-template-columns:1fr; gap:20px;
-    padding:36px 0;
+    padding:36px 0 22px;
     list-style:none;               /* rimuove il marker nativo (Firefox) */
     /* niente cursor qui: lo mette la regola custom-cursor (day/night), dove
        .mag-summary e' gia' in lista. Metterlo qui, DOPO quel blocco, lo
@@ -1250,7 +1250,10 @@
   }
   .mag-item:first-child .mag-summary{ padding-top:0; }
   .mag-summary::-webkit-details-marker{ display:none; }  /* marker nativo (Safari/Chrome) */
-  @media(min-width:820px){ .mag-summary{ grid-template-columns:200px 1fr; align-items:start; } }
+  /* align-items:center e non start: la colonna del N.0X e' alta ~146px, il titolo
+     con il bottone ne occupa la meta'. Ancorati in alto lasciavano un buco largo
+     quanto la sezione sotto al titolo; centrati il buco si divide in due margini. */
+  @media(min-width:820px){ .mag-summary{ grid-template-columns:200px 1fr; align-items:center; } }
   .mag-stat-col{ display:flex; flex-direction:column; gap:6px; }
   .mag-stat{
     font-size:clamp(64px,11vw,120px);
@@ -1290,6 +1293,11 @@
     max-width:760px;
   }
   @media(min-width:820px){ .mag-body{ padding-left:220px; } }
+  /* Due pile di seguito (arretrati + Edicola): il margine da 34px del componente,
+     pensato per una pila sola in fondo a una sezione, qui si somma al padding del
+     numero e apre una fascia vuota larga tutta la pagina. Sta qui e non nel
+     componente perche' le Certificazioni, con una pila sola, stanno bene com'erano. */
+  #magazine .newsstand{ margin-top:20px; }
   .mag-item[open] .mag-body{ animation:mag-reveal 0.3s ease; }
   @keyframes mag-reveal{
     from{ opacity:0; transform:translateY(-6px); }
