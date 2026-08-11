@@ -25,6 +25,13 @@ export function urlNonCondiviso(url) {
   return u.toString();
 }
 
+// La chiave d'idempotenza e' il canonical, ma dev.to conserva la stringa ESATTA
+// con cui l'articolo e' nato. "audit-di-se" era uscito il 15-07-2026 col canonical
+// che finiva in slash; quando la forma e' cambiata, il confronto per stringa non
+// l'ha piu' riconosciuto e il 22/07 e' nato un secondo articolo — stesso pezzo,
+// due url, metriche spezzate. Ogni confronto fra canonical passa da qui.
+const chiaveCanonical = (u) => (u ?? "").replace(/\/+$/, "");
+
 // Frontmatter minimale della writing collection: title/description tra virgolette,
 // tags inline [a, b, c]. Non è uno YAML parser: copre il formato dei nostri file.
 export function parseArticle(md) {
@@ -56,14 +63,14 @@ export function parseArticle(md) {
 // gira in UTC, l'autore scrive a Roma). L'unica aritmetica e' "+1 giorno", fatta
 // da Date in UTC per non sbagliare i fine mese.
 export function inUscita({ articoli, canonicalPubblicati, oggi }) {
-  const live = new Set(canonicalPubblicati);
+  const live = new Set(canonicalPubblicati.map(chiaveCanonical));
   const d = new Date(`${oggi}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
   const domani = d.toISOString().slice(0, 10);
 
   // Un pezzo gia' uscito non si ripubblica e non si annuncia: l'upsert
   // aggiornerebbe l'articolo live senza motivo, e il preavviso sarebbe rumore.
-  const attesa = articoli.filter((a) => !live.has(a.canonicalUrl));
+  const attesa = articoli.filter((a) => !live.has(chiaveCanonical(a.canonicalUrl)));
   return {
     daPubblicare: attesa.filter((a) => a.date <= oggi),
     domani: attesa.filter((a) => a.date === domani),
@@ -92,7 +99,10 @@ export async function upsertArticle({ title, description, tags, body, canonicalU
 
   const r = await fetch(urlNonCondiviso(`${API}/articles/me/all?per_page=100`), { headers });
   if (!r.ok) throw new Error(`devto me/all ${r.status}: ${await r.text()}`);
-  const esistente = (await r.json()).find((a) => a.canonical_url === canonicalUrl);
+  // Un articolo senza canonical normalizza a stringa vuota: non deve matchare
+  // il nostro, che vuoto non e' mai (viene da canonicalDi()).
+  const chiave = chiaveCanonical(canonicalUrl);
+  const esistente = (await r.json()).find((a) => chiaveCanonical(a.canonical_url) === chiave);
 
   const article = {
     title, description, body_markdown: body,
