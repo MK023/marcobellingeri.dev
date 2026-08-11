@@ -30,7 +30,16 @@ export function urlNonCondiviso(url) {
 // che finiva in slash; quando la forma e' cambiata, il confronto per stringa non
 // l'ha piu' riconosciuto e il 22/07 e' nato un secondo articolo — stesso pezzo,
 // due url, metriche spezzate. Ogni confronto fra canonical passa da qui.
-const chiaveCanonical = (u) => (u ?? "").replace(/\/+$/, "");
+//
+// A mano e non `/\/+$/`: quella regex, su una corsa di slash che non finisce la
+// stringa, backtracka in tempo super-lineare (S8786) — la stessa forma che sul
+// Radar portava 200k char a 30s. Scorrere la coda una volta e' O(n) e basta.
+export function chiaveCanonical(u) {
+  const s = u ?? "";
+  let i = s.length;
+  while (i > 0 && s[i - 1] === "/") i--;
+  return s.slice(0, i);
+}
 
 // Frontmatter minimale della writing collection: title/description tra virgolette,
 // tags inline [a, b, c]. Non è uno YAML parser: copre il formato dei nostri file.

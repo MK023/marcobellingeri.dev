@@ -2,7 +2,7 @@
 // Stub di fetch globale con cattura delle richieste, zero rete.
 import { test, afterEach } from "node:test";
 import { strict as assert } from "node:assert";
-import { parseArticle, upsertArticle, inUscita, urlNonCondiviso } from "../lib/devto.mjs";
+import { parseArticle, upsertArticle, inUscita, urlNonCondiviso, chiaveCanonical } from "../lib/devto.mjs";
 import { runEngine } from "./helpers/spawn.mjs";
 
 const realFetch = globalThis.fetch;
@@ -160,6 +160,29 @@ test("inUscita: un pezzo gia' live su dev.to non si ripubblica", () => {
 test("inUscita: gia' live con lo slash finale conta come gia' uscito", () => {
   const r = inUscita(CAL({ canonicalPubblicati: ["https://marcobellingeri.dev/en/writing/vecchio/"] }));
   assert.deepEqual(r.daPubblicare.map((a) => a.slug), ["oggi"], "lo slash finale lo rimanderebbe in pubblicazione");
+});
+
+// ---- chiaveCanonical: la normalizzazione condivisa ----------------------
+
+test("chiaveCanonical: toglie gli slash finali, non tocca il resto", () => {
+  const u = "https://marcobellingeri.dev/en/writing/x";
+  assert.equal(chiaveCanonical(`${u}/`), u);
+  assert.equal(chiaveCanonical(`${u}///`), u);
+  assert.equal(chiaveCanonical(u), u);
+  assert.equal(chiaveCanonical(null), "", "un articolo senza canonical non deve matchare il nostro");
+});
+
+// Non e' una regex apposta: `/\/+$/` su una corsa di slash che NON finisce la
+// stringa fa backtracking super-lineare (S8786). Stessa forma del sanificatore
+// del Radar che portava 200k char a 30s: qui il costo lo paga il cron del
+// cross-post, e a decidere e' la misura.
+test("chiaveCanonical: una corsa di slash non chiusa resta istantanea", () => {
+  const patologico = `https://marcobellingeri.dev/en/writing/x${"/".repeat(100_000)}a`;
+  const t0 = process.hrtime.bigint();
+  const out = chiaveCanonical(patologico);
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.equal(out, patologico, "niente slash in coda: la stringa non si tocca");
+  assert.ok(ms < 50, `normalizzazione degradata: ${ms.toFixed(1)}ms`);
 });
 
 test("inUscita: il preavviso non scatta per un pezzo gia' uscito", () => {
