@@ -1,4 +1,4 @@
-# Data source registry, the Radar's sources and their licences
+# Data source registry, the sources of both channels and their licences
 
 > **The admission rule** (decided on 2026-07-22): a source gets in only if its licence permits
 > reuse on a commercial site **in writing**. This site sells (Services, Booking). Ambiguous
@@ -48,6 +48,44 @@
 | **Cyber Centre** (Canada) | **Closed out of caution, not because of a negative licence**, a decision of Marco's on 2026-07-25. The case is genuinely contradictory: the [official bulletin record](https://open.canada.ca/data/en/info/3a02df5a-84c9-43b4-b483-abfd8e0c24c6) on the Open Government portal declares **OGL-Canada**, which grants *"a worldwide, royalty-free, perpetual, non-exclusive licence to use the Information, **including for commercial purposes**"*; the `canada.ca` boilerplate, however, talks about *"personal and public **non-commercial** use"*, and that page returns a **403** in English, in French and over curl, so the primary was never read. Two official pages of the same government contradicting each other, and the rule says ambiguous means out. **Reopenable** if someone one day reads the primary and it confirms the OGL: this is the only candidate with a real RSS feed and a potentially suitable licence | [OGL-Canada](https://open.canada.ca/en/open-government-licence-canada) · [bulletin record](https://open.canada.ca/data/en/info/3a02df5a-84c9-43b4-b483-abfd8e0c24c6) |
 | **HKCERT** (Hong Kong) | The terms page returns a **403**, so the licence cannot be verified. Not pursued further: a source that will not let you read its own conditions does not get in. Attempted 2026-07-25 | hkcert.org/terms-and-conditions |
 | **CNCERT/CC** (China) | **Not evaluated for licensing**: before compliance there is an editorial choice. It is a Chinese state agency, and citing it as a source on a site selling AI security in Europe is a visible political stance, not a technical detail. Marco's decision on 2026-07-25: not pursued | — |
+
+## Channel 2, the competitor roster
+
+The rule above was written for the Radar, whose bulletins are published. The competitor roster
+(`competitor_sources`, scraped by `engine/competitors.mjs` into `competitor_chunks`) was never
+put through it: it was built on 2026-07-06 as an internal watch, and internal felt like a good
+enough reason not to ask. It is not. The embeddings sit in the same database the RAG reads
+from, and the retrieval path that would surface them is a feature away, so the licence question
+arrives either now or after the fact.
+
+Audited on 2026-08-11, all ten sources, same bar as the Radar: **explicit written permission for
+commercial reuse, or out**. Two passed.
+
+| Source | Verdict | What it says | Where |
+|---|---|---|---|
+| **ENISA — News** | **ADMISSIBLE** | *"Reproduction of ENISA material published on this website is authorized, provided the source is acknowledged, unless it is stated otherwise."* No noncommercial restriction. Stock images and the logo are excluded (we use neither) | [enisa.europa.eu/about-enisa/legal-notice](https://www.enisa.europa.eu/about-enisa/legal-notice) |
+| **Troy Hunt** | **ADMISSIBLE** | *"This work is licensed under a Creative Commons Attribution 4.0 International License. In other words, share generously but provide attribution."* | footer of [troyhunt.com](https://www.troyhunt.com/) |
+| **jvns.ca** (Julia Evans) | **OUT-BY-INTENT** | `robots.txt` carries an ASCII **"NO LLM PLZ"** banner plus `User-agent: GPTBot / Disallow: /`. No licence to contradict it either: `/license`, `/licence`, `/copyright` and `/terms` all 404, and the footer reads only *"© Julia Evans."* | [jvns.ca/robots.txt](https://jvns.ca/robots.txt) |
+| **The Pragmatic Engineer** (Gergely Orosz) | **OUT-BY-INTENT** | `robots.txt` disallows GPTBot and Google-Extended, and declares `Content-Signal: search=yes, ai-input=yes, ai-train=no`. The signal permits retrieval and forbids training, which is more granular than a blanket block, **but it is not a reuse licence**: nothing in writing permits republication on a commercial site | [newsletter.pragmaticengineer.com/robots.txt](https://newsletter.pragmaticengineer.com/robots.txt) |
+| **Stratechery** (Ben Thompson) | **OUT** | No copyright or reuse statement anywhere on the site: only Terms of Service and Privacy Policy. Most articles are gated behind the paid Stratechery Plus membership | stratechery.com |
+| **Simon Willison** | **OUT** | The footer carries a bare `©` followed by a list of years, with no licence text. His `robots.txt` explicitly *allows* `ChatGPT-User`, which is permission to **crawl**, not a licence to **republish**: the two are not the same grant, and only the second one is ours to need | simonwillison.net |
+| **Last Week in AWS** (Corey Quinn) | **OUT** | *"© 2026 L9 Labs, Inc. All Rights Reserved."* The dedicated Terms of Service page contains no licensing text at all | [lastweekinaws.com](https://www.lastweekinaws.com/) |
+| **One Useful Thing** (Ethan Mollick) | **OUT** | Footer: *"© 2026 Ethan Mollick"*. Substack's own ToS says *"First and foremost, you own what you create"* and the licence the writer grants runs **to Substack**, to operate the platform. No grant reaches a third party | [substack.com/tos](https://substack.com/tos) |
+| **Exponential View** (Azeem Azhar) | **OUT** | Footer: *"© 2026 EPIIPLUS1 Ltd"*. Same Substack ToS, same absent grant | [substack.com/tos](https://substack.com/tos) |
+| **Benedict Evans** | **OUT** | Only *"© Benedict Evans"* in the footer. `/terms`, `/copyright`, `/license` and `/about` all return **404**: there is no page to read. His `robots.txt` names dozens of AI bots (anthropic-ai, ClaudeBot, GPTBot, CCBot…) but gives them the same generic rules as everyone else, so the list is not itself a stricter stance | ben-evans.com |
+
+**What was done on 2026-08-11**: the eight non-admissible sources were set `active = false` and
+their scraped content deleted from production, 150 chunks and 8 snapshots. The rows stay, with
+the verdict recorded here, so the roster carries its own history instead of quietly losing it.
+ENISA and Troy Hunt remain active.
+
+**Two things this audit taught, both worth more than the verdicts.** A permissive `robots.txt`
+is not a licence: Simon Willison lets crawlers in and grants nothing, while Troy Hunt would be
+admissible even if he blocked every bot. Crawling and republishing are separate permissions and
+only one of them is what a commercial site needs. And a licence gate belongs at the moment a
+source is **admitted**, not at the moment its content is first served: between 2026-07-06 and
+this audit, the scraper ran for a month against sources that had said no in writing. Nobody read
+the output, which is luck, not a control.
 
 ## Approved but not wired
 
@@ -109,6 +147,12 @@ results.
    `curl -s -o /dev/null -w "%{http_code} %{redirect_url}"`. It needs a 200 **with no redirect**
    (`scarica()` uses `redirect: 'manual'`) and a body that really is XML. A 200 serving HTML is
    a soft 404 and produces a source that is alive and empty.
+
+**Channel 2 sources** (the competitor roster) go through steps 1 and 2 unchanged, then get a row
+in `competitor_sources` instead of an entry in `radar-fonti.js`. Note the asymmetry: the Radar
+has a test that fails CI when a source lacks a written licence, the roster has nothing, because
+it lives in the database and the test suite runs without network. The gate there is a human
+reading this file before adding a row, which is a declared ceiling and not a control.
 
 **Sources that are not a stream.** If the source is a versioned taxonomy rather than a feed (the
 MITRE ATLAS case), the data gets committed: a script in `engine/` downloads it and writes a
