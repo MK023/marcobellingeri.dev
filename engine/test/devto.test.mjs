@@ -2,7 +2,7 @@
 // Stub di fetch globale con cattura delle richieste, zero rete.
 import { test, afterEach } from "node:test";
 import { strict as assert } from "node:assert";
-import { parseArticle, upsertArticle, inUscita, urlNonCondiviso } from "../lib/devto.mjs";
+import { parseArticle, upsertArticle, inUscita, urlNonCondiviso, chiaveCanonical } from "../lib/devto.mjs";
 import { runEngine } from "./helpers/spawn.mjs";
 
 const realFetch = globalThis.fetch;
@@ -102,6 +102,26 @@ test("upsertArticle: canonical già su dev.to -> PUT sull'id, --publish manda pu
   assert.equal(put.body.article.published, true);
 });
 
+// Il doppione del 22-07-2026: "audit-di-se" era uscito il 15/07 con lo slash
+// finale nel canonical, poi il canonical e' cambiato e il confronto per stringa
+// esatta non l'ha piu' riconosciuto — secondo articolo, metriche spezzate in due.
+test("upsertArticle: lo slash finale non fa un doppione, aggiorna l'esistente", async () => {
+  process.env.DEVTO_API_KEY = "k";
+  const calls = stubFetch((c) => {
+    if (c.url.includes("/articles/me/all")) {
+      return okJson([{ id: 42, canonical_url: "https://marcobellingeri.dev/en/writing/x/" }]);
+    }
+    if (c.method === "PUT") return okJson({ id: 42, url: "https://dev.to/mk/a-42" });
+    throw new Error(`inatteso: ${c.method} ${c.url}`);
+  });
+  const r = await upsertArticle({
+    title: "T", description: "D", tags: ["a"], body: "B",
+    canonicalUrl: "https://marcobellingeri.dev/en/writing/x",
+  });
+  assert.equal(r.updated, true, "canonical con slash != senza slash -> POST = doppione");
+  assert.match(calls.find((c) => c.method === "PUT").url, /\/articles\/42$/);
+});
+
 test("upsertArticle: risposta non-ok -> throw con status e corpo", async () => {
   process.env.DEVTO_API_KEY = "k";
   stubFetch(() => new Response("boom", { status: 500 }));
@@ -135,6 +155,34 @@ test("inUscita: esce cio' che ha la data arrivata, non il futuro", () => {
 test("inUscita: un pezzo gia' live su dev.to non si ripubblica", () => {
   const r = inUscita(CAL({ canonicalPubblicati: ["https://marcobellingeri.dev/en/writing/vecchio"] }));
   assert.deepEqual(slugs(r.daPubblicare), ["oggi"]);
+});
+
+test("inUscita: gia' live con lo slash finale conta come gia' uscito", () => {
+  const r = inUscita(CAL({ canonicalPubblicati: ["https://marcobellingeri.dev/en/writing/vecchio/"] }));
+  assert.deepEqual(r.daPubblicare.map((a) => a.slug), ["oggi"], "lo slash finale lo rimanderebbe in pubblicazione");
+});
+
+// ---- chiaveCanonical: la normalizzazione condivisa ----------------------
+
+test("chiaveCanonical: toglie gli slash finali, non tocca il resto", () => {
+  const u = "https://marcobellingeri.dev/en/writing/x";
+  assert.equal(chiaveCanonical(`${u}/`), u);
+  assert.equal(chiaveCanonical(`${u}///`), u);
+  assert.equal(chiaveCanonical(u), u);
+  assert.equal(chiaveCanonical(null), "", "un articolo senza canonical non deve matchare il nostro");
+});
+
+// Non e' una regex apposta: `/\/+$/` su una corsa di slash che NON finisce la
+// stringa fa backtracking super-lineare (S8786). Stessa forma del sanificatore
+// del Radar che portava 200k char a 30s: qui il costo lo paga il cron del
+// cross-post, e a decidere e' la misura.
+test("chiaveCanonical: una corsa di slash non chiusa resta istantanea", () => {
+  const patologico = `https://marcobellingeri.dev/en/writing/x${"/".repeat(100_000)}a`;
+  const t0 = process.hrtime.bigint();
+  const out = chiaveCanonical(patologico);
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.equal(out, patologico, "niente slash in coda: la stringa non si tocca");
+  assert.ok(ms < 50, `normalizzazione degradata: ${ms.toFixed(1)}ms`);
 });
 
 test("inUscita: il preavviso non scatta per un pezzo gia' uscito", () => {
