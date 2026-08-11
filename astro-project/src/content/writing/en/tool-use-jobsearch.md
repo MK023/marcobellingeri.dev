@@ -50,7 +50,7 @@ data = block.input  # a dict, parsed by the SDK, no text in sight
 
 The refactor landed on April 14 as one commit: every AI call in the codebase migrated, all five parsers deleted, the self-repair fallback deleted, the garbage-JSON test file deleted with them. The commit message says minus 200 lines and it undersells it, because the lines that left were the ones I had to re-read every time something broke.
 
-It was the scary PR of the batch. I shipped it in the middle of an afternoon where Claude and I pushed thirteen PRs to production, and I wrote about that day [separately](https://dev.to/mk023/how-i-shipped-13-prs-in-one-afternoon-pair-programming-with-claude-and-what-i-learned-1274). Twelve of those PRs were routine. This one deleted a safety net and replaced it with a promise from an API, in the same diff.
+It was the scary PR of the batch. I shipped it in the middle of an afternoon where Claude and I pushed thirteen PRs to production, and I wrote about that day [separately](/en/writing/thirteen-prs-one-afternoon). Twelve of those PRs were routine. This one deleted a safety net and replaced it with a promise from an API, in the same diff.
 
 One thing I kept: the Pydantic validation after the call. The schema guarantees shape, not sense. A score of 950 on a 0-100 field is schema-valid JSON and still garbage, and model output stays untrusted input no matter how it is delivered. The contract moved into the API; the checking stayed on my side of it.
 

@@ -1,5 +1,29 @@
 [
   {
+    "slug": "robots-txt-is-not-a-licence",
+    "label": {
+      "it": "robots.txt e licenze",
+      "en": "robots.txt e licenze"
+    },
+    "sub": {
+      "it": "dev.to · 2026",
+      "en": "dev.to · 2026"
+    },
+    "href": "https://dev.to/mk023/a-permissive-robotstxt-is-not-a-licence-2m3i"
+  },
+  {
+    "slug": "quality-gate-was-dead",
+    "label": {
+      "it": "Il gate morto",
+      "en": "Il gate morto"
+    },
+    "sub": {
+      "it": "dev.to · 2026",
+      "en": "dev.to · 2026"
+    },
+    "href": "https://dev.to/mk023/my-quality-gate-wasnt-strict-it-was-dead-14lk"
+  },
+  {
     "slug": "tool-use-jobsearch",
     "label": {
       "it": "Tool-use in JobSearch",
@@ -24,14 +48,15 @@
     "path": "writing/audit-di-se"
   },
   {
+    "slug": "thirteen-prs-one-afternoon",
     "label": {
       "it": "13 PR con Claude in un pomeriggio",
       "en": "Shipping 13 PRs in one afternoon"
     },
     "sub": {
-      "it": "dev.to · 2026",
-      "en": "dev.to · 2026"
+      "it": "Sul sito · 2026",
+      "en": "On the site · 2026"
     },
-    "href": "https://dev.to/mk023/how-i-shipped-13-prs-in-one-afternoon-pair-programming-with-claude-and-what-i-learned-1274"
+    "path": "writing/thirteen-prs-one-afternoon"
   }
 ]
