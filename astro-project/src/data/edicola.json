@@ -1,5 +1,17 @@
 [
   {
+    "slug": "crawler-o-persone",
+    "label": {
+      "it": "crawler o persone",
+      "en": "crawlers or people"
+    },
+    "sub": {
+      "it": "dev.to · 2026",
+      "en": "dev.to · 2026"
+    },
+    "href": "https://dev.to/mk023/i-let-every-ai-crawler-in-a-month-later-i-cannot-tell-you-how-many-people-read-me-3415"
+  },
+  {
     "slug": "robots-txt-is-not-a-licence",
     "label": {
       "it": "robots.txt e licenze",
