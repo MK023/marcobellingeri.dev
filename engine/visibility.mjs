@@ -131,6 +131,15 @@ try {
   console.error(`visibility: gsc fallita: ${logsafe(e.message)}`); // il segnale SEO manca, l'AEO resta
 }
 
-console.log("\n" + renderReferto({ runAt, perplexity, gsc, gscTotali, gscPagine }));
+// Sanificazione RIGA PER RIGA e non sull'intero referto: `logsafe` sostituisce
+// i caratteri di controllo con spazi, quindi applicarlo al testo intero
+// appiattirebbe il markdown in una riga sola. Spezzando prima e riunendo dopo, i
+// soli "\n" che restano sono i nostri — nessun dato di Google puo' fabbricare
+// una riga di log, qualunque cosa abbia fatto il renderer a monte.
+const referto = renderReferto({ runAt, perplexity, gsc, gscTotali, gscPagine })
+  .split("\n")
+  .map(logsafe)
+  .join("\n");
+console.log("\n" + referto);
 console.log("\nvisibility: fatto.");
 await trace.flush();
