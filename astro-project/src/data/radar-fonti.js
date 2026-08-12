@@ -172,7 +172,7 @@ export const FONTI = [
     hostsAmmessi: ['www.whitehouse.gov'],
     home: 'https://www.whitehouse.gov/presidential-actions/',
     licenza: {
-      nome: 'Opera del governo federale USA — pubblico dominio',
+      nome: 'Opera del governo federale USA: pubblico dominio',
       url: 'https://www.whitehouse.gov/copyright/',
     },
   },

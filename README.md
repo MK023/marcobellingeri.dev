@@ -131,10 +131,11 @@ you would not have known otherwise.
   or first idle): its whole cost sat on the critical path and it was the last reason mobile
   TBT was not zero. Errors raised before it loads land in a buffer and leave as soon as the
   SDK arrives (`sentry.client.config.js`).
-- **Tracing on `/api/contact` only.** With `run_worker_first`, every static asset passes
-  through the Worker, so a global sample rate would blanket-trace file serving from the edge
-  cache, spending quota to discover that the CDN is fast. The one route whose latency can
-  genuinely degrade is the form, which talks to two third parties.
+- **Tracing on `/api/contact` only.** `run_worker_first` sends the APIs and every HTML page
+  through the Worker, so a global sample rate would trace a page being handed back from the
+  edge cache, spending quota to learn that the CDN is fast. The one route whose latency can
+  genuinely degrade is the form, which talks to two third parties. Assets and fonts never
+  reach the Worker at all, which is both the point and the reason the bill stays flat.
 - **Cron monitor on the Supabase keepalive.** The workflow already opens an issue when the
   ping *fails*; nobody notices when the job **never runs at all**, and that is the scenario
   that pauses the database (GitHub disables schedules after 60 days of inactivity on the
@@ -152,6 +153,24 @@ for weeks the path existed without anyone ever having seen it work.
 In the engine, tracing goes to Langfuse and errors go to Sentry through a zero-dep fail-open
 library. Every script has a top-level catch that reports the crash (stack, script, `engine`
 environment) without changing its external semantics (see [engine/README.md](engine/README.md)).
+
+## Knowing whether any of it is read
+
+Two measurements, both of them uncomfortable enough to be worth having.
+
+**Discoverability**, weekly: the monitor asks Google Search Console how the site ranks, and
+asks Perplexity and ChatGPT whether they cite it at all. ChatGPT is reached through the OpenAI
+API with web search, which is a **proxy** for chatgpt.com rather than the thing itself, and the
+report says so on every run. The history lives in the database, so the trend survives the
+week. Details in [engine/README.md](engine/README.md).
+
+**Who is actually reading**, on every page request: Cloudflare's free plan reports pageviews
+without separating humans from bots, and this site lets every AI crawler in on purpose, so a
+raw pageview number is unusable. The Worker classifies the `User-Agent` by family and writes
+one data point to Analytics Engine. It keeps the family, the path and the country, and never
+an IP, a cookie, a session or a fingerprint. For a person it stores the single word `human`
+and drops the User-Agent entirely. Details, including the declared quota ceiling and the SQL
+to read the numbers, in [astro-project/README.md](astro-project/README.md).
 
 ## Contributing
 
@@ -204,6 +223,8 @@ flowchart LR
         C["/api/contact"]
         A["/api/ask (RAG)"]
         R["/api/radar (30' cache)"]
+        S["/api/agentic-status"]
+        CNT["HTML pages → count who asks<br/>human or named crawler"]
     end
     subgraph SITE["Static Astro (main = production)"]
         HOME["home + sections"]
@@ -217,10 +238,12 @@ flowchart LR
         EXP --> JUD["judge → report in PR"]
         DUE["devto --due (publish on date)"]
         CARD["edicola (cards from the stack)"]
+        VIS["visibility (weekly)<br/>GSC · Perplexity · ChatGPT"]
     end
     DB[("Supabase pgvector<br/>publish gate in the DB")]
     CERT["official CERT feeds<br/>CISA · NCSC UK · CERT-FR"]
     DEVTO["dev.to (canonical → site)"]
+    AE[("Analytics Engine<br/>crawler_passaggi, 3 months")]
 
     R -->|"fail-open fetch"| CERT
     A --> DB
@@ -230,6 +253,8 @@ flowchart LR
     DUE --> DEVTO
     CARD --> DEVTO
     RAD --> R
+    CNT --> AE
+    VIS --> DB
     HOME -.->|"human gates: verify · approve · merge"| ENGINE
 ```
 
