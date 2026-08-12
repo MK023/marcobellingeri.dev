@@ -22,9 +22,11 @@ Ad aprile lo strato di parsing era sulle 250 righe con sette strategie in catena
 
 Avevo una suite di test che garantiva che il mio codice sopravvivesse a output che nessuno avrebbe mai dovuto produrre. Quella non è robustezza. È una segnalazione di bug spedita al destinatario sbagliato.
 
-## Il fix vero
+## Come ottenere JSON valido da Claude senza parsare il testo della risposta?
 
-L'API di Anthropic ha il tool use. Di solito lo usi per far chiamare al modello le tue funzioni. Ma ha una lettura più severa: se definisci un solo tool il cui schema d'input è la forma della risposta che vuoi, e lo forzi con `tool_choice`, il modello non può rispondere in nessun altro modo. Il JSON arriva già parsato, validato contro lo schema dall'API stessa, come dict Python sull'oggetto risposta.
+Definisci un tool solo, il cui schema d'input è la forma della risposta che vuoi, e lo forzi con `tool_choice`. Il modello non può rispondere in altro modo, e il JSON arriva già parsato e validato contro lo schema dall'API, non dal tuo codice.
+
+L'API di Anthropic ha il tool use, e di solito lo usi per far chiamare al modello le tue funzioni. Questa è la lettura più severa: un tool solo, forzato, e la risposta ti arriva come dict Python sull'oggetto risposta.
 
 Il modello Pydantic dell'analisi ce l'avevo già, perché serviva alla riga di DB. Quindi lo schema era gratis:
 
