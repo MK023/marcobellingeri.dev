@@ -53,7 +53,7 @@ Adesso più che una regola è un'abitudine: quando il referto riguarda il permes
 
 L'ultima PR della lista cancellava circa 250 righe il cui unico mestiere era riparare JSON che Claude aveva appena scritto, e al loro posto ci metteva il tool use di Anthropic con uno schema forzato. Il saldo fra il client e i suoi test era intorno alle 370 righe in meno.
 
-È uscita da sola, per ultima, dietro la sua bandierina, con niente altro in volo. E ha introdotto un bug che ho notato solo la mattina dopo, perché il bug non era nel codice. Era in una regola di prompt che campava sull'ambiguità. Quella l'ho raccontata a parte, in [dal parsing del JSON nel testo al tool use di Claude](/it/writing/tool-use-jobsearch), perché si merita il suo pezzo.
+È uscita da sola, per ultima, dietro la sua bandierina, con niente altro in volo. E ha introdotto un bug che ho notato solo la mattina dopo, perché il bug non era nel codice. Era in una regola di prompt che campava sull'ambiguità. Quella l'ho raccontata a parte, in [dal parsing del JSON nel testo al tool use di Claude](https://marcobellingeri.dev/it/writing/tool-use-jobsearch), perché si merita il suo pezzo.
 
 Qui conta un'altra cosa: la modifica più rischiosa è stata la più facile da diagnosticare il giorno dopo. Una PR, una cosa sola, un diff da rileggere. Se fosse uscita in mezzo al mucchio con altre quattro, quella mattina l'avrei passata a bisecare invece che a ragionare.
 

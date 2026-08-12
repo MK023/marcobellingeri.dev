@@ -192,6 +192,26 @@ test("upsertArticle: risposta non-ok -> throw con status e corpo", async () => {
     /devto me\/all 500: boom/);
 });
 
+// Il body di writing/en viaggia VERBATIM su dev.to (upsertArticle manda
+// body_markdown senza toccarlo): li' un link che comincia con "/" risolve sul
+// dominio di dev.to, non sul nostro. Successo davvero: due articoli live sul
+// mirror con "/en/writing/..." dentro, cioe' due 404 per chi legge di la'.
+// La review aveva nominato il primo dei due; il gemello e' rimasto rotto fino
+// a che non l'ha trovato la produzione. Quindi la guardia sta sulla classe.
+test("writing: nessun link relativo nei body, che sul mirror sarebbero 404", async () => {
+  const { readdir, readFile } = await import("node:fs/promises");
+  const dir = new URL("../../astro-project/src/content/writing/", import.meta.url);
+  const rotti = [];
+  for (const lang of ["en", "it"]) {
+    const base = new URL(`${lang}/`, dir);
+    for (const f of (await readdir(base)).filter((n) => n.endsWith(".md"))) {
+      const md = await readFile(new URL(f, base), "utf8");
+      for (const m of md.match(/\]\(\/[^)]*\)/g) ?? []) rotti.push(`${lang}/${f}: ${m}`);
+    }
+  }
+  assert.deepEqual(rotti, [], `link relativi nel contenuto: sul mirror dev.to sono 404\n${rotti.join("\n")}`);
+});
+
 // ---- inUscita: il decisore puro dell'uscita programmata -----------------
 
 // Le date restano stringhe ISO: confrontarle lessicograficamente e' esatto e
