@@ -64,7 +64,7 @@ for (const q of queries) {
       detail: { matched_url: hit.matchedUrl }, raw: hit.raw,
     }]);
     perplexity.push({
-      queryText: q.text, contentRef: q.content_ref, present: hit.present, rank: hit.rank,
+      queryText: logsafe(q.text), contentRef: q.content_ref, present: hit.present, rank: hit.rank,
       prevPresent: prevAeo.get(q.id),
     });
     console.log(`visibility: perplexity "${logsafe(q.text)}" — ${hit.present ? "citato" : "non citato"}.`);
@@ -88,8 +88,16 @@ try {
   gscTotali = await queryTotals(finestra);
   const rows = await querySearchAnalytics(finestra);
   const pagine = await querySearchAnalytics({ ...finestra, dimensions: ["page"] });
-  gsc = rows.map((r) => ({ query: r.query, position: r.position, prevPosition: prevGsc.get(r.query) }));
-  gscPagine = pagine.map((r) => ({ page: r.page, impressions: r.impressions, position: r.position }));
+  // `logsafe` QUI e non solo nel renderer: query e URL arrivano da Google, e da
+  // queste strutture finiscono dritti in un log (S5145). Sanificare al confine
+  // significa che nessun chiamante del referto puo' dimenticarsene; il renderer
+  // lo rifa lo stesso, perche' e' idempotente ed e' l'ultima difesa.
+  gsc = rows.map((r) => ({
+    query: logsafe(r.query), position: r.position, prevPosition: prevGsc.get(r.query),
+  }));
+  gscPagine = pagine.map((r) => ({
+    page: logsafe(r.page), impressions: r.impressions, position: r.position,
+  }));
 
   // `engine` resta la FONTE ("gsc"), non la vista: la colonna ha un CHECK che
   // ammette solo perplexity|gsc, e allargarlo per tre etichette vorrebbe dire

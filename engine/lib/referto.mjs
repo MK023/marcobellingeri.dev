@@ -33,20 +33,35 @@ export function prescription(o) {
 // la soglia di anonimizzazione), e il referto stampava un'intestazione vuota —
 // che si legge come "nessun problema" invece che come "non te lo posso dire".
 export function renderReferto({ runAt, perplexity = [], gsc = [], gscTotali = null, gscPagine = [] }) {
-  const lines = [`# Referto discoverability — ${runAt}`, ""];
+  return [
+    `# Referto discoverability — ${runAt}`,
+    "",
+    ...sezioneAeo(perplexity),
+    "",
+    ...sezioneSeo({ gsc, gscTotali, gscPagine }),
+  ].join("\n");
+}
 
-  lines.push("## AEO — Perplexity", "");
+function sezioneAeo(perplexity) {
+  const lines = ["## AEO — Perplexity", ""];
   for (const p of perplexity) {
     const stato = p.present ? `citato (pos ${p.rank})` : "non citato";
-    const trend = p.prevPresent === undefined ? "" :
-      p.present && !p.prevPresent ? " 🆕" :
-      !p.present && p.prevPresent ? " ⚠️ perso" : "";
-    lines.push(`- **${logsafe(p.queryText)}** — ${stato}${trend}`);
+    lines.push(`- **${logsafe(p.queryText)}** — ${stato}${trendAeo(p)}`);
     const rx = prescription({ engine: "perplexity", present: p.present, contentRef: p.contentRef });
     if (rx) lines.push(`  - → ${rx}`);
   }
+  return lines;
+}
 
-  lines.push("", "## SEO — Google Search Console", "");
+function trendAeo(p) {
+  if (p.prevPresent === undefined) return "";
+  if (p.present && !p.prevPresent) return " 🆕";
+  if (!p.present && p.prevPresent) return " ⚠️ perso";
+  return "";
+}
+
+function sezioneSeo({ gsc, gscTotali, gscPagine }) {
+  const lines = ["## SEO — Google Search Console", ""];
 
   if (gscTotali) {
     lines.push(
@@ -63,24 +78,24 @@ export function renderReferto({ runAt, perplexity = [], gsc = [], gscTotali = nu
     if (rx) lines.push(`  - → ${rx}`);
   }
 
-  if (!gsc.length && gscTotali) {
-    lines.push(
-      "",
-      "> Nessuna riga per query: sotto una certa soglia di traffico Google le **omette** " +
-        "(anonimizzazione), quindi l'assenza qui non dice niente sul posizionamento. " +
-        "Le pagine sotto sono l'unica vista disponibile finché le impression restano poche.",
-    );
-    if (gscPagine.length) {
-      lines.push("");
-      for (const p of gscPagine) {
-        lines.push(`- \`${logsafe(p.page)}\` — ${p.impressions} impression, pos ${p.position.toFixed(1)}`);
-      }
-    }
-  }
+  if (gsc.length) return lines;
 
-  if (!gsc.length && !gscTotali) {
+  // Nessuna riga per query: la sezione non puo' restare bianca, o si legge come
+  // "nessun problema" invece che come "non te lo posso dire".
+  if (!gscTotali) {
     lines.push("- Nessun dato: GSC non ha restituito nessuna impression per la finestra.");
+    return lines;
   }
 
-  return lines.join("\n");
+  lines.push(
+    "",
+    "> Nessuna riga per query: sotto una certa soglia di traffico Google le **omette** " +
+      "(anonimizzazione), quindi l'assenza qui non dice niente sul posizionamento. " +
+      "Le pagine sotto sono l'unica vista disponibile finché le impression restano poche.",
+  );
+  if (gscPagine.length) lines.push("");
+  for (const p of gscPagine) {
+    lines.push(`- \`${logsafe(p.page)}\` — ${p.impressions} impression, pos ${p.position.toFixed(1)}`);
+  }
+  return lines;
 }
