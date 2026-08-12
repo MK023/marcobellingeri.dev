@@ -23,6 +23,10 @@
   "vars": {
     "AGENTIC_OS_STATUS_URL": "https://status.marcobellingeri.dev/status"
   },
+  // Chi passa: umani o crawler, contati per famiglia (worker/crawler.js). Nel
+  // piano free: 100k data point scritti al giorno, ~1.100 il traffico attuale.
+  // Non e' un segreto: e' il nome di un dataset sul nostro account.
+  "analytics_engine_datasets": [{ "binding": "CRAWLERS", "dataset": "crawler_passaggi" }],
   "ratelimits": [
     { "name": "CONTACT_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
     { "name": "ASK_LIMITER", "namespace_id": "1002", "simple": { "limit": 10, "period": 60 } }
@@ -30,7 +34,23 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    "run_worker_first": ["/", "/api/contact", "/api/ask", "/api/radar", "/api/agentic-status"],
+    // Le pagine HTML passano dal Worker per essere contate (umani vs crawler IA):
+    // un pageview E' una richiesta HTML. Misurato: con il Worker davanti gli
+    // header di `_headers` continuano ad arrivare (`env.ASSETS.fetch` conserva la
+    // risposta dell'asset), quindi la A+ dell'Observatory non e' in gioco.
+    //
+    // Le esclusioni non sono cosmetiche. Una richiesta di asset statico e'
+    // gratuita e illimitata; una che invoca il Worker consuma la quota del piano
+    // free (100k al giorno). Quindi restano fuori: `/_astro` e `/fonts` (la
+    // maggior parte del volume e tutta la latenza che conta, e non sono
+    // pageview), e i feed RSS — un lettore di feed polla ogni 15 minuti per
+    // sempre, brucerebbe quota e si conterebbe come pageview senza essere una
+    // lettura. Vedi il README per il tetto dichiarato e cosa fare se si avvicina.
+    "run_worker_first": [
+      "/", "/it/*", "/en/*",
+      "/api/contact", "/api/ask", "/api/radar", "/api/agentic-status",
+      "!/_astro/*", "!/fonts/*", "!/*.xml", "!/*.pdf", "!/*.txt", "!/*.json"
+    ],
     // Un URL inesistente riceveva il 404 spoglio del runtime. Ora riceve dist/404.html.
     "not_found_handling": "404-page"
   },
