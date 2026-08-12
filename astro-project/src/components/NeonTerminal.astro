@@ -173,14 +173,7 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
         // `ask` senza aver letto `help` altrimenti lo scoprirebbe solo dopo aver
         // gia' parlato con il modello.
         printLine('uso: ask &lt;domanda&gt;', 'dim');
-        // Costanti di build come data-ls, non input utente: `esc()` lo stesso sul
-        // testo, e l'href e' un percorso nostro costruito dalla lingua.
-        const d = overlay!.dataset;
-        printLine(
-          esc(d.aiNote || '') +
-            ' <a href="' + esc(d.aiHref || '') + '">' + esc(d.aiLink || '') + '</a>',
-          'dim',
-        );
+        avvisaIa();
       },
       neon() {
         document.documentElement.style.setProperty('filter', 'saturate(1.6)');
@@ -245,10 +238,28 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
     // della stessa visita (la telemetria non contiene i testi).
     const askSessionId = crypto.randomUUID();
 
+    // L'avviso «e' un'IA» sta QUI e non solo in COMMANDS.ask(): chi scrive
+    // `ask <domanda>` non passa mai dal registro dei comandi (vedi il dispatch
+    // in fondo), quindi con l'avviso solo li' lo leggerebbe dopo aver gia'
+    // parlato con il modello. Una volta per sessione: ripeterlo a ogni domanda
+    // sarebbe rumore, e la prima volta e' quella che l'art. 50 chiama primo
+    // contatto.
+    let avvisoIaDato = false;
+    function avvisaIa() {
+      if (avvisoIaDato) return;
+      avvisoIaDato = true;
+      const d = overlay!.dataset;
+      printLine(
+        esc(d.aiNote || '') + ' <a href="' + esc(d.aiHref || '') + '">' + esc(d.aiLink || '') + '</a>',
+        'dim',
+      );
+    }
+
     async function runAsk(domanda: string) {
       if (!domanda) { COMMANDS.ask(); return; }
       if (askAttivo) { printLine("c'è già una domanda in corso.", 'dim'); return; }
       askAttivo = true;
+      avvisaIa();
       printLine('pensando…', 'dim');
       try {
         const token = await eseguiAskTurnstile();

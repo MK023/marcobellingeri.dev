@@ -60,3 +60,29 @@ test('security.txt: Expires non è passata (RFC 9116: scaduto = non valido)', ()
     'security.txt è scaduto: rinnova la data (è un promemoria voluto, non un gate rotto — il fix è una riga)',
   );
 });
+
+// La disclosure IA del terminale: l'art. 50 la vuole al PRIMO contatto, e il
+// terminale e' l'unico posto del sito dove una persona parla con un modello.
+// Senza guardia sparirebbe in silenzio: gli attributi si possono togliere dal
+// markup e nessun altro test se ne accorgerebbe.
+//
+// La lingua conta quanto la presenza. Il terminale stampa in italiano per scelta,
+// ma un avviso legale che il lettore non capisce non e' un avviso: qui si
+// verifica che segua la lingua della pagina, insieme al link che porta a /ai.
+for (const [lang, atteso] of [['it', 'IA'], ['en', 'AI']]) {
+  test(`terminale ${lang}: avvisa che risponde un'IA, nella lingua della pagina`, () => {
+    const html = readFileSync(
+      new URL(`../dist/${lang}/index.html`, import.meta.url).pathname,
+      'utf8',
+    );
+    const nota = /data-ai-note="([^"]+)"/.exec(html)?.[1] ?? '';
+    const href = /data-ai-href="([^"]+)"/.exec(html)?.[1] ?? '';
+    const link = /data-ai-link="([^"]+)"/.exec(html)?.[1] ?? '';
+
+    assert.ok(nota.length > 30, `avviso assente o troppo corto: ${JSON.stringify(nota)}`);
+    assert.match(nota, new RegExp(atteso), `l'avviso non nomina l'IA in ${lang}: ${nota}`);
+    assert.match(nota, /Claude/, "l'avviso deve dire QUALE modello risponde");
+    assert.equal(href, `/${lang}/ai/`, 'il link deve portare alla trasparenza nella stessa lingua');
+    assert.ok(link.length > 3, `etichetta del link assente: ${JSON.stringify(link)}`);
+  });
+}

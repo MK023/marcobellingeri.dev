@@ -50,6 +50,7 @@ const blocciVisibili = (html) =>
   html
     .replace(/<script[\s\S]*?<\/script(?:\s[^>]*)?>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style(?:\s[^>]*)?>/gi, ' ')
+    .replace(CAMPI_AFFIANCATI, '</span>\n<span ')
     .replace(BLOCCHI, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&mdash;/g, '—')
@@ -72,7 +73,17 @@ const testoVisibile = (html) => blocciVisibili(html).join(' ');
 // testo in campi, e quel trattino appartiene a un'attribuzione scritta
 // dall'agenzia. Testo di terzi: non si riscrive, e infatti non deve nemmeno
 // essere segnalato.
-const PAROLE_MINIME = 5;
+// Due <span> fratelli senza testo in mezzo non sono una frase: sono due campi
+// affiancati, come l'etichetta e il sottotitolo di un pulsante portale
+// (`Radar` + `security world events — chi attacca…`). Spezzare su OGNI </span>
+// romperebbe le righe del terminale, che usano span inline dentro la prosa;
+// spezzare solo sull'adiacenza separa i campi e lascia stare le frasi.
+//
+// Serve per poter scendere a quattro parole: con cinque passava
+// `L'attribuzione non è cortesia — è la condizione della licenza`, che e'
+// esattamente la pausa che questo test esiste per vietare.
+const CAMPI_AFFIANCATI = /<\/span>\s*<span\b/gi;
+const PAROLE_MINIME = 4;
 const CONFINE = /[.!?·→|«»:;]/;
 
 function pauseInFrase(testo) {
@@ -80,8 +91,12 @@ function pauseInFrase(testo) {
   for (const m of testo.matchAll(/ — /g)) {
     const prima = testo.slice(0, m.index);
     const taglio = Math.max(...[...prima].map((c, i) => (CONFINE.test(c) ? i : -1)));
+    // Parola = qualcosa con dentro una lettera. `© 2026 Crown copyright` sono
+    // quattro token ma due parole: contarli tutti faceva scattare il gate sulla
+    // riga delle licenze del Radar, che e' un'attribuzione e non una frase.
     const frase = prima.slice(taglio + 1).trim();
-    if (frase.split(/\s+/).filter(Boolean).length < PAROLE_MINIME) continue;
+    const parolePrima = frase.split(/\s+/).filter((w) => /\p{L}/u.test(w));
+    if (parolePrima.length < PAROLE_MINIME) continue;
 
     // Suffisso di sezione, non pausa: `<titolo lungo> — Magazine` chiude il
     // blocco con un'etichetta corta e maiuscola. Una pausa vera introduce il
