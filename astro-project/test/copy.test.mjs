@@ -27,6 +27,11 @@ function paginePubblicate(dir = DIST, trovate = []) {
   return trovate;
 }
 
+// Filtri case-insensitive: un `<SCRIPT>` maiuscolo sfuggirebbe allo spoglio e il
+// suo contenuto entrerebbe nel «testo visibile», producendo falsi allarmi su
+// codice che nessuno legge. Astro emette minuscolo, ma un filtro di tag che si
+// fida del caso e' rotto per definizione.
+//
 // Il testo che vede una persona, UN BLOCCO ALLA VOLTA. Appiattire l'intera
 // pagina in una stringa sola cuce insieme elementi che non si toccano e fabbrica
 // frasi mai scritte: la riga scorrevole del footer finiva attaccata al copyright
@@ -37,8 +42,8 @@ const BLOCCHI = /<\/(?:p|li|h[1-6]|dd|dt|div|section|td|th|figcaption|blockquote
 
 const blocciVisibili = (html) =>
   html
-    .replace(/<script[\s\S]*?<\/script>/g, ' ')
-    .replace(/<style[\s\S]*?<\/style>/g, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(BLOCCHI, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&mdash;/g, '—')
