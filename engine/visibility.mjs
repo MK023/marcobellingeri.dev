@@ -4,7 +4,7 @@
 // Run: doppler run -- node engine/visibility.mjs [--limit N]
 import { select, insert, pg } from "./lib/supabase.mjs";
 import { checkCitation } from "./lib/perplexity.mjs";
-import { querySearchAnalytics, defaultWindow } from "./lib/gsc.mjs";
+import { querySearchAnalytics, queryTotals, defaultWindow } from "./lib/gsc.mjs";
 import { renderReferto } from "./lib/referto.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
@@ -42,7 +42,11 @@ try {
     );
     for (const o of prev) {
       if (o.engine === "perplexity") prevAeo.set(o.query_id, o.present);
-      if (o.engine === "gsc" && o.detail?.query) prevGsc.set(o.detail.query, o.rank);
+      // solo la vista `query`: le righe per pagina/proprietà non hanno un
+      // posizionamento per query da confrontare.
+      if (o.engine === "gsc" && o.detail?.vista !== "pagina" && o.detail?.query) {
+        prevGsc.set(o.detail.query, o.rank);
+      }
     }
   }
 } catch (e) {
@@ -60,7 +64,7 @@ for (const q of queries) {
       detail: { matched_url: hit.matchedUrl }, raw: hit.raw,
     }]);
     perplexity.push({
-      queryText: q.text, contentRef: q.content_ref, present: hit.present, rank: hit.rank,
+      queryText: logsafe(q.text), contentRef: q.content_ref, present: hit.present, rank: hit.rank,
       prevPresent: prevAeo.get(q.id),
     });
     console.log(`visibility: perplexity "${logsafe(q.text)}" — ${hit.present ? "citato" : "non citato"}.`);
@@ -70,22 +74,72 @@ for (const q of queries) {
   }
 }
 
-// --- SEO: GSC, una chiamata per l'intera proprietà ---
+// --- SEO: GSC, tre viste della stessa finestra ---
+// Le query da sole non bastano: sotto una certa soglia di traffico Google le
+// omette e ne tornano zero, con il job verde e il referto muto (misurato il
+// 12-08-2026: 30 impression in un mese, 0 righe per query, 5 per pagina).
+// I totali di proprietà non hanno soglia, le pagine la superano molto prima:
+// insieme dicono se il silenzio è "non ti vede nessuno" o "sei sotto soglia".
+const finestra = defaultWindow();
 let gsc = [];
+let gscTotali = null;
+let gscPagine = [];
 try {
-  const rows = await querySearchAnalytics(defaultWindow());
-  gsc = rows.map((r) => ({ query: r.query, position: r.position, prevPosition: prevGsc.get(r.query) }));
+  gscTotali = await queryTotals(finestra);
+  const rows = await querySearchAnalytics(finestra);
+  const pagine = await querySearchAnalytics({ ...finestra, dimensions: ["page"] });
+  // `logsafe` QUI e non solo nel renderer: query e URL arrivano da Google, e da
+  // queste strutture finiscono dritti in un log (S5145). Sanificare al confine
+  // significa che nessun chiamante del referto puo' dimenticarsene; il renderer
+  // lo rifa lo stesso, perche' e' idempotente ed e' l'ultima difesa.
+  gsc = rows.map((r) => ({
+    query: logsafe(r.query), position: r.position, prevPosition: prevGsc.get(r.query),
+  }));
+  gscPagine = pagine.map((r) => ({
+    page: logsafe(r.page), impressions: r.impressions, position: r.position,
+  }));
+
+  // `engine` resta la FONTE ("gsc"), non la vista: la colonna ha un CHECK che
+  // ammette solo perplexity|gsc, e allargarlo per tre etichette vorrebbe dire
+  // una migration sul database di produzione per un dato che sta benissimo nel
+  // `detail`. La vista si legge da `detail.vista`.
   const obs = rows.map((r) => ({
     run_at: runAt, engine: "gsc", query_id: null, present: true, rank: r.position,
-    detail: { query: r.query, page: r.page, impressions: r.impressions, clicks: r.clicks, ctr: r.ctr },
+    detail: { vista: "query", query: r.query, page: r.page, impressions: r.impressions, clicks: r.clicks, ctr: r.ctr },
     raw: null,
   }));
+  // Anche le viste senza query vanno in archivio: sono l'unica serie storica
+  // che esiste finché le query restano sotto soglia.
+  for (const p of gscPagine) {
+    obs.push({
+      run_at: runAt, engine: "gsc", query_id: null, present: true, rank: p.position,
+      detail: { vista: "pagina", page: p.page, impressions: p.impressions }, raw: null,
+    });
+  }
+  if (gscTotali) {
+    obs.push({
+      run_at: runAt, engine: "gsc", query_id: null, present: true, rank: gscTotali.position,
+      detail: { vista: "proprieta", ...gscTotali }, raw: null,
+    });
+  }
   if (obs.length) await insert("visibility_observations", obs);
-  console.log(`visibility: gsc — ${logsafe(rows.length)} righe.`);
+  console.log(
+    `visibility: gsc — ${logsafe(rows.length)} query, ${logsafe(gscPagine.length)} pagine, ` +
+      `proprietà: ${gscTotali ? logsafe(gscTotali.impressions) + " impression" : "nessun dato"}.`,
+  );
 } catch (e) {
   console.error(`visibility: gsc fallita: ${logsafe(e.message)}`); // il segnale SEO manca, l'AEO resta
 }
 
-console.log("\n" + renderReferto({ runAt, perplexity, gsc }));
+// Sanificazione RIGA PER RIGA e non sull'intero referto: `logsafe` sostituisce
+// i caratteri di controllo con spazi, quindi applicarlo al testo intero
+// appiattirebbe il markdown in una riga sola. Spezzando prima e riunendo dopo, i
+// soli "\n" che restano sono i nostri — nessun dato di Google puo' fabbricare
+// una riga di log, qualunque cosa abbia fatto il renderer a monte.
+const referto = renderReferto({ runAt, perplexity, gsc, gscTotali, gscPagine })
+  .split("\n")
+  .map(logsafe)
+  .join("\n");
+console.log("\n" + referto);
 console.log("\nvisibility: fatto.");
 await trace.flush();
