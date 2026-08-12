@@ -3,7 +3,7 @@
 import { test, afterEach } from "node:test";
 import { strict as assert } from "node:assert";
 import { checkCitation } from "../lib/perplexity.mjs";
-import { querySearchAnalytics, defaultWindow } from "../lib/gsc.mjs";
+import { querySearchAnalytics, queryTotals, defaultWindow } from "../lib/gsc.mjs";
 
 const realFetch = globalThis.fetch;
 
@@ -118,4 +118,51 @@ test("gsc: defaultWindow -> end 3gg indietro, start 30gg indietro", () => {
   const w = defaultWindow(new Date("2026-07-18T00:00:00Z"));
   assert.equal(w.endDate, "2026-07-15");
   assert.equal(w.startDate, "2026-06-18");
+});
+
+// La gamba SEO chiedeva solo la vista per query. Con poco traffico GSC la omette
+// (anonimizzazione) e tornavano zero righe: il monitor sembrava morto mentre i
+// dati di proprieta' e per pagina erano li', disponibili.
+test("gsc: le dimensioni si possono scegliere (pagina, non query+pagina)", async () => {
+  Object.assign(process.env, {
+    GSC_CLIENT_ID: "c", GSC_CLIENT_SECRET: "s", GSC_REFRESH_TOKEN: "t",
+    GSC_SITE_URL: "sc-domain:marcobellingeri.dev",
+  });
+  const calls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    // la prima chiamata e' il token: body form-urlencoded, non JSON.
+    calls.push(typeof init.body === "string" && init.body.startsWith("{") ? JSON.parse(init.body) : null);
+    return calls.length === 1
+      ? new Response(JSON.stringify({ access_token: "T" }), { status: 200 })
+      : new Response(JSON.stringify({ rows: [{ keys: ["https://marcobellingeri.dev/cv-it.pdf"], clicks: 0, impressions: 6, ctr: 0, position: 7.2 }] }), { status: 200 });
+  };
+  try {
+    const rows = await querySearchAnalytics({ startDate: "a", endDate: "b", dimensions: ["page"] });
+    assert.deepEqual(calls[1].dimensions, ["page"], "le dimensioni richieste devono arrivare a Google");
+    assert.equal(rows[0].page, "https://marcobellingeri.dev/cv-it.pdf");
+    assert.equal(rows[0].query, undefined, "senza la dimensione query non si inventa una query");
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test("gsc: i totali di proprieta' arrivano anche quando le query non ci sono", async () => {
+  Object.assign(process.env, {
+    GSC_CLIENT_ID: "c", GSC_CLIENT_SECRET: "s", GSC_REFRESH_TOKEN: "t",
+    GSC_SITE_URL: "sc-domain:marcobellingeri.dev",
+  });
+  stubFetch([
+    res({ access_token: "T" }),
+    res({ rows: [{ clicks: 0, impressions: 30, ctr: 0, position: 8.1 }] }),
+  ]);
+  const t = await queryTotals({ startDate: "a", endDate: "b" });
+  assert.deepEqual(t, { clicks: 0, impressions: 30, ctr: 0, position: 8.1 });
+});
+
+test("gsc: proprieta' senza nessuna impression -> null, non uno zero inventato", async () => {
+  Object.assign(process.env, {
+    GSC_CLIENT_ID: "c", GSC_CLIENT_SECRET: "s", GSC_REFRESH_TOKEN: "t",
+    GSC_SITE_URL: "sc-domain:marcobellingeri.dev",
+  });
+  stubFetch([res({ access_token: "T" }), res({ rows: [] })]);
+  assert.equal(await queryTotals({ startDate: "a", endDate: "b" }), null);
 });

@@ -4,7 +4,7 @@
 // Run: doppler run -- node engine/visibility.mjs [--limit N]
 import { select, insert, pg } from "./lib/supabase.mjs";
 import { checkCitation } from "./lib/perplexity.mjs";
-import { querySearchAnalytics, defaultWindow } from "./lib/gsc.mjs";
+import { querySearchAnalytics, queryTotals, defaultWindow } from "./lib/gsc.mjs";
 import { renderReferto } from "./lib/referto.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
@@ -42,7 +42,11 @@ try {
     );
     for (const o of prev) {
       if (o.engine === "perplexity") prevAeo.set(o.query_id, o.present);
-      if (o.engine === "gsc" && o.detail?.query) prevGsc.set(o.detail.query, o.rank);
+      // solo la vista `query`: le righe per pagina/proprietà non hanno un
+      // posizionamento per query da confrontare.
+      if (o.engine === "gsc" && o.detail?.vista !== "pagina" && o.detail?.query) {
+        prevGsc.set(o.detail.query, o.rank);
+      }
     }
   }
 } catch (e) {
@@ -70,22 +74,55 @@ for (const q of queries) {
   }
 }
 
-// --- SEO: GSC, una chiamata per l'intera proprietà ---
+// --- SEO: GSC, tre viste della stessa finestra ---
+// Le query da sole non bastano: sotto una certa soglia di traffico Google le
+// omette e ne tornano zero, con il job verde e il referto muto (misurato il
+// 12-08-2026: 30 impression in un mese, 0 righe per query, 5 per pagina).
+// I totali di proprietà non hanno soglia, le pagine la superano molto prima:
+// insieme dicono se il silenzio è "non ti vede nessuno" o "sei sotto soglia".
+const finestra = defaultWindow();
 let gsc = [];
+let gscTotali = null;
+let gscPagine = [];
 try {
-  const rows = await querySearchAnalytics(defaultWindow());
+  gscTotali = await queryTotals(finestra);
+  const rows = await querySearchAnalytics(finestra);
+  const pagine = await querySearchAnalytics({ ...finestra, dimensions: ["page"] });
   gsc = rows.map((r) => ({ query: r.query, position: r.position, prevPosition: prevGsc.get(r.query) }));
+  gscPagine = pagine.map((r) => ({ page: r.page, impressions: r.impressions, position: r.position }));
+
+  // `engine` resta la FONTE ("gsc"), non la vista: la colonna ha un CHECK che
+  // ammette solo perplexity|gsc, e allargarlo per tre etichette vorrebbe dire
+  // una migration sul database di produzione per un dato che sta benissimo nel
+  // `detail`. La vista si legge da `detail.vista`.
   const obs = rows.map((r) => ({
     run_at: runAt, engine: "gsc", query_id: null, present: true, rank: r.position,
-    detail: { query: r.query, page: r.page, impressions: r.impressions, clicks: r.clicks, ctr: r.ctr },
+    detail: { vista: "query", query: r.query, page: r.page, impressions: r.impressions, clicks: r.clicks, ctr: r.ctr },
     raw: null,
   }));
+  // Anche le viste senza query vanno in archivio: sono l'unica serie storica
+  // che esiste finché le query restano sotto soglia.
+  for (const p of gscPagine) {
+    obs.push({
+      run_at: runAt, engine: "gsc", query_id: null, present: true, rank: p.position,
+      detail: { vista: "pagina", page: p.page, impressions: p.impressions }, raw: null,
+    });
+  }
+  if (gscTotali) {
+    obs.push({
+      run_at: runAt, engine: "gsc", query_id: null, present: true, rank: gscTotali.position,
+      detail: { vista: "proprieta", ...gscTotali }, raw: null,
+    });
+  }
   if (obs.length) await insert("visibility_observations", obs);
-  console.log(`visibility: gsc — ${logsafe(rows.length)} righe.`);
+  console.log(
+    `visibility: gsc — ${logsafe(rows.length)} query, ${logsafe(gscPagine.length)} pagine, ` +
+      `proprietà: ${gscTotali ? logsafe(gscTotali.impressions) + " impression" : "nessun dato"}.`,
+  );
 } catch (e) {
   console.error(`visibility: gsc fallita: ${logsafe(e.message)}`); // il segnale SEO manca, l'AEO resta
 }
 
-console.log("\n" + renderReferto({ runAt, perplexity, gsc }));
+console.log("\n" + renderReferto({ runAt, perplexity, gsc, gscTotali, gscPagine }));
 console.log("\nvisibility: fatto.");
 await trace.flush();

@@ -28,7 +28,7 @@ test("visibility: perplexity (citato + non citato) e gsc, con --limit", () => {
   assert.match(r.stdout, /2 query attive \(--limit 2\)/);
   assert.match(r.stdout, /perplexity "self audit discipline" — citato/);
   assert.match(r.stdout, /perplexity "chi è marco" — non citato/);
-  assert.match(r.stdout, /gsc — 1 righe/);
+  assert.match(r.stdout, /gsc — 1 query, 1 pagine, proprietà: 40 impression/);
   assert.doesNotMatch(r.stdout, /audit-di-se» esiste ma non emerge/); // Q1 citato -> nessuna prescrizione
   assert.match(r.stdout, /candidato per un nuovo pezzo/); // Q2 non citato, senza content_ref
   assert.match(r.stdout, /visibility: fatto/);
