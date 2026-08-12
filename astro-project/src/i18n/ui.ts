@@ -32,7 +32,7 @@ export const ui = {
     'sec.note': 'Headers are applied at the edge (Cloudflare) and read live from this page’s response, so locally they may show as missing.',
     'sec.aiNote': 'The terminal on this page prints text written by a model. Keeping that text from becoming code is not a matter of trusting the model: the page has to refuse to run anything inline. Those last two rows are that refusal, read from the policy your browser just enforced.',
     'sec.title': 'Security',
-    'sec.intro': 'This page audits itself. The table below is not a claim — it is read live from the response headers your browser just received.',
+    'sec.intro': 'This page audits itself. The table below is not a claim. It is read live from the response headers your browser just received.',
 
     // ---- utility bar ----
     'ub.place': 'CASALE MONFERRATO, IT',
@@ -80,7 +80,7 @@ export const ui = {
     // ---- appuntamenti ----
     'booking.title': 'Booking',
     'booking.note':
-      'Thirty minutes, free, no commitment. Time zone handled automatically, email confirmation — no back-and-forth to find a time. If we then work together, the first day is on me unless it convinces you.',
+      'Thirty minutes, free, no commitment. Time zone handled automatically, email confirmation, without messages back and forth to find a time. If we then work together, the first day is on me unless it convinces you.',
     'booking.facadeLabel': 'CAL.EU — LOADED ON REQUEST',
     'booking.facadeCopy':
       'The calendar is served by Cal.eu, a third party. Nothing is loaded, and nothing leaves your browser, until you click.',
@@ -112,7 +112,7 @@ export const ui = {
     'sec.cmd': '$ header di sicurezza serviti da questa pagina',
     'sec.source': 'FONTE: HEAD SELF · LIVE',
     'sec.loading': 'lettura degli header di risposta…',
-    'sec.note': 'Gli header sono applicati all’edge (Cloudflare) e letti live dalla risposta di questa pagina — in locale possono risultare assenti.',
+    'sec.note': 'Gli header sono applicati all’edge (Cloudflare) e letti live dalla risposta di questa pagina, quindi in locale possono risultare assenti.',
     'sec.aiNote': 'Il terminale di questa pagina stampa testo scritto da un modello. Perché quel testo non diventi codice non basta fidarsi del modello: serve che la pagina si rifiuti di eseguire qualunque cosa inline. Le ultime due righe sono quel rifiuto, letto dalla policy che il tuo browser ha appena applicato.',
     'sec.title': 'Security',
     'sec.intro': 'Questa pagina fa l’audit di sé stessa. La tabella qui sotto non è una dichiarazione: è letta dal vivo dagli header di risposta che il tuo browser ha appena ricevuto.',
