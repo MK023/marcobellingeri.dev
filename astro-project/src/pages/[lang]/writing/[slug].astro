@@ -6,6 +6,7 @@ import UtilityBar from '../../../components/UtilityBar.astro';
 import SiteFooter from '../../../components/SiteFooter.astro';
 import { writingSlug } from '../../../lib/writing';
 import { ldJson } from '../../../lib/jsonld';
+import { faqPairs } from '../../../lib/faq';
 import { dateLocale, type Lang } from '../../../i18n/ui';
 
 // Una pagina propria per ogni articolo, in entrambe le lingue: è l'URL stabile a
@@ -53,10 +54,29 @@ const articleLd = ldJson({
   author: { '@id': `${new URL('/', Astro.site).href}#person` },
   mainEntityOfPage: canonical,
 });
+
+// FAQPage: le coppie escono dal corpo dell'articolo (un H2 che e' la domanda, la
+// risposta secca sotto), mai dal frontmatter — lo schema deve dire esattamente
+// quello che la pagina mostra. Un pezzo senza H2-domanda non emette niente:
+// meglio nessuno schema che uno schema inventato.
+const faq = faqPairs(entry.body);
+const faqLd = faq.length
+  ? ldJson({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      inLanguage: lang,
+      mainEntity: faq.map((f) => ({
+        '@type': 'Question',
+        name: f.question,
+        acceptedAnswer: { '@type': 'Answer', text: f.answer },
+      })),
+    })
+  : null;
 ---
 
 <BaseLayout lang={lang} title={d.title} description={d.description} path={`writing/${slug}`} ogType="article" publishedTime={d.date.toISOString()}>
   <script type="application/ld+json" set:html={articleLd} slot="head" />
+  {faqLd && <script type="application/ld+json" set:html={faqLd} slot="head" />}
   <UtilityBar />
   <main id="main-content">
     <article class="wr-article">

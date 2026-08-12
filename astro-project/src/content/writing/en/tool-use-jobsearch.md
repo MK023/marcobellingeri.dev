@@ -22,9 +22,11 @@ By April the parsing layer was around 250 lines with seven strategies, chained, 
 
 I had a test suite asserting that my code could survive output nobody should ever have produced. That is not robustness. That is a bug report addressed to the wrong recipient.
 
-## The actual fix
+## How do you get guaranteed JSON from Claude with tool_choice instead of parsing text?
 
-Anthropic's API has tool use. You normally reach for it to let the model call your functions. But it has a stricter reading: if you define exactly one tool whose input schema is the shape of the answer you want, and you force it with `tool_choice`, the model cannot answer any other way. The JSON arrives already parsed, validated against the schema by the API itself, as a Python dict on the response object.
+You define exactly one tool whose input schema is the shape of the answer you want, and you force it with `tool_choice`. The model cannot answer any other way, and the JSON arrives already parsed and validated against the schema by the API, not by your code.
+
+Anthropic's API has tool use, and you normally reach for it to let the model call your functions. This is the stricter reading: one tool, forced, and the answer comes back as a Python dict on the response object.
 
 I already had a Pydantic model for the analysis, because the DB row needed one. So the schema was free:
 

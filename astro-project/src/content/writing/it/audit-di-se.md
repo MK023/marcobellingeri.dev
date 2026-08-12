@@ -26,9 +26,11 @@ const expected = [
 
 Stessa origine, quindi il browser può rileggere gli header della risposta. Tutto qui il trucco. Un `fetch` verso qualsiasi altro sito si vedrebbe nascondere gli header dalla CORS, ma una pagina può guardare se stessa.
 
-## Cosa ho costruito davvero
+## Come verificare dal vivo gli header di sicurezza del proprio sito?
 
-Lo script lato client fa una richiesta HEAD all'URL corrente e legge gli header dalla risposta:
+La pagina fa un `fetch` in HEAD sul proprio URL. Stessa origine, quindi il browser le lascia rileggere gli header della risposta, e la card stampa quali ci sono e quali mancano mentre la guardi.
+
+Lo script lato client, per intero:
 
 ```js
 fetch(window.location.href, { method: 'HEAD' })
@@ -45,11 +47,11 @@ Un dettaglio a cui tengo più di quanto probabilmente meriti: ogni cella è cost
 
 Il sito ha anche preso A+ sull'HTTP Observatory di Mozilla, e l'hero linka direttamente a quella scansione, così puoi rifarla tu invece di credermi sulla parola per il badge. La card dal vivo e lo scanner esterno controllano la stessa cosa da due lati.
 
-## L'inghippo: la CSP sta in due posti
+## Perché una CSP con gli hash deve stare in un meta e non negli header?
 
-Qui la cosa si fa interessante, ed è dove ho dovuto tornare indietro e cambiare la card.
+Perché gli hash degli script li conosce solo la build, e il file degli header è statico. Astro calcola gli `sha256-` in fase di build e li scrive in un `<meta http-equiv>`; se la stessa policy stesse anche negli header, il browser applicherebbe l'intersezione delle due, e un `script-src 'self'` scritto lì cancellerebbe gli hash del meta.
 
-Quando l'ho scritta la prima volta, la card leggeva i cinque header dalla risposta e si fermava lì. Pulita, fatta. Solo che la Content-Security-Policy che protegge davvero la pagina non sta tutta in quell'header. Astro calcola gli hash dei propri script e stili in fase di build e li scrive dentro una CSP `<meta http-equiv>`. Può farlo solo in build, perché è lì che conosce gli hash. Quindi la parte che conta della mia policy, lo `script-src` pieno di hash `sha256-`, vive nell'HTML, non nell'header che la card stava leggendo.
+Qui ho dovuto tornare indietro e cambiare la card. Quando l'ho scritta la prima volta leggeva i cinque header dalla risposta e si fermava lì. Pulita, fatta. Solo che la parte che conta della mia policy, lo `script-src` pieno di hash `sha256-`, vive nell'HTML, non nell'header che la card stava leggendo.
 
 Perché non mettere tutta la CSP nel file `_headers` di Cloudflare e chiuderla lì? Perché a quel punto il browser applica entrambe le policy come intersezione, e si fanno la guerra. Il mio file `_headers` dice esattamente questo, in un commento che ho lasciato al me del futuro:
 
