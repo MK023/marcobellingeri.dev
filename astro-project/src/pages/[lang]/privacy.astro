@@ -12,7 +12,7 @@ const { lang } = Astro.params as { lang: Lang };
 // Niente P.IVA: Marco non ne ha una (2026-07-10). Quando l'aprirà, si aggiunge qui.
 const TITOLARE = 'Marco Bellingeri';
 const CONTATTO = 'mkdevpy@proton.me';
-const UPDATED = '2026-07-21';
+const UPDATED = '2026-08-12';
 const TURNSTILE_POLICY = 'https://www.cloudflare.com/turnstile-privacy-policy/';
 
 // Body per-lingua (il resto del sito segue lo stesso pattern: body nei componenti).
@@ -20,7 +20,7 @@ const copy = {
   en: {
     title: 'Privacy Policy',
     intro:
-      'This is a static personal website. It uses no tracking or analytics. The only personal data it processes is what you choose to send through the contact form. Below, exactly what happens to any data.',
+      'This is a static personal website. It does not track you: no advertising, no profiling, no cross-site identifiers. It does count how many requests come from people and how many from AI crawlers, one request at a time and without any identifier that would let those requests be tied back to you (see "Counting humans and crawlers"). The only personal data it processes is what you choose to send through the contact form. Below, exactly what happens to any data.',
     controllerH: 'Data controller',
     controller: `Controller: ${TITOLARE}. Contact: ${CONTATTO}.`,
     dataH: 'Data collected',
@@ -35,6 +35,7 @@ const copy = {
       'Resend (contact form email): when you submit the contact form, the name, email and message you provide are sent through Resend (and its sub-processor AWS SES) to deliver your request to the controller. Legal basis: legitimate interest in replying to you. Not stored on the site.',
       `Cloudflare Turnstile (contact form anti-spam): the form is protected against bots by Cloudflare Turnstile, which processes your IP address and browser signals. It is privacy-preserving (no cross-site tracking, no advertising data) and strictly necessary for security, so no consent is required. Details: ${TURNSTILE_POLICY}`,
       'Sentry (error monitoring): if the site hits a technical error, the technical details (error trace, browser type) are sent to Sentry for diagnosis. Data is processed in the EU (German region), IP collection is disabled, and nothing is used for tracking or advertising.',
+      'Counting humans and crawlers (Cloudflare Workers Analytics Engine): every AI crawler is allowed in here on purpose, which makes a plain pageview number meaningless. So for each page request the site records three things: which family the request belongs to (a person, or a named crawler such as GPTBot or ClaudeBot), the path, and the country. No IP address, no cookie, no session identifier, no fingerprint, nothing that follows you from one page to the next or from one site to another, and no profiling. If you are a person, the only thing stored about your browser is the word "human": the User-Agent is never written down. It is kept, and only as its short product name, when the client declares itself automated in its own User-Agent (it says "bot", "crawler", "curl" and the like), which is what lets a new crawler family be spotted at all. A client we simply cannot place is recorded as "unclassified" and nothing else, because a person with an unusual browser could be in there. These are single events, one per request, not a running total; they carry a timestamp but no identifier, so there is nothing to tie two of them to the same visitor. Data is retained for three months by the platform, then deleted. Legal basis: legitimate interest in knowing what share of the traffic is automated.',
       'Monthly issue pipeline (server-side, not in your browser): Firecrawl scrapes public sources, Anthropic (Claude) drafts content, Supabase stores it. Sources are public pages only; no personal data is retained.',
       'Terminal "ask" command (RAG): if you ask the terminal a question, the text you type is turned into a vector by Voyage AI, matched against the published magazine content on Supabase, and passed to Anthropic (Claude) to generate the answer. The question is not stored by this site. For observability, technical telemetry without any content (token counts, timings, a random per-visit session id) is sent to Langfuse (EU): neither the question nor the answer ever leaves for it. The form is protected by Cloudflare Turnstile and a per-IP rate limit.',
     ],
@@ -51,7 +52,7 @@ const copy = {
   it: {
     title: 'Informativa Privacy',
     intro:
-      'Questo è un sito personale statico. Non usa tracciamento o analytics. Gli unici dati personali che tratta sono quelli che scegli di inviare tramite il form di contatto. Qui sotto, esattamente cosa accade ai dati.',
+      'Questo è un sito personale statico. Non ti traccia: nessuna pubblicità, nessuna profilazione, nessun identificatore che ti segua da un sito all’altro. Conta però quante richieste arrivano da persone e quante dai crawler IA, una richiesta alla volta e senza alcun identificatore che permetta di ricondurle a te (vedi «Contare umani e crawler»). Gli unici dati personali che tratta sono quelli che scegli di inviare tramite il form di contatto. Qui sotto, esattamente cosa accade ai dati.',
     controllerH: 'Titolare del trattamento',
     controller: `Titolare: ${TITOLARE}. Contatto: ${CONTATTO}.`,
     dataH: 'Dati raccolti',
@@ -66,6 +67,7 @@ const copy = {
       'Resend (email del form di contatto): quando invii il form, il nome, l’email e il messaggio che fornisci passano da Resend (e dal suo sub-responsabile AWS SES) per recapitare la tua richiesta al titolare. Base giuridica: legittimo interesse a risponderti. Non conservati sul sito.',
       `Cloudflare Turnstile (anti-spam del form): il modulo è protetto dai bot tramite Cloudflare Turnstile, che tratta il tuo indirizzo IP e i segnali del browser. È rispettoso della privacy (nessun tracciamento cross-site, nessun dato pubblicitario) e strettamente necessario alla sicurezza, quindi non richiede consenso. Dettagli: ${TURNSTILE_POLICY}`,
       'Sentry (monitoraggio errori): se il sito incontra un errore tecnico, i dettagli tecnici (traccia dell’errore, tipo di browser) vengono inviati a Sentry per la diagnosi. I dati sono trattati in UE (region tedesca), la raccolta dell’IP è disattivata e nulla è usato per tracciamento o pubblicità.',
+      'Contare umani e crawler (Cloudflare Workers Analytics Engine): qui i crawler IA entrano tutti, per scelta dichiarata, e questo rende un numero di pageview privo di significato. Per ogni richiesta di pagina il sito registra tre cose: a quale famiglia appartiene la richiesta (una persona, oppure un crawler con un nome, come GPTBot o ClaudeBot), il percorso e il paese. Nessun indirizzo IP, nessun cookie, nessun identificatore di sessione, nessun fingerprint, niente che ti segua da una pagina all’altra o da un sito all’altro, nessuna profilazione. Se sei una persona, del tuo browser resta scritta una sola parola, «umano»: lo user-agent non viene mai conservato. Viene conservato, e solo come nome breve del prodotto, quando è il client stesso a dichiararsi automatico nel proprio user-agent (dice «bot», «crawler», «curl» e simili): è ciò che permette di accorgersi di una famiglia di crawler nuova. Un client che semplicemente non riusciamo a collocare viene registrato come «non classificato» e nient’altro, perché lì dentro potrebbe esserci una persona con un browser insolito. Sono eventi singoli, uno per richiesta, non un totale: portano un orario ma nessun identificatore, quindi non c’è niente che leghi due richieste alla stessa persona. I dati sono conservati per tre mesi dalla piattaforma, poi cancellati. Base giuridica: legittimo interesse a sapere quale quota del traffico è automatica.',
       'Pipeline del numero mensile (lato server, non nel tuo browser): Firecrawl fa scraping di fonti pubbliche, Anthropic (Claude) redige le bozze, Supabase le archivia. Le fonti sono solo pagine pubbliche; nessun dato personale viene conservato.',
       'Comando "ask" del terminale (RAG): se fai una domanda al terminale, il testo che digiti viene trasformato in vettore da Voyage AI, confrontato con i contenuti pubblicati del magazine su Supabase e passato ad Anthropic (Claude) per generare la risposta. La domanda non viene salvata da questo sito. Per l\'osservabilità, una telemetria tecnica senza alcun contenuto (conteggi di token, tempi, un id di sessione casuale per visita) va a Langfuse (UE): né la domanda né la risposta partono mai verso di essa. Il form è protetto da Cloudflare Turnstile e da un limite di richieste per IP.',
     ],

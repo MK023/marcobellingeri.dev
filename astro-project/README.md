@@ -40,6 +40,7 @@ worker/
   index.js                   picks the language on `/` (country + pref-lang cookie),
                              plus /api/contact and /api/ask
   radar.js                   /api/radar: CERT bulletins, edge cache, per-source fail-open
+  crawler.js                 counts who asks for a page: humans against AI crawlers
   langfuse.js, sentry.js     tracing and error reporting, both fail-open
 public/
   _headers                   security headers; in the CSP, frame-ancestors ONLY
@@ -48,6 +49,50 @@ test/                        CSP, sections, worker, Radar, magazine, Atlas graph
                              transparency, mirrors, CSS compatibility
 wrangler.jsonc               Workers static assets + custom domain
 ```
+
+## Who is actually reading: humans against AI crawlers
+
+Cloudflare's free plan reports pageviews without separating humans from bots, and this site
+lets every AI crawler in on purpose, training included. A pageview number that mixes the two
+cannot be shown to anyone, so the Worker classifies the `User-Agent` of every **HTML** request
+by family and writes one data point to Workers Analytics Engine (`crawler_passaggi`, free
+plan: 100k writes a day against roughly 1,100 requests).
+
+Only HTML goes through the Worker: a pageview *is* an HTML request, and `/_astro`, `/fonts`
+and the feeds stay on the fast path, where the volume and the latency actually are. The
+security headers survive the detour, because `env.ASSETS.fetch()` returns the asset's own
+response.
+
+**The declared ceiling.** A request served straight from static assets is free and unlimited;
+one that invokes the Worker counts against the free plan's 100,000 a day. Routing HTML through
+the Worker therefore trades quota for the measurement: today that is roughly 1,100 requests a
+day against 100,000, a margin of about ninety. The exposure is not new (`/` already invoked the
+Worker, so the quota could already be burned by hammering the root) but it is now wider: past
+the limit the HTML pages are the ones that fail, while the CSS keeps serving. There is no rate
+limit on those routes, and the free plan has no WAF rule to add one. The upgrade path, in
+order: watch the Worker request counter, then narrow the patterns and accept counting less,
+then pay for the WAF rule. Revisit if the daily number passes ten thousand.
+
+The raw `User-Agent` is kept **only when the visitor is not classified as human**. A browser's
+UA fingerprints a person and buys nothing here; a bot's UA is the only way to notice a family
+we do not know yet.
+
+Reading the numbers needs no endpoint, just the SQL API:
+
+```bash
+curl "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/analytics_engine/sql" \
+  -H "Authorization: Bearer $CF_ANALYTICS_TOKEN" \
+  --data "SELECT index1 AS famiglia, SUM(_sample_interval) AS passaggi
+          FROM crawler_passaggi
+          WHERE timestamp > NOW() - INTERVAL '7' DAY
+          GROUP BY famiglia ORDER BY passaggi DESC"
+```
+
+`SUM(_sample_interval)` and not `COUNT(*)`: above a certain volume the dataset samples, and a
+raw count would quietly under-report. The two questions this answers are different ones. How
+much human traffic there is, which is the number that can go in front of a client. And whether
+the AI crawlers read the site at all, which decides whether writing more is worth anything: if
+GPTBot never arrives, no amount of rewriting will change what ChatGPT answers.
 
 ## The CSP, briefly
 

@@ -3,6 +3,7 @@
 import { inviaTracciaAsk } from './langfuse.js';
 import { gestisciRadar } from './radar.js';
 import { gestisciAgenticStatus } from './agentic-status.js';
+import { conta } from './crawler.js';
 //
 // ADR-0001 §4: la scelta della lingua su `/` è demandata all'edge.
 // Italia → italiano, resto del mondo → inglese. Il paese lo dà Cloudflare in
@@ -352,7 +353,21 @@ export default {
     if (url.pathname === '/api/ask') return gestisciAsk(request, env, ctx);
     if (url.pathname === '/api/radar') return gestisciRadar(request, env, ctx);
     if (url.pathname === '/api/agentic-status') return gestisciAgenticStatus(request, env);
-    if (url.pathname !== '/') return env.ASSETS.fetch(request);
+
+    // Da qui in giu' passano solo le pagine HTML (vedi run_worker_first in
+    // wrangler.jsonc): un pageview E' una richiesta HTML, e gli asset restano
+    // sulla via veloce. `writeDataPoint` torna subito, quindi il conteggio non
+    // sta sul percorso della risposta.
+    //
+    // Si conta la pagina SERVITA, non il 302 della root: chi entra dall'apex
+    // riceve un redirect e poi la pagina, e contarli entrambi raddoppierebbe
+    // ogni visita che arriva da li'. Un crawler che non seguisse il redirect
+    // resterebbe invisibile, ma quelli veri lo seguono tutti, e il numero
+    // gonfiato costa piu' di quello mancante.
+    if (url.pathname !== '/') {
+      conta(env, request);
+      return env.ASSETS.fetch(request);
+    }
 
     const lingua = scegliLingua(request.cf?.country, request.headers.get('cookie'));
     const destinazione = new URL(`/${lingua}/`, url.origin);
