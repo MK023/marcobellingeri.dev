@@ -110,7 +110,7 @@ test('crawler: dell\'umano non si conserva niente dello user-agent', () => {
 test('crawler: di una famiglia gia\' nota non serve conservare lo user-agent', () => {
   const d = datoDaScrivere('Mozilla/5.0 (compatible; GPTBot/1.2; +https://openai.com/gptbot)', '/it/', 'IT');
   assert.equal(d.blobs[0], 'gptbot');
-  assert.ok(!d.blobs.some((b) => b.includes('openai.com')), 'il nome della famiglia basta');
+  assert.equal(d.blobs[3], '', 'il nome della famiglia basta: niente user-agent da conservare');
 });
 
 test('crawler: del bot dichiarato si conserva il solo token di prodotto', () => {
