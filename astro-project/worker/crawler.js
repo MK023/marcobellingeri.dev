@@ -127,6 +127,10 @@ export function datoDaScrivere(ua, percorso, paese) {
  * @param {{ CRAWLERS?: { writeDataPoint: (d: object) => void } }} env
  * @param {Request & { cf?: { country?: string } }} request
  */
+// Vero dopo la prima segnalazione: vedi il `catch` di `conta`. Non e' stato di
+// richiesta — e' un interruttore per non ripetere lo stesso allarme.
+let segnalato = false;
+
 export function conta(env, request) {
   if (!env?.CRAWLERS) return;
   try {
@@ -140,6 +144,17 @@ export function conta(env, request) {
     // senza accorgersene: il resto del Worker segnala e prosegue, e questo fa
     // uguale. Fuori dal `catch` sta il ramo `!env.CRAWLERS`, che e' il caso
     // legittimo dei test e del dev locale, non un guasto.
-    globalThis.__SEGNALA_SENTRY__?.('crawler: conteggio fallito', { errore: String(e?.message ?? e) });
+    //
+    // Una volta sola per isolate. Un guasto qui non e' mai isolato — se la quota
+    // giornaliera dell'Analytics Engine finisce, `writeDataPoint` lancia a OGNI
+    // pagina servita, e un allarme per richiesta si porterebbe via la quota di
+    // Sentry in giorni, seppellendo gli errori che contano. Il flag e' di
+    // modulo, quindi vive quanto l'isolate: niente stato di richiesta, nessun
+    // dato che passi da un visitatore all'altro, e la segnalazione ritorna da
+    // sola quando Cloudflare ricicla l'isolate.
+    if (!segnalato) {
+      segnalato = true;
+      globalThis.__SEGNALA_SENTRY__?.('crawler: conteggio fallito', { errore: String(e?.message ?? e) });
+    }
   }
 }

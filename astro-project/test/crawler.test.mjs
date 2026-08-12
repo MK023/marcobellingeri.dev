@@ -8,7 +8,7 @@
 // ChatGPT e' gia' scritta, e nessun lavoro sul contenuto la cambia).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifica, datoDaScrivere } from '../worker/crawler.js';
+import { classifica, datoDaScrivere, conta } from '../worker/crawler.js';
 import worker from '../worker/index.js';
 
 const UA_UMANO =
@@ -164,4 +164,22 @@ test('crawler: senza il binding la pagina esce lo stesso', async () => {
   const env = { ASSETS: { fetch: async () => new Response('pagina') } };
   const r = await worker.fetch(new Request('https://marcobellingeri.dev/it/'), env, {});
   assert.equal(r.status, 200);
+});
+
+// Un allarme che scatta a ogni richiesta non e' un allarme: e' un attacco alla
+// propria osservabilita'. Se `writeDataPoint` inizia a lanciare (quota AE finita,
+// data point malformato), lancera' per OGNI pagina servita — e la quota di Sentry
+// finisce in giorni, portandosi via anche gli errori che contano.
+test('crawler: un guasto ripetuto segnala una volta, non a ogni richiesta', () => {
+  const segnalazioni = [];
+  const precedente = globalThis.__SEGNALA_SENTRY__;
+  globalThis.__SEGNALA_SENTRY__ = (m) => segnalazioni.push(m);
+  const env = { CRAWLERS: { writeDataPoint: () => { throw new Error('quota finita'); } } };
+  const req = new Request('https://marcobellingeri.dev/it/');
+  try {
+    for (let i = 0; i < 50; i++) conta(env, req);
+  } finally {
+    globalThis.__SEGNALA_SENTRY__ = precedente;
+  }
+  assert.equal(segnalazioni.length, 1, `50 richieste rotte, ${segnalazioni.length} segnalazioni`);
 });
