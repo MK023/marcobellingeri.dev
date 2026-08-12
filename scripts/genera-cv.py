@@ -166,12 +166,35 @@ def _e_titolo_sezione(riga: str) -> bool:
 # La testatina che il generatore ripete su ogni pagina ("Marco Bellingeri |
 # <ruolo>") e il numero di pagina: nel testo estratto sono righe come le altre,
 # e senza questo filtro finirebbero in mezzo al contenuto a ogni salto pagina.
-RIPETUTE = re.compile(r"^(marco bellingeri\s*\||\d+\s*/\s*\d+$)", re.I)
+#
+# Due pattern e non un'alternanza sola: in `^(a|b$)` l'ancora di coda vale solo
+# per il secondo ramo, e chi legge deve fermarsi a chiederselo. Separati, ogni
+# ancora dice a cosa si riferisce.
+TESTATINA = re.compile(r"^marco bellingeri\s*\|", re.I)
+NUMERO_PAGINA = re.compile(r"^\d+\s*/\s*\d+$")
+
+
+def _e_ripetuta(riga: str) -> bool:
+    return bool(TESTATINA.match(riga) or NUMERO_PAGINA.match(riga))
 
 # "Etichetta: valore" apre un blocco nuovo. Serve dove il PDF non lascia una
 # riga vuota fra una voce e l'altra (competenze, certificazioni): senza,
 # "Cloud & Platform:" verrebbe incollata alla riga di "Backend & API".
 ETICHETTA = re.compile(r"^[A-ZÀ-Ü][^:]{1,40}:\s")
+
+
+def _e_bullet(riga: str) -> bool:
+    return riga[:1] in ("•", "·", "●")
+
+
+def _continua_bullet(riga: str, indent: int, tipo: str | None, indent_li: int) -> bool:
+    """Coda di un punto elenco: più indentata del suo bullet, e senza bullet suo."""
+    return tipo == "li" and indent > indent_li and not _e_bullet(riga)
+
+
+def _apre_capoverso(riga: str) -> bool:
+    """Segnali che interrompono un capoverso: "|" (azienda/ruolo/date) e "Etichetta:"."""
+    return "|" in riga or bool(ETICHETTA.match(riga))
 
 
 def leggi_pdf(sorgente: Path) -> str:
@@ -210,30 +233,26 @@ def leggi_pdf(sorgente: Path) -> str:
     for riga_grezza in testo.split("\n"):
         riga = riga_grezza.strip()
         indent = len(riga_grezza) - len(riga_grezza.lstrip())
-        if not riga or RIPETUTE.match(riga):
+        if not riga or _e_ripetuta(riga):
             _chiudi()
-            continue
         # La continuazione di un punto elenco si controlla PRIMA del titolo:
         # una coda andata a capo può essere tutta maiuscola, e in quel caso
         # vince il fatto che sta sotto un bullet aperto.
-        if tipo == "li" and indent > indent_li and riga[0] not in "•·●":
+        elif _continua_bullet(riga, indent, tipo, indent_li):
             corrente.append(riga)
-            continue
-        if _e_titolo_sezione(riga):
+        elif _e_titolo_sezione(riga):
             _chiudi()
             blocchi.append(f"<p><b>{html_mod.escape(riga)}</b></p>")
-            continue
-        if riga[0] in "•·●":
+        elif _e_bullet(riga):
             _chiudi()
             tipo, indent_li = "li", indent
             corrente.append(riga[1:].strip())
-            continue
-        if tipo == "p" and "|" not in riga and not ETICHETTA.match(riga):
+        elif tipo == "p" and not _apre_capoverso(riga):
             corrente.append(riga)
-            continue
-        _chiudi()
-        tipo = "p"
-        corrente.append(riga)
+        else:
+            _chiudi()
+            tipo = "p"
+            corrente.append(riga)
     _chiudi()
     return "\n".join(blocchi)
 
