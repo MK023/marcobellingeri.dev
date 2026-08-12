@@ -63,6 +63,12 @@ and the feeds stay on the fast path, where the volume and the latency actually a
 security headers survive the detour, because `env.ASSETS.fetch()` returns the asset's own
 response.
 
+**One-time account switch.** Analytics Engine has to be turned on once in the Cloudflare
+dashboard before any Worker that binds a dataset can be deployed. Until it is, `wrangler
+deploy` uploads the assets and then fails at the last step with `code: 10089`, which leaves
+production untouched and serving the previous version. It is not a code error and no config
+change fixes it: enable it under Workers, Analytics Engine, then re-run the deploy.
+
 **The declared ceiling.** A request served straight from static assets is free and unlimited;
 one that invokes the Worker counts against the free plan's 100,000 a day. Routing HTML through
 the Worker therefore trades quota for the measurement: today that is roughly 1,100 requests a
