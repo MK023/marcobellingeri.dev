@@ -94,3 +94,60 @@ test("visibility: gsc fallita non ferma l'AEO", () => {
   assert.match(r.stderr, /gsc fallita/);
   assert.match(r.stdout, /visibility: fatto/);
 });
+
+// La terza fonte AEO (ChatGPT, proxy via API OpenAI). Il rischio non e' la
+// chiamata, e' il TREND: le osservazioni precedenti si leggono in una mappa sola,
+// e due fonti che condividono lo stesso query_id si sovrascrivono a vicenda —
+// una 🆕 inventata su una fonte che non era cambiata.
+test("visibility: chatgpt e' una terza fonte, e il suo trend non si mescola con perplexity", () => {
+  const routes = [
+    { match: "visibility_queries", body: [
+      { id: "Q1", text: "self audit discipline", content_ref: "audit-di-se" },
+    ] },
+    { match: "order=run_at.desc&limit=1", body: [{ run_at: "2026-08-05T00:00:00+00:00" }] },
+    { match: "run_at=eq.", body: [
+      { engine: "perplexity", query_id: "Q1", present: false, rank: null, detail: {} },
+      { engine: "chatgpt", query_id: "Q1", present: true, rank: 1, detail: {} },
+    ] },
+    { match: "perplexity.ai", method: "POST", body: {
+      citations: ["https://marcobellingeri.dev/en/writing/audit-di-se"],
+    } },
+    { match: "api.openai.com", method: "POST", body: {
+      output: [{ type: "message", content: [{ type: "output_text", annotations: [
+        { type: "url_citation", url: "https://marcobellingeri.dev/en/writing/audit-di-se" },
+      ] }] }],
+    } },
+    { match: "visibility_observations", method: "POST" },
+    { match: "oauth2.googleapis.com", method: "POST", body: { access_token: "T" } },
+    { match: "searchAnalytics", method: "POST", body: { rows: [] } },
+  ];
+  const r = runEngine(["engine/visibility.mjs"], routes, {
+    PERPLEXITY_API_KEY: "k", OPENAI_API_KEY: "o", GSC_CLIENT_ID: "c", GSC_CLIENT_SECRET: "s",
+    GSC_REFRESH_TOKEN: "t", GSC_SITE_URL: "sc-domain:marcobellingeri.dev",
+  });
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /chatgpt "self audit discipline" — citato/);
+  const iGpt = r.stdout.indexOf("## AEO — ChatGPT");
+  const pplx = r.stdout.slice(r.stdout.indexOf("## AEO — Perplexity"), iGpt);
+  const gpt = r.stdout.slice(iGpt, r.stdout.indexOf("## SEO"));
+  assert.match(pplx, /🆕/, "perplexity non citava e ora cita: e' una novita'");
+  assert.doesNotMatch(gpt, /🆕/, "chatgpt citava gia': nessuna novita' da inventare");
+});
+
+test("visibility: se la fonte ChatGPT fallisce, il resto del monitor resta in piedi", () => {
+  const routes = [
+    { match: "visibility_queries", body: [{ id: "Q1", text: "q", content_ref: null }] },
+    { match: "perplexity.ai", method: "POST", body: { citations: ["https://x.com"] } },
+    { match: "api.openai.com", method: "POST", status: 429, body: "rate limited" },
+    { match: "visibility_observations", method: "POST" },
+    { match: "oauth2.googleapis.com", method: "POST", body: { access_token: "T" } },
+    { match: "searchAnalytics", method: "POST", body: { rows: [] } },
+  ];
+  const r = runEngine(["engine/visibility.mjs"], routes, {
+    PERPLEXITY_API_KEY: "k", OPENAI_API_KEY: "o", GSC_CLIENT_ID: "c", GSC_CLIENT_SECRET: "s",
+    GSC_REFRESH_TOKEN: "t", GSC_SITE_URL: "sc-domain:marcobellingeri.dev",
+  });
+  assert.equal(r.code, 0, "una fonte rotta non fa cadere il monitor");
+  assert.match(r.stderr, /chatgpt fallita/);
+  assert.match(r.stdout, /visibility: fatto/);
+});

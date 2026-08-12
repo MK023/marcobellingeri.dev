@@ -1,9 +1,10 @@
 // engine/visibility.mjs
-// Monitor discoverability. Legge le query attive, interroga Perplexity (AEO) e GSC (SEO),
-// scrive le osservazioni su Supabase, stampa un referto prescrittivo.
+// Monitor discoverability. Legge le query attive, interroga Perplexity e ChatGPT (AEO)
+// e GSC (SEO), scrive le osservazioni su Supabase, stampa un referto prescrittivo.
 // Run: doppler run -- node engine/visibility.mjs [--limit N]
 import { select, insert, pg } from "./lib/supabase.mjs";
 import { checkCitation } from "./lib/perplexity.mjs";
+import { checkCitation as checkCitationOpenai } from "./lib/openai.mjs";
 import { querySearchAnalytics, queryTotals, defaultWindow } from "./lib/gsc.mjs";
 import { renderReferto } from "./lib/referto.mjs";
 import { startTrace } from "./lib/langfuse.mjs";
@@ -30,9 +31,20 @@ const conLimite = limit ? ` (--limit ${logsafe(limit)})` : "";
 console.log(`visibility: ${logsafe(queries.length)} query attive${conLimite}.`);
 const trace = startTrace("visibility-monitor", { metadata: { queries: queries.length } });
 
+// Le fonti AEO. `engine` e' il valore che finisce in `visibility_observations`
+// (CHECK in migration 0013): aggiungerne una qui senza allargare il CHECK fa
+// fallire l'insert, non il monitor.
+const AEO = [
+  { engine: "perplexity", check: checkCitation },
+  { engine: "chatgpt", check: checkCitationOpenai },
+];
+
 // Run precedente (per il trend del referto): best-effort, un primo run o una
 // lettura fallita non fermano il monitor — semplicemente niente trend.
-const prevAeo = new Map(); // query_id -> present
+// La chiave e' `engine:query_id` e non `query_id`: due fonti AEO sulla stessa
+// query si sovrascriverebbero a vicenda, e il referto stamperebbe una 🆕 su una
+// fonte che non era cambiata.
+const prevAeo = new Map(); // `${engine}:${query_id}` -> present
 const prevGsc = new Map(); // query GSC -> position
 try {
   const [ultimo] = await select(pg`visibility_observations?select=run_at&order=run_at.desc&limit=1`);
@@ -41,7 +53,7 @@ try {
       pg`visibility_observations?select=engine,query_id,present,rank,detail&run_at=eq.${ultimo.run_at}`,
     );
     for (const o of prev) {
-      if (o.engine === "perplexity") prevAeo.set(o.query_id, o.present);
+      if (AEO.some((f) => f.engine === o.engine)) prevAeo.set(`${o.engine}:${o.query_id}`, o.present);
       // solo la vista `query`: le righe per pagina/proprietà non hanno un
       // posizionamento per query da confrontare.
       if (o.engine === "gsc" && o.detail?.vista !== "pagina" && o.detail?.query) {
@@ -53,24 +65,28 @@ try {
   console.error(`visibility: run precedente non leggibile (niente trend): ${logsafe(e.message)}`);
 }
 
-// --- AEO: Perplexity, una query alla volta ---
-const perplexity = [];
-for (const q of queries) {
-  try {
-    const hit = await trace.span(q.text, { input: { text: q.text } }, async () => checkCitation(q.text));
-    await insert("visibility_observations", [{
-      run_at: runAt, engine: "perplexity", query_id: q.id,
-      present: hit.present, rank: hit.rank,
-      detail: { matched_url: hit.matchedUrl }, raw: hit.raw,
-    }]);
-    perplexity.push({
-      queryText: logsafe(q.text), contentRef: q.content_ref, present: hit.present, rank: hit.rank,
-      prevPresent: prevAeo.get(q.id),
-    });
-    console.log(`visibility: perplexity "${logsafe(q.text)}" — ${hit.present ? "citato" : "non citato"}.`);
-  } catch (e) {
-    console.error(`visibility: perplexity fallita "${logsafe(q.text)}": ${logsafe(e.message)}`);
-    continue; // una query rotta non ferma il monitor
+// --- AEO: una query alla volta, una fonte alla volta ---
+// ChatGPT si misura per PROXY: l'API OpenAI con ricerca web, non chatgpt.com.
+// La riga che lo dichiara sta nel referto, dove il dato viene letto.
+const aeo = { perplexity: [], chatgpt: [] };
+for (const { engine, check } of AEO) {
+  for (const q of queries) {
+    try {
+      const hit = await trace.span(`${engine}: ${q.text}`, { input: { text: q.text } }, async () => check(q.text));
+      await insert("visibility_observations", [{
+        run_at: runAt, engine, query_id: q.id,
+        present: hit.present, rank: hit.rank,
+        detail: { matched_url: hit.matchedUrl }, raw: hit.raw,
+      }]);
+      aeo[engine].push({
+        queryText: logsafe(q.text), contentRef: q.content_ref, present: hit.present, rank: hit.rank,
+        prevPresent: prevAeo.get(`${engine}:${q.id}`),
+      });
+      console.log(`visibility: ${engine} "${logsafe(q.text)}" — ${hit.present ? "citato" : "non citato"}.`);
+    } catch (e) {
+      console.error(`visibility: ${engine} fallita "${logsafe(q.text)}": ${logsafe(e.message)}`);
+      continue; // una query rotta non ferma il monitor, e una fonte rotta non ferma l'altra
+    }
   }
 }
 
@@ -136,7 +152,7 @@ try {
 // appiattirebbe il markdown in una riga sola. Spezzando prima e riunendo dopo, i
 // soli "\n" che restano sono i nostri — nessun dato di Google puo' fabbricare
 // una riga di log, qualunque cosa abbia fatto il renderer a monte.
-const referto = renderReferto({ runAt, perplexity, gsc, gscTotali, gscPagine })
+const referto = renderReferto({ runAt, ...aeo, gsc, gscTotali, gscPagine })
   .split("\n")
   .map(logsafe)
   .join("\n");

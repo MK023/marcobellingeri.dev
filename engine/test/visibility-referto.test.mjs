@@ -95,3 +95,50 @@ test("referto SEO: con le query disponibili resta il referto di prima", () => {
   assert.match(r, /Δ \+4\.4/, "il trend per query non deve regredire");
   assert.doesNotMatch(r, /soglia|anonimizz/i, "la spiegazione serve solo quando le query mancano");
 });
+
+// --- AEO: ChatGPT come terza fonte -------------------------------------
+// Si misura un PROXY (API OpenAI + web search), non chatgpt.com. Va scritto NEL
+// referto: fra sei mesi la riga "citato su ChatGPT" resta, il contesto no.
+test("prescription: chatgpt non citato -> stessa prescrizione dell'AEO Perplexity", () => {
+  const p = prescription({ engine: "chatgpt", present: false, contentRef: "audit-di-se" });
+  assert.match(p, /audit-di-se/);
+  assert.match(p, /estraibile|H2|FAQPage/i);
+});
+
+test("prescription: chatgpt citato -> nessuna prescrizione", () => {
+  assert.equal(prescription({ engine: "chatgpt", present: true, contentRef: "audit-di-se" }), null);
+});
+
+test("referto AEO: la sezione ChatGPT dichiara che e' un proxy, non chatgpt.com", () => {
+  const r = renderReferto({
+    runAt: "2026-08-12T00:00:00Z",
+    perplexity: [{ queryText: "a", contentRef: null, present: true, rank: 1 }],
+    chatgpt: [{ queryText: "a", contentRef: null, present: true, rank: 2 }],
+    gsc: [],
+  });
+  const sezione = r.slice(r.indexOf("## AEO — ChatGPT"), r.indexOf("## SEO"));
+  assert.match(sezione, /proxy|non .*chatgpt\.com/i, "il proxy va dichiarato dov'e' letto il dato");
+  assert.match(sezione, /pos 2/, "il rank della fonte giusta");
+});
+
+test("referto AEO: fonte senza nessuna riga lo dice, invece di restare vuota", () => {
+  const r = renderReferto({ runAt: "2026-08-12T00:00:00Z", perplexity: [], chatgpt: [], gsc: [] });
+  const sezione = r.slice(r.indexOf("## AEO — ChatGPT"), r.indexOf("## SEO"));
+  assert.match(sezione, /nessun dato|non ha risposto/i, "una sezione vuota si legge come 'tutto bene'");
+});
+
+test("referto AEO: le due fonti restano separate, non si mescolano", () => {
+  const r = renderReferto({
+    runAt: "2026-08-12T00:00:00Z",
+    perplexity: [{ queryText: "solo-pplx", contentRef: null, present: true, rank: 1 }],
+    chatgpt: [{ queryText: "solo-gpt", contentRef: null, present: true, rank: 1 }],
+    gsc: [],
+  });
+  const iGpt = r.indexOf("## AEO — ChatGPT");
+  const pplx = r.slice(r.indexOf("## AEO — Perplexity"), iGpt);
+  const gpt = r.slice(iGpt, r.indexOf("## SEO"));
+  assert.match(pplx, /solo-pplx/);
+  assert.doesNotMatch(pplx, /solo-gpt/, "la riga di ChatGPT non deve finire sotto Perplexity");
+  assert.match(gpt, /solo-gpt/);
+  assert.doesNotMatch(gpt, /solo-pplx/, "la riga di Perplexity non deve finire sotto ChatGPT");
+});

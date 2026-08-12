@@ -97,7 +97,7 @@ node engine/export.mjs --selfcheck                                     # frontma
 - `generate.mjs`: **stage 2, GENERATE**. A `verify` signal becomes a magazine case in IT+EN (problem/approach/result/lesson) grounded only in the sources, at `status=draft`. It does not embed and does not publish (human gate).
 - `export.mjs`: **stage 5, EXPORT**. An `approved` issue becomes Markdown files in `astro-project/src/content/magazine/{it,en}/` at `status=published`. Inverse mapping (application to approach, solution to result, body to lesson) and a re-screen before anything is written into the repo. It does not commit: Marco merges the content.
 - `retrieve.mjs`: the read end of the RAG (query to `match_article_chunks`). This is not the public C1 endpoint (rate limiting, guardrails and AI Act handling live in the Worker).
-- `visibility.mjs`: discoverability monitor covering SEO (Google Search Console) and AEO (Perplexity Sonar), producing a prescriptive report with the trend against the previous run and history on Supabase (`visibility_observations`). Declared descope: GSC rows carry a null `query_id` (no best-effort link to `visibility_queries`) and the report is two flat lists rather than being grouped by `content_ref`. It reopens if the volume justifies it.
+- `visibility.mjs`: discoverability monitor covering SEO (Google Search Console) and AEO (Perplexity Sonar, plus ChatGPT through the OpenAI Responses API with `web_search` — a **proxy** for chatgpt.com, not the thing itself, and the report says so), producing a prescriptive report with the trend against the previous run and history on Supabase (`visibility_observations`). Declared descope: GSC rows carry a null `query_id` (no best-effort link to `visibility_queries`) and the report is two flat lists rather than being grouped by `content_ref`. It reopens if the volume justifies it.
 - `devto.mjs`: canonical-first cross-posting of the writing collection to dev.to (`lib/devto.mjs`). Idempotent by `canonical_url`, so a re-run is an update; draft by default, live only with `--publish`; a re-run without the flag never unpublishes a piece that is already out. The draft starts on its own in CI when an article is merged (`devto-draft.yml`). With `--due` it becomes the **scheduled release**: the pure decision function `inUscita()` (tested dry) picks the pieces whose `date` has arrived and that are not yet live, the `devto-publish-due.yml` cron publishes them and opens a 24-hour notice for tomorrow's. There is still **one** human approval, at the merge of the PR.
 - `edicola.mjs`: automatic Newsstand cards. It queries dev.to (**published** articles whose canonical points at the site) and adds the missing cards to `src/data/edicola.json` (pure merge in `lib/edicola.mjs`, deduped by slug and by url; the label comes from the `edicola` frontmatter field or from the title). The `edicola-card.yml` cron opens the PR and carries it to production once the gates are green.
 - `radar-signals.mjs`: the bulletins the Radar already aggregates (licences verified in `docs/FONTI.md`) enter as proof candidates at `stage='discovery'` on the period's draft issue, `category='radar'`, tier NULL. Human verification and the 0006 gate do not change. It runs after ingest in the same workflow, and with no draft issue it comes back empty-handed. Pure mapping in `lib/radar-signals.mjs`. KEV stays out (no per-entry url).
@@ -117,8 +117,11 @@ doppler run -- npm run test:e2e       # live e2e: synthetic data 9999-01 + teard
   (`lib/urlmatch.mjs`, suffix attack included) and on the prescription ruleset
   (`lib/referto.mjs`); spawn-based integration with mocked `fetch`
   (`test/visibility.test.mjs`). The real run is scheduled weekly on GitHub Actions rather
-  than in CI, because queries to Perplexity and GSC cost money and are not deterministic.
-  Perplexity and GSC secrets live on Doppler, with GSC scoped read-only.
+  than in CI, because queries to Perplexity, OpenAI and GSC cost money and are not
+  deterministic. Perplexity, OpenAI and GSC secrets live on Doppler, with GSC scoped
+  read-only. The OpenAI leg is pay-per-call ($10 per 1k web searches): eight queries a
+  week is roughly $0.08, and a broken leg degrades to a report that says the source did
+  not answer — it never takes the monitor down.
 - **E2E (gated)**: proof that the **publish gate in the DB** (migration 0006) bites at every
   missing link. No Tier-1/Tier-2-independent proof, no it+en article, no embedding means the
   publish is refused; a complete chain passes, and the draft is never retrievable.
