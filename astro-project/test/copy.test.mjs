@@ -27,10 +27,14 @@ function paginePubblicate(dir = DIST, trovate = []) {
   return trovate;
 }
 
-// Filtri tolleranti su maiuscole E spazi: `<SCRIPT>` e `</script >` sono tag
-// validi che una regex ingenua non prende. Il primo giro di CodeQL ha nominato
-// solo il maiuscolo, il secondo lo spazio: e' la stessa classe di difetto, e si
-// corregge la classe. Se un tag sfugge allo spoglio, il
+// Filtri secondo la specifica HTML, non secondo il caso che capita. Un tag di
+// chiusura puo' essere maiuscolo, avere spazi (`</script >`) e perfino attributi
+// che il parser ignora (`</script foo>`): sono tutti validi. CodeQL me ne ha
+// nominato uno per giro, tre giri, ed e' il segno che stavo rincorrendo i casi
+// invece della classe. `(?:\s[^>]*)?` li copre tutti, e lo spazio richiesto
+// evita di scambiare `</postal>` per la chiusura di un `<p>`.
+//
+// Se un tag sfugge allo spoglio, il
 // contenuto di uno script entrerebbe nel «testo visibile», producendo falsi
 // allarmi su codice che nessuno legge.
 //
@@ -40,12 +44,12 @@ function paginePubblicate(dir = DIST, trovate = []) {
 // (`…PROMPT-E-VAI • ✳ © Marco Bellingeri — AI, Cloud…`), e tre statistiche vuote
 // in celle separate diventavano `Sessions — Tokens — Cost`. Nessuna delle due
 // esiste sulla pagina, ma il rilevatore le vedeva come prosa.
-const BLOCCHI = /<\/(?:p|li|h[1-6]|dd|dt|div|section|td|th|figcaption|blockquote|a|title)\s*>|<br\s*\/?>/gi;
+const BLOCCHI = /<\/(?:p|li|h[1-6]|dd|dt|div|section|td|th|figcaption|blockquote|a|title)(?:\s[^>]*)?>|<br(?:\s[^>]*)?\/?>/gi;
 
 const blocciVisibili = (html) =>
   html
-    .replace(/<script[\s\S]*?<\/script\s*>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style\s*>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script(?:\s[^>]*)?>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style(?:\s[^>]*)?>/gi, ' ')
     .replace(BLOCCHI, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&mdash;/g, '—')
