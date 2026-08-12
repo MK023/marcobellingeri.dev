@@ -3,8 +3,12 @@
 // Volutamente piccolo: la prescrizione generata da LLM è Fase 2 (sconfina nell'adapter).
 import { logsafe } from "./logsafe.mjs";
 
+// Le fonti AEO condividono la prescrizione: cambia il motore interrogato, non
+// cosa si fa quando un pezzo esiste e non emerge.
+const AEO = new Set(["perplexity", "chatgpt"]);
+
 export function prescription(o) {
-  if (o.engine === "perplexity") {
+  if (AEO.has(o.engine)) {
     if (o.present) return null;
     if (o.contentRef) {
       return `«${o.contentRef}» esiste ma non emerge: rendilo estraibile — un H2 che è la ` +
@@ -32,24 +36,39 @@ export function prescription(o) {
 // Il perché dei totali: con poco traffico GSC OMETTE le righe per query (sotto
 // la soglia di anonimizzazione), e il referto stampava un'intestazione vuota —
 // che si legge come "nessun problema" invece che come "non te lo posso dire".
-export function renderReferto({ runAt, perplexity = [], gsc = [], gscTotali = null, gscPagine = [] }) {
+export function renderReferto({
+  runAt, perplexity = [], chatgpt = [], gsc = [], gscTotali = null, gscPagine = [],
+}) {
   return [
     `# Referto discoverability — ${runAt}`,
     "",
-    ...sezioneAeo(perplexity),
+    ...sezioneAeo("perplexity", "Perplexity", perplexity),
+    "",
+    ...sezioneAeo("chatgpt", "ChatGPT (proxy API)", chatgpt, NOTA_CHATGPT),
     "",
     ...sezioneSeo({ gsc, gscTotali, gscPagine }),
   ].join("\n");
 }
 
-function sezioneAeo(perplexity) {
-  const lines = ["## AEO — Perplexity", ""];
-  for (const p of perplexity) {
+// Il dato arriva dall'API OpenAI con ricerca web, non da chatgpt.com: stesso
+// indice, contesto e personalizzazione diversi. Senza questa riga, fra sei mesi
+// "citato su ChatGPT" si legge come una cosa che non e' stata misurata.
+const NOTA_CHATGPT =
+  "> Misurato con l'API OpenAI + `web_search`, **non** con chatgpt.com: stesso indice web, " +
+  "ma contesto e personalizzazione sono diversi. È un proxy, e va letto come tale.";
+
+function sezioneAeo(engine, titolo, osservazioni, nota = null) {
+  const lines = [`## AEO — ${titolo}`, ""];
+  if (nota) lines.push(nota, "");
+  for (const p of osservazioni) {
     const stato = p.present ? `citato (pos ${p.rank})` : "non citato";
     lines.push(`- **${logsafe(p.queryText)}** — ${stato}${trendAeo(p)}`);
-    const rx = prescription({ engine: "perplexity", present: p.present, contentRef: p.contentRef });
+    const rx = prescription({ engine, present: p.present, contentRef: p.contentRef });
     if (rx) lines.push(`  - → ${rx}`);
   }
+  // Stessa lezione della sezione SEO: una sezione bianca si legge come "nessun
+  // problema", non come "la fonte non ha risposto".
+  if (!osservazioni.length) lines.push("- Nessun dato: la fonte non ha risposto per nessuna query.");
   return lines;
 }
 

@@ -1,8 +1,9 @@
-// Unit dei client I/O (perplexity, gsc): rami env-mancante, risposta non-ok,
+// Unit dei client I/O (perplexity, openai, gsc): rami env-mancante, risposta non-ok,
 // fallback del campo citazioni. Stub di fetch globale, zero rete.
 import { test, afterEach } from "node:test";
 import { strict as assert } from "node:assert";
 import { checkCitation } from "../lib/perplexity.mjs";
+import { checkCitation as checkCitationOpenai } from "../lib/openai.mjs";
 import { querySearchAnalytics, queryTotals, defaultWindow } from "../lib/gsc.mjs";
 
 const realFetch = globalThis.fetch;
@@ -61,6 +62,89 @@ test("perplexity: risposta non-ok -> throw con status e corpo", async () => {
   process.env.PERPLEXITY_API_KEY = "k";
   stubFetch([res("boom", { ok: false, status: 500 })]);
   await assert.rejects(() => checkCitation("q"), /perplexity 500: boom/);
+});
+
+// ---- openai (ChatGPT, proxy via Responses API + web_search) -------------
+
+test("openai: senza OPENAI_API_KEY -> throw prima di ogni fetch", async () => {
+  const prev = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try {
+    await assert.rejects(() => checkCitationOpenai("q"), /missing env: OPENAI_API_KEY/);
+  } finally {
+    if (prev !== undefined) process.env.OPENAI_API_KEY = prev;
+  }
+});
+
+test("openai: le citazioni si leggono dalle annotations url_citation", async () => {
+  process.env.OPENAI_API_KEY = "k";
+  stubFetch([res({
+    output: [{
+      type: "message",
+      content: [{
+        type: "output_text",
+        text: "risposta",
+        annotations: [
+          { type: "url_citation", url: "https://altro.example/x" },
+          { type: "url_citation", url: "https://marcobellingeri.dev/en/writing/x" },
+        ],
+      }],
+    }],
+  })]);
+  const hit = await checkCitationOpenai("q");
+  assert.equal(hit.present, true);
+  assert.equal(hit.rank, 2, "il rank e' la posizione nell'elenco delle citazioni");
+  assert.equal(hit.matchedUrl, "https://marcobellingeri.dev/en/writing/x");
+});
+
+test("openai: annotations che non sono citazioni non entrano nel rank", async () => {
+  process.env.OPENAI_API_KEY = "k";
+  stubFetch([res({
+    output: [{
+      type: "message",
+      content: [{
+        type: "output_text",
+        annotations: [
+          { type: "file_citation", file_id: "f_1" },
+          { type: "url_citation", url: "https://marcobellingeri.dev/" },
+        ],
+      }],
+    }],
+  })]);
+  const hit = await checkCitationOpenai("q");
+  assert.equal(hit.rank, 1, "la file_citation non occupa una posizione");
+});
+
+test("openai: nessuna annotation -> fallback sulle sources del web_search_call", async () => {
+  process.env.OPENAI_API_KEY = "k";
+  stubFetch([res({
+    output: [
+      {
+        type: "web_search_call",
+        action: { type: "search", sources: [{ url: "https://marcobellingeri.dev/it/" }] },
+      },
+      { type: "message", content: [{ type: "output_text", text: "risposta", annotations: [] }] },
+    ],
+  })]);
+  const hit = await checkCitationOpenai("q");
+  assert.equal(hit.present, true);
+  assert.equal(hit.matchedUrl, "https://marcobellingeri.dev/it/");
+});
+
+test("openai: risposta senza output -> non citato, nessun throw", async () => {
+  process.env.OPENAI_API_KEY = "k";
+  stubFetch([res({})]);
+  const hit = await checkCitationOpenai("q");
+  assert.deepEqual(
+    { present: hit.present, rank: hit.rank, matchedUrl: hit.matchedUrl },
+    { present: false, rank: null, matchedUrl: null },
+  );
+});
+
+test("openai: risposta non-ok -> throw con status e corpo", async () => {
+  process.env.OPENAI_API_KEY = "k";
+  stubFetch([res("boom", { ok: false, status: 429 })]);
+  await assert.rejects(() => checkCitationOpenai("q"), /openai 429: boom/);
 });
 
 // ---- gsc ---------------------------------------------------------------
