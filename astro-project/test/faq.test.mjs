@@ -75,3 +75,21 @@ test('faq: input non stringa -> nessuna coppia, nessun throw', () => {
   assert.deepEqual(faqPairs(undefined), []);
   assert.deepEqual(faqPairs(null), []);
 });
+
+// Il cap e' prima di tutto una regola editoriale: una risposta lunga un paragrafo
+// intero non e' una risposta secca, e nello schema diventa rumore. Vale anche
+// come limite superiore al lavoro delle regex di `testo`, che su una riga
+// patologica (parentesi o backtick mai chiusi) costerebbero O(n^2).
+test('faq: una risposta troppo lunga non e\' una risposta secca', () => {
+  const lunga = 'parola '.repeat(200).trim();
+  assert.ok(lunga.length > 600);
+  assert.deepEqual(faqPairs(`## Domanda?\n\n${lunga}\n`), []);
+});
+
+test('faq: una riga patologica non fa esplodere il tempo di estrazione', () => {
+  const patologica = '['.repeat(20_000) + '`'.repeat(20_000);
+  const avvio = process.hrtime.bigint();
+  faqPairs(`## Domanda?\n\n${patologica}\n`);
+  const ms = Number(process.hrtime.bigint() - avvio) / 1e6;
+  assert.ok(ms < 250, `estrazione lenta: ${ms.toFixed(0)}ms`);
+});
