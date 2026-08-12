@@ -53,7 +53,7 @@ That is now a habit rather than a rule: when the report is about whether we are 
 
 The last PR on the list deleted about 250 lines of code whose only job was repairing JSON that Claude had just written, and replaced the whole thing with Anthropic's tool use and a forced schema. Net delta across the client and its tests was around 370 lines removed.
 
-It went out alone, last, behind its own flag, with nothing else in flight. And it introduced a bug that took until the next morning to notice, because the bug was not in the code. It was in a prompt rule that had been surviving on ambiguity. I wrote that one up separately, in [from parsing JSON in the text to Claude's tool use](/en/writing/tool-use-jobsearch), because it deserves its own piece.
+It went out alone, last, behind its own flag, with nothing else in flight. And it introduced a bug that took until the next morning to notice, because the bug was not in the code. It was in a prompt rule that had been surviving on ambiguity. I wrote that one up separately, in [from parsing JSON in the text to Claude's tool use](https://marcobellingeri.dev/en/writing/tool-use-jobsearch), because it deserves its own piece.
 
 The relevant bit here is that the riskiest change was the easiest one to diagnose the next day. One PR, one concern, one diff to reread. If it had shipped in the middle of the pile with four other things, I would have spent that morning bisecting instead of thinking.
 
