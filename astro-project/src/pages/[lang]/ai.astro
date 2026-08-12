@@ -9,11 +9,22 @@ export function getStaticPaths() {
 
 const { lang } = Astro.params as { lang: Lang };
 
-// Pagina di trasparenza AI (art. 50 AI Act, applicabile dal 2 agosto 2026).
+// Pagina di trasparenza AI. L'art. 50 dell'AI Act NON è più una scadenza in
+// arrivo: si applica dal 2 agosto 2026, quindi da adesso. Il Digital Omnibus ha
+// rinviato l'alto rischio dell'Allegato III al 2 dicembre 2027, ma l'art. 50 è
+// stato lasciato fuori dal rinvio; la finestra fino al 2 dicembre 2026 riguarda
+// solo la marcatura leggibile a macchina, che è un obbligo del FORNITORE del
+// modello, non di chi lo usa.
 // Stessa filosofia della sezione Security: dimostrare, non dichiarare — ogni
-// affermazione punta al posto vivo dove la si può verificare.
+// affermazione punta al posto vivo dove la si può verificare, e da qui in poi
+// anche l'obbligo punta al testo della Commissione invece che alla nostra parola.
 const CONTATTO = 'mkdevpy@proton.me';
-const UPDATED = '2026-07-22';
+const UPDATED = '2026-08-12';
+
+// La FAQ ufficiale della Commissione sull'art. 50. Serve al lettore che vuole
+// controllare se stiamo raccontando giusto: senza, questa pagina chiede fiducia.
+const ART50_FAQ =
+  'https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act';
 
 // Il giudice vive nella CI, non sul sito: l'unico posto dove lo si verifica è
 // il workflow nel repo pubblico. La pagina promette «ogni voce linka il punto
@@ -30,13 +41,13 @@ const copy = {
   it: {
     title: 'Trasparenza AI',
     intro:
-      'Dal 2 agosto 2026 si applica l’articolo 50 dell’AI Act europeo: chi usa sistemi di IA che parlano con le persone o generano contenuti deve dirlo, in modo chiaro e al primo contatto. Questa pagina elenca dove questo sito usa l’IA, cosa fa ogni sistema, quali dati tocca e dove sta la disclosure. Non in astratto: ogni voce linka il punto del sito dove puoi verificarla.',
+      'L’articolo 50 dell’AI Act europeo si applica dal 2 agosto 2026, quindi da adesso: chi usa sistemi di IA che parlano con le persone o generano contenuti deve dirlo, in modo chiaro e al primo contatto. Questa pagina elenca dove questo sito usa l’IA, cosa fa ogni sistema, quali dati tocca e dove sta la disclosure. Non in astratto: ogni voce linka il punto del sito dove puoi verificarla, e l’obbligo linka il testo della Commissione invece della nostra parola.',
     systemsH: 'Dove questo sito usa l’IA',
     systems: [
       {
         name: 'Il terminale (comando ask)',
         what: 'Rispondi a una domanda sui contenuti del magazine con una risposta generata da Claude (Anthropic), basata solo sui numeri pubblicati e sempre accompagnata dalle citazioni delle fonti.',
-        data: 'La domanda che digiti viene trasformata in vettore da Voyage AI, confrontata con i contenuti pubblicati su Supabase e passata a Claude per la risposta. Non viene salvata da questo sito; l’osservabilità (Langfuse, UE) riceve solo numeri — token, tempi, esiti — mai i testi. Il form è protetto da Turnstile e da un limite di richieste per IP.',
+        data: 'La domanda che digiti viene trasformata in vettore da Voyage AI, confrontata con i contenuti pubblicati su Supabase e passata a Claude per la risposta. Non viene salvata da questo sito; l’osservabilità (Langfuse, UE) riceve solo numeri (token, tempi, esiti), mai i testi. Il form è protetto da Turnstile e da un limite di richieste per IP.',
         disclosure: 'Ogni risposta include la dicitura «Risposta generata da IA sui numeri del magazine, con citazioni (AI Act art. 50)» nel payload, visibile nel terminale.',
         link: terminalUrl,
         linkLabel: 'Apri il terminale →',
@@ -45,7 +56,7 @@ const copy = {
         name: 'Il magazine mensile',
         what: 'Un caso al mese di IA applicata sul lavoro. La bozza la scrive una pipeline (sourcing da fonti primarie, verifica delle fonti, stesura con Claude), ma nessun numero esce senza revisione e approvazione umana: il blocco è nel database, non in una policy.',
         data: 'Solo pagine pubbliche come fonti; nessun dato personale. La pipeline gira lato server, non nel tuo browser.',
-        disclosure: 'Ogni numero porta l’etichetta «Generato con IA, revisionato da una persona» sulla sua pagina. La responsabilità editoriale è di Marco Bellingeri.',
+        disclosure: 'Ogni numero porta l’etichetta «Generato con IA, revisionato da una persona» sulla sua pagina. La responsabilità editoriale è di Marco Bellingeri. L’articolo 50 esenta dall’obbligo di etichetta il testo che ha avuto una revisione editoriale umana vera, e qui c’è: il blocco della pubblicazione sta nel database, non in una buona intenzione. L’etichetta resta lo stesso, perché chi legge ha diritto di saperlo a prescindere da cosa gli impone la legge.',
         link: magazineUrl,
         linkLabel: 'Vai al magazine →',
       },
@@ -59,7 +70,7 @@ const copy = {
       },
       {
         name: 'Il monitor di visibilità',
-        what: 'Uno script interno che misura come il sito compare nei motori di ricerca e nelle risposte degli assistenti IA (Google Search Console, Perplexity). Produce un report privato: non genera contenuti pubblici e non prende decisioni.',
+        what: 'Uno script interno che misura come il sito compare nei motori di ricerca e nelle risposte degli assistenti IA (Google Search Console, Perplexity e ChatGPT tramite l’API di OpenAI). Produce un report privato: non genera contenuti pubblici e non prende decisioni.',
         data: 'Nessun dato dei visitatori: interroga servizi esterni sul sito stesso.',
         disclosure: 'Nessuna richiesta dall’art. 50: non interagisce con persone e non pubblica contenuti. È qui per completezza.',
         link: null,
@@ -78,19 +89,20 @@ const copy = {
       'Il form di contatto, le prenotazioni e tutto il resto del sito sono codice normale: nessuna decisione automatizzata sui visitatori, nessuna profilazione, nessun contenuto generato al volo. Cosa succede ai dati che invii lo spiega l’informativa privacy.',
     contactH: 'Domande',
     contact: `Se qualcosa non ti torna, o vuoi sapere di più su come è fatto uno di questi sistemi: ${CONTATTO}.`,
+    art50Link: 'Leggi l’articolo 50 sul sito della Commissione →',
     privacyLink: 'Informativa privacy',
     updated: `Ultimo aggiornamento: ${UPDATED}`,
   },
   en: {
     title: 'AI transparency',
     intro:
-      'From 2 August 2026, Article 50 of the EU AI Act applies: anyone running AI systems that talk to people or generate content has to say so, clearly and at first contact. This page lists where this site uses AI, what each system does, what data it touches and where the disclosure lives. Not in the abstract: every entry links to the place on the site where you can check it.',
+      'Article 50 of the EU AI Act has applied since 2 August 2026, so it is in force now: anyone running AI systems that talk to people or generate content has to say so, clearly and at first contact. This page lists where this site uses AI, what each system does, what data it touches and where the disclosure lives. Not in the abstract: every entry links to the place on the site where you can check it, and the obligation links to the Commission’s own text rather than to our word for it.',
     systemsH: 'Where this site uses AI',
     systems: [
       {
         name: 'The terminal (ask command)',
         what: 'You ask a question about the magazine and get an answer generated by Claude (Anthropic), grounded only in the published issues and always accompanied by source citations.',
-        data: 'The question you type is turned into a vector by Voyage AI, matched against the published content on Supabase and passed to Claude for the answer. This site does not store it; observability (Langfuse, EU) receives numbers only — tokens, timings, outcomes — never the texts. The form is protected by Turnstile and a per-IP rate limit.',
+        data: 'The question you type is turned into a vector by Voyage AI, matched against the published content on Supabase and passed to Claude for the answer. This site does not store it; observability (Langfuse, EU) receives numbers only (tokens, timings, outcomes), never the texts. The form is protected by Turnstile and a per-IP rate limit.',
         disclosure: 'Every answer carries the notice "AI-generated from the magazine issues, with citations (EU AI Act art. 50)" in its payload, visible in the terminal.',
         link: terminalUrl,
         linkLabel: 'Open the terminal →',
@@ -99,7 +111,7 @@ const copy = {
         name: 'The monthly magazine',
         what: 'One real case of applied AI per month. A pipeline writes the draft (sourcing from primary sources, source verification, drafting with Claude), but no issue ships without human review and approval: the block lives in the database, not in a policy document.',
         data: 'Public pages only as sources; no personal data. The pipeline runs server-side, not in your browser.',
-        disclosure: 'Every issue carries the label "AI-generated, human-reviewed" on its page. Editorial responsibility rests with Marco Bellingeri.',
+        disclosure: 'Every issue carries the label "AI-generated, human-reviewed" on its page. Editorial responsibility rests with Marco Bellingeri. Article 50 exempts text that has had genuine human editorial review from the labelling duty, and this has it. The publication gate lives in the database, not in a good intention. The label stays anyway, because a reader deserves to know regardless of what the law requires.',
         link: magazineUrl,
         linkLabel: 'Go to the magazine →',
       },
@@ -113,7 +125,7 @@ const copy = {
       },
       {
         name: 'The visibility monitor',
-        what: 'An internal script that measures how the site shows up in search engines and AI assistants’ answers (Google Search Console, Perplexity). It produces a private report: it generates no public content and makes no decisions.',
+        what: 'An internal script that measures how the site shows up in search engines and AI assistants’ answers (Google Search Console, Perplexity, and ChatGPT through the OpenAI API). It produces a private report: it generates no public content and makes no decisions.',
         data: 'No visitor data: it queries external services about the site itself.',
         disclosure: 'Nothing required by art. 50: it does not interact with people and publishes nothing. Listed here for completeness.',
         link: null,
@@ -132,6 +144,7 @@ const copy = {
       'The contact form, the booking flow and everything else on the site are ordinary code: no automated decisions about visitors, no profiling, no content generated on the fly. What happens to the data you send is covered by the privacy policy.',
     contactH: 'Questions',
     contact: `If something here does not add up, or you want to know more about how any of these systems is built: ${CONTATTO}.`,
+    art50Link: 'Read Article 50 on the Commission’s own site →',
     privacyLink: 'Privacy policy',
     updated: `Last updated: ${UPDATED}`,
   },
@@ -141,7 +154,7 @@ const copy = {
 <BaseLayout lang={lang} title={copy.title} description={copy.intro.slice(0, 155)} path="ai">
   <main id="main-content" class="legal-page">
     <h1 class="display">{copy.title}</h1>
-    <p class="legal-intro">{copy.intro}</p>
+    <p class="legal-intro">{copy.intro} <a href={ART50_FAQ} rel="noopener">{copy.art50Link}</a></p>
 
     <h2>{copy.systemsH}</h2>
     {copy.systems.map((s) => (

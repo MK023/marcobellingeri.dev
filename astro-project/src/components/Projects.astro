@@ -73,11 +73,11 @@ const projects: Record<Lang, Project[]> = {
       statusLabel: 'LIVE',
       swatchClass: 'p-violet',
       summary:
-        'Quanto lavoro faccio davvero con l’AI, misurato invece che raccontato. Claude Code manda la sua telemetria a un hub mio — cinque servizi dietro un tunnel — e in questa pagina tre numeri veri si aggiornano da soli.',
+        'Quanto lavoro faccio davvero con l’AI, misurato invece che raccontato. Claude Code manda la sua telemetria a un hub mio, cinque servizi dietro un tunnel, e in questa pagina tre numeri veri si aggiornano da soli.',
       problem:
         'Del lavoro assistito dall’AI si parla per aneddoti. Non sapevo quanto ne facessi, con quali modelli, a che costo — e nessuno strumento me lo diceva senza spedire le mie sessioni a qualcun altro.',
       approach:
-        'OpenTelemetry da Claude Code verso un Collector che autentica l’ingest e applica una allow-list sulle label: ciò che non è dichiarato sicuro non diventa mai una metrica. Prometheus conserva, Grafana mostra dietro Cloudflare Access, e una status API espone esattamente tre numeri aggregati — nessuna query libera, nessun contenuto di sessione.',
+        'OpenTelemetry da Claude Code verso un Collector che autentica l’ingest e applica una allow-list sulle label: ciò che non è dichiarato sicuro non diventa mai una metrica. Prometheus conserva, Grafana mostra dietro Cloudflare Access, e una status API espone esattamente tre numeri aggregati: nessuna query libera, nessun contenuto di sessione.',
       result:
         'In produzione su Railway dietro un Cloudflare Tunnel, con nessun servizio esposto su un dominio pubblico della piattaforma. La allow-list è nata da una misura, non da una lettura: la mia email vera arrivava come label di Prometheus, e la correzione ovvia perdeva dati in silenzio.',
     },
@@ -120,7 +120,7 @@ const projects: Record<Lang, Project[]> = {
       statusLabel: '→ APP STORE',
       swatchClass: 'p-orange',
       summary:
-        "Turin, rush hour: where do you leave the car? An API that answers in real time, built security-first as if it had been in production for years — async FastAPI, PostGIS for geospatial, Redis with ETags. Next stop: the App Store.",
+        "Turin, rush hour: where do you leave the car? An API that answers in real time, built security-first as if it had been in production for years: async FastAPI, PostGIS for geospatial, Redis with ETags. Next stop: the App Store.",
       problem:
         "Knowing in real time where there's a free spot in Turin meant jumping between different sources, with no single clean, fast API to query.",
       approach:
@@ -135,9 +135,9 @@ const projects: Record<Lang, Project[]> = {
       statusLabel: 'LIVE',
       swatchClass: 'p-violet',
       summary:
-        'How much work I actually do with AI, measured instead of claimed. Claude Code ships its telemetry to a hub of my own — five services behind a tunnel — and on this page three real numbers update by themselves.',
+        'How much work I actually do with AI, measured instead of claimed. Claude Code ships its telemetry to a hub of my own, five services behind a tunnel, and on this page three real numbers update by themselves.',
       problem:
-        'AI-assisted work gets discussed in anecdotes. I had no idea how much of it I was doing, with which models, at what cost — and no tool would tell me without shipping my sessions to somebody else.',
+        'AI-assisted work gets discussed in anecdotes. I had no idea how much of it I was doing, with which models, at what cost, and no tool would tell me without shipping my sessions to somebody else.',
       approach:
         'OpenTelemetry from Claude Code into a Collector that authenticates the ingest and applies an allow-list on labels: anything not declared safe never becomes a metric. Prometheus stores, Grafana displays behind Cloudflare Access, and a status API exposes exactly three aggregate numbers — no free-form queries, no session content.',
       result:
@@ -150,13 +150,13 @@ const projects: Record<Lang, Project[]> = {
       statusLabel: 'R&D',
       swatchClass: 'p-dark',
       summary:
-        "The philosophical experiment of the lot: an Obsidian knowledge graph asking how memory and identity get built over time. Shelved as a product, irreplaceable as a thinking tool — and the RAG-powered SaaS idea is still on the table.",
+        "The philosophical experiment of the lot: an Obsidian knowledge graph asking how memory and identity get built over time. Shelved as a product, irreplaceable as a thinking tool, and the RAG-powered SaaS idea is still on the table.",
       problem:
         "Scattered notes didn't talk to each other: ideas, readings and projects ended up isolated instead of connected.",
       approach:
         'A personal knowledge graph on Obsidian, meant not just as an archive but as an open question about how memory and identity are built over time.',
       result:
-        'Deprioritised as a product against whatever was actually shipping, but it remains the thinking tool I use most — and the idea of a SaaS version with RAG is still on the table.',
+        'Deprioritised as a product against whatever was actually shipping, but it remains the thinking tool I use most, and the idea of a SaaS version with RAG is still on the table.',
     },
   ],
 };

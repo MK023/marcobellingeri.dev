@@ -29,7 +29,7 @@ export const ui = {
     'sec.cmd': '$ security headers served by this page',
     'sec.source': 'SOURCE: HEAD SELF · LIVE',
     'sec.loading': 'reading response headers…',
-    'sec.note': 'Headers are applied at the edge (Cloudflare) and read live from this page’s response — locally they may show as missing.',
+    'sec.note': 'Headers are applied at the edge (Cloudflare) and read live from this page’s response, so locally they may show as missing.',
     'sec.aiNote': 'The terminal on this page prints text written by a model. Keeping that text from becoming code is not a matter of trusting the model: the page has to refuse to run anything inline. Those last two rows are that refusal, read from the policy your browser just enforced.',
     'sec.title': 'Security',
     'sec.intro': 'This page audits itself. The table below is not a claim — it is read live from the response headers your browser just received.',
@@ -83,7 +83,7 @@ export const ui = {
       'Thirty minutes, free, no commitment. Time zone handled automatically, email confirmation — no back-and-forth to find a time. If we then work together, the first day is on me unless it convinces you.',
     'booking.facadeLabel': 'CAL.EU — LOADED ON REQUEST',
     'booking.facadeCopy':
-      'The calendar is served by Cal.eu, a third party. Nothing is loaded — and nothing leaves your browser — until you click.',
+      'The calendar is served by Cal.eu, a third party. Nothing is loaded, and nothing leaves your browser, until you click.',
     'booking.facadeCta': 'LOAD THE CALENDAR →',
     'booking.frameTitle': 'Booking calendar',
     'booking.frameLabel': 'CLASSIFIED — BOOKING OPEN',
@@ -163,7 +163,7 @@ export const ui = {
     // ---- appuntamenti ----
     'booking.title': 'Appuntamenti',
     'booking.note':
-      'Trenta minuti, gratis, nessun impegno. Fuso orario gestito in automatico, conferma via email — niente scambi di messaggi per trovare un orario. Se poi lavoriamo insieme, la prima giornata la paghi solo se ti convince.',
+      'Trenta minuti, gratis, nessun impegno. Fuso orario gestito in automatico, conferma via email, senza scambi di messaggi per trovare un orario. Se poi lavoriamo insieme, la prima giornata la paghi solo se ti convince.',
     'booking.facadeLabel': 'CAL.EU — CARICATO SU RICHIESTA',
     'booking.facadeCopy':
       'Il calendario è servito da Cal.eu, una terza parte. Finché non clicchi non viene caricato nulla, e nulla lascia il tuo browser.',
