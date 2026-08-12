@@ -122,6 +122,69 @@ test("upsertArticle: lo slash finale non fa un doppione, aggiorna l'esistente", 
   assert.match(calls.find((c) => c.method === "PUT").url, /\/articles\/42$/);
 });
 
+// Il 429 del 11-08-2026: la Devto draft, dopo un merge che toccava tre articoli
+// EN, li aggiorna in fila senza pausa. I primi due passano, il terzo prende
+// "429: Retry later" e il workflow muore a meta' lavoro — con il repo e il
+// mirror allineati solo per due pezzi su tre, in silenzio fino all'issue.
+// Il limite e' loro (1 scrittura ogni ~30s), quindi la difesa sta nella
+// funzione condivisa: ogni chiamante ci passa (--due pubblica in loop uguale).
+test("upsertArticle: 429 sulla scrittura -> aspetta e riprova, poi passa", async () => {
+  process.env.DEVTO_API_KEY = "k";
+  let scritture = 0;
+  const calls = stubFetch((c) => {
+    if (c.url.includes("/articles/me/all")) return okJson([]);
+    scritture += 1;
+    if (scritture === 1) return new Response("Retry later", { status: 429 });
+    return okJson({ id: 7, url: "https://dev.to/mk/a-7" });
+  });
+  const attese = [];
+  const r = await upsertArticle({
+    title: "T", description: "D", tags: [], body: "B", canonicalUrl: "https://x",
+    attendi: async (ms) => { attese.push(ms); },
+  });
+  assert.equal(r.id, 7, "dopo il 429 la scrittura deve andare a buon fine");
+  assert.equal(scritture, 2, "il 429 va riprovato, non propagato");
+  assert.equal(attese.length, 1, "fra un tentativo e l'altro si aspetta");
+  assert.ok(attese[0] > 0, "l'attesa non puo' essere zero: il limite e' a tempo");
+});
+
+test("upsertArticle: 429 con Retry-After -> aspetta i secondi che dice il server", async () => {
+  process.env.DEVTO_API_KEY = "k";
+  let scritture = 0;
+  stubFetch((c) => {
+    if (c.url.includes("/articles/me/all")) return okJson([]);
+    scritture += 1;
+    if (scritture === 1) return new Response("Retry later", { status: 429, headers: { "Retry-After": "5" } });
+    return okJson({ id: 7, url: "https://dev.to/mk/a-7" });
+  });
+  const attese = [];
+  await upsertArticle({
+    title: "T", description: "D", tags: [], body: "B", canonicalUrl: "https://x",
+    attendi: async (ms) => { attese.push(ms); },
+  });
+  assert.deepEqual(attese, [5000], "Retry-After e' in secondi e va rispettato");
+});
+
+test("upsertArticle: 429 che non passa mai -> throw, con un numero finito di tentativi", async () => {
+  process.env.DEVTO_API_KEY = "k";
+  let scritture = 0;
+  stubFetch((c) => {
+    if (c.url.includes("/articles/me/all")) return okJson([]);
+    scritture += 1;
+    return new Response("Retry later", { status: 429 });
+  });
+  const attese = [];
+  await assert.rejects(
+    () => upsertArticle({
+      title: "T", description: "D", tags: [], body: "B", canonicalUrl: "https://x",
+      attendi: async (ms) => { attese.push(ms); },
+    }),
+    /devto create 429/,
+    "esaurite le riprove l'errore deve restare visibile, non sparire",
+  );
+  assert.ok(scritture > 1 && scritture <= 4, `tentativi finiti e limitati, non ${scritture}`);
+});
+
 test("upsertArticle: risposta non-ok -> throw con status e corpo", async () => {
   process.env.DEVTO_API_KEY = "k";
   stubFetch(() => new Response("boom", { status: 500 }));

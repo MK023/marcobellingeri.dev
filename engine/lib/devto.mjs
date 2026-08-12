@@ -101,7 +101,34 @@ export async function publishedArticles() {
 // viene mandato solo quando publish=true — sul create l'API defaulta a false, e
 // sull'update ometterlo significa NON toccare lo stato live (un re-run senza
 // --publish non deve mai spubblicare un pezzo già uscito).
-export async function upsertArticle({ title, description, tags, body, canonicalUrl, publish = false }) {
+// dev.to limita le scritture sugli articoli (~1 ogni 30s) e risponde 429 a chi
+// corre. La Devto draft aggiorna in fila tutti gli articoli EN toccati dal
+// merge: l'11-08-2026 il terzo di tre ha preso "429: Retry later" e il workflow
+// e' morto a meta' lavoro, lasciando repo e mirror allineati su due pezzi su
+// tre. La riprova sta QUI e non nel workflow perche' ci passa ogni chiamante
+// (il singolo slug, e il loop di --due che pubblica un pezzo dopo l'altro).
+//
+// Attese fisse e non esponenziali: il limite e' a finestra di tempo, non un
+// server sotto sforzo — raddoppiare non aiuta, aspettare la finestra si.
+// `attendi` e' iniettabile solo perche' i test non devono dormire davvero.
+const ATTESE_429 = [30_000, 30_000, 60_000];
+const dormi = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function scriviConRiprova({ url, init, verbo, attendi }) {
+  for (let tentativo = 0; ; tentativo++) {
+    const r = await fetch(url, init);
+    if (r.ok) return r.json();
+    const corpo = await r.text();
+    if (r.status !== 429 || tentativo >= ATTESE_429.length) {
+      throw new Error(`devto ${verbo} ${r.status}: ${corpo}`);
+    }
+    // Retry-After e' in secondi quando c'e'; quando non c'e', la finestra nota.
+    const dichiarato = Number(r.headers.get("retry-after"));
+    await attendi(Number.isFinite(dichiarato) && dichiarato > 0 ? dichiarato * 1000 : ATTESE_429[tentativo]);
+  }
+}
+
+export async function upsertArticle({ title, description, tags, body, canonicalUrl, publish = false, attendi = dormi }) {
   const { DEVTO_API_KEY } = process.env;
   if (!DEVTO_API_KEY) throw new Error("missing env: DEVTO_API_KEY (usa `doppler run`)");
   const headers = { "api-key": DEVTO_API_KEY, "Content-Type": "application/json" };
@@ -119,10 +146,11 @@ export async function upsertArticle({ title, description, tags, body, canonicalU
   };
   if (publish) article.published = true;
 
-  const w = await fetch(esistente ? `${API}/articles/${esistente.id}` : `${API}/articles`, {
-    method: esistente ? "PUT" : "POST", headers, body: JSON.stringify({ article }),
+  const j = await scriviConRiprova({
+    url: esistente ? `${API}/articles/${esistente.id}` : `${API}/articles`,
+    init: { method: esistente ? "PUT" : "POST", headers, body: JSON.stringify({ article }) },
+    verbo: esistente ? "update" : "create",
+    attendi,
   });
-  if (!w.ok) throw new Error(`devto ${esistente ? "update" : "create"} ${w.status}: ${await w.text()}`);
-  const j = await w.json();
   return { id: j.id, url: j.url, updated: Boolean(esistente) };
 }
