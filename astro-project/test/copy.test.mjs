@@ -27,10 +27,12 @@ function paginePubblicate(dir = DIST, trovate = []) {
   return trovate;
 }
 
-// Filtri case-insensitive: un `<SCRIPT>` maiuscolo sfuggirebbe allo spoglio e il
-// suo contenuto entrerebbe nel «testo visibile», producendo falsi allarmi su
-// codice che nessuno legge. Astro emette minuscolo, ma un filtro di tag che si
-// fida del caso e' rotto per definizione.
+// Filtri tolleranti su maiuscole E spazi: `<SCRIPT>` e `</script >` sono tag
+// validi che una regex ingenua non prende. Il primo giro di CodeQL ha nominato
+// solo il maiuscolo, il secondo lo spazio: e' la stessa classe di difetto, e si
+// corregge la classe. Se un tag sfugge allo spoglio, il
+// contenuto di uno script entrerebbe nel «testo visibile», producendo falsi
+// allarmi su codice che nessuno legge.
 //
 // Il testo che vede una persona, UN BLOCCO ALLA VOLTA. Appiattire l'intera
 // pagina in una stringa sola cuce insieme elementi che non si toccano e fabbrica
@@ -38,12 +40,12 @@ function paginePubblicate(dir = DIST, trovate = []) {
 // (`…PROMPT-E-VAI • ✳ © Marco Bellingeri — AI, Cloud…`), e tre statistiche vuote
 // in celle separate diventavano `Sessions — Tokens — Cost`. Nessuna delle due
 // esiste sulla pagina, ma il rilevatore le vedeva come prosa.
-const BLOCCHI = /<\/(?:p|li|h[1-6]|dd|dt|div|section|td|th|figcaption|blockquote|a|title)>|<br\s*\/?>/gi;
+const BLOCCHI = /<\/(?:p|li|h[1-6]|dd|dt|div|section|td|th|figcaption|blockquote|a|title)\s*>|<br\s*\/?>/gi;
 
 const blocciVisibili = (html) =>
   html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script\s*>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style\s*>/gi, ' ')
     .replace(BLOCCHI, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&mdash;/g, '—')
