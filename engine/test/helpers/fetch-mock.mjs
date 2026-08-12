@@ -25,5 +25,18 @@ globalThis.fetch = async (url, init = {}) => {
     const input = JSON.parse(init.body).input;
     body = { data: input.map((_, i) => ({ index: i, embedding: Array(DIM).fill(0.01) })) };
   }
-  return new Response(typeof body === "string" ? body : JSON.stringify(body ?? null), { status: r.status ?? 200 });
+  const status = r.status ?? 200;
+
+  // Il mock SEGUE i redirect, se il chiamante non ha chiesto `manual`. Senza
+  // questo, un test sul rifiuto dei 3xx passa anche togliendo la difesa: la
+  // risposta resta un 302 comunque, e il guard `!r.ok` scatta lo stesso. Con il
+  // follow, chi non si difende riceve un 200 dalla destinazione — e il test cade.
+  if (status >= 300 && status < 400 && (init.redirect ?? "follow") !== "manual") {
+    const dest = r.location ?? "";
+    const d = routes.find((x) => dest.includes(x.match) && (x.method ?? "GET").toUpperCase() === method);
+    if (!d) throw new Error(`redirect non mockato verso: ${dest}`);
+    return new Response(typeof d.body === "string" ? d.body : JSON.stringify(d.body ?? null), { status: d.status ?? 200 });
+  }
+
+  return new Response(typeof body === "string" ? body : JSON.stringify(body ?? null), { status });
 };
