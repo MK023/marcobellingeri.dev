@@ -28,7 +28,10 @@ const copy = {
     tagline: "Quanto lavoro faccio con l'AI, misurato dal mio hub invece che raccontato.",
     intro:
       'Claude Code gira sul mio computer e manda la sua telemetria a un hub che ho costruito: Collector, Prometheus, Grafana e una piccola API, cinque servizi su Railway dietro un Cloudflare Tunnel. I tre numeri qui sotto arrivano da lì mentre leggi.',
-    widget: { sessioni: 'Sessioni', token: 'Token', costo: 'Costo' },
+    widget: {
+      sessioni: 'Sessioni', token: 'Token', costo: 'Costo',
+      vecchi: 'Numeri di circa {n} min fa: l’hub non risponde in questo momento',
+    },
     finestraH: 'PERCHÉ 25 ORE E NON "OGGI"',
     finestra:
       'Ogni sessione è una serie a sé: un contatore che cresce finché la sessione vive, e poi resta fermo. La finestra la decide il Collector, che smette di esporre una serie un giorno dopo il suo ultimo aggiornamento. Non è un giorno di calendario, è l\'attività delle ultime venticinque ore circa. Tanto quanto questi numeri possono dire senza barare.',
@@ -46,7 +49,10 @@ const copy = {
     tagline: 'How much work I do with AI, measured by my own hub instead of claimed.',
     intro:
       'Claude Code runs on my machine and sends its telemetry to a hub I built: Collector, Prometheus, Grafana and a small API, five services on Railway behind a Cloudflare Tunnel. The three numbers below come from there while you read this.',
-    widget: { sessioni: 'Sessions', token: 'Tokens', costo: 'Cost' },
+    widget: {
+      sessioni: 'Sessions', token: 'Tokens', costo: 'Cost',
+      vecchi: 'Numbers from about {n} min ago: the hub is not answering right now',
+    },
     finestraH: 'WHY 25 HOURS AND NOT "TODAY"',
     finestra:
       'Every session is its own series: a counter that grows while the session lives, then stops. The window comes from the Collector, which stops exposing a series one day after its last update. This is not a calendar day, it is roughly the last twenty five hours of activity. As much as these numbers can claim without cheating.',
@@ -78,6 +84,7 @@ const backHref = `${getRelativeLocaleUrl(lang, '')}#projects`;
         sessioni={copy.widget.sessioni}
         token={copy.widget.token}
         costo={copy.widget.costo}
+        vecchi={copy.widget.vecchi}
       />
 
       <div class="ao-note">

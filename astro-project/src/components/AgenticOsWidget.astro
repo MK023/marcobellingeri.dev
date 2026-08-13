@@ -8,8 +8,12 @@
 //
 // Stato base senza JS (e con l'hub spento): tre trattini. Il widget dichiara
 // "non lo so", non finge uno zero.
-interface Props { sessioni: string; token: string; costo: string; }
-const { sessioni, token, costo } = Astro.props;
+//
+// Quando l'hub non risponde ma il Worker ha in cache un valore recente, i numeri
+// ci sono ma NON sono di adesso, e il widget deve dirlo. Numeri vecchi mostrati
+// come freschi sarebbero peggio del trattino: il trattino almeno è onesto.
+interface Props { sessioni: string; token: string; costo: string; vecchi: string; }
+const { sessioni, token, costo, vecchi } = Astro.props;
 ---
 
 <div class="agentic-os" data-agentic-os>
@@ -18,6 +22,10 @@ const { sessioni, token, costo } = Astro.props;
     <div><dt class="mono">{token}</dt><dd class="big-stat display" data-campo="tokensToday">—</dd></div>
     <div><dt class="mono">{costo}</dt><dd class="big-stat display" data-campo="costUsdToday">—</dd></div>
   </dl>
+  <!-- hidden finché non serve: `hidden` invece di uno style inline, che la CSP
+       hash-based bloccherebbe in produzione. role="status" perché il cambio
+       avviene dopo il caricamento e chi usa uno screen reader deve sentirlo. -->
+  <p class="agentic-os-vecchi mono" data-agentic-vecchi data-modello={vecchi} role="status" hidden></p>
 </div>
 
 <script>
@@ -32,11 +40,21 @@ const { sessioni, token, costo } = Astro.props;
   for (const box of document.querySelectorAll<HTMLElement>('[data-agentic-os]')) {
     fetch('/api/agentic-status')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((dati: Record<string, number | null>) => {
+      .then((dati: Record<string, number | boolean | null>) => {
         for (const cella of box.querySelectorAll<HTMLElement>('[data-campo]')) {
           const campo = cella.dataset.campo!;
-          cella.textContent = formatta(campo, dati[campo]);
+          cella.textContent = formatta(campo, dati[campo] as number | null);
         }
+
+        // `stale` arriva solo quando il Worker ha servito l'ultimo valore buono
+        // perché l'hub non rispondeva. Assente = numeri di adesso, niente da dire.
+        const avviso = box.querySelector<HTMLElement>('[data-agentic-vecchi]');
+        if (!avviso || dati.stale !== true) return;
+        // "min" e non "minuti": evita di dover concordare il singolare in due
+        // lingue per un'etichetta che compare qualche minuto all'anno.
+        const minuti = Math.max(1, Math.round(Number(dati.ageSeconds ?? 0) / 60));
+        avviso.textContent = (avviso.dataset.modello ?? '').replace('{n}', String(minuti));
+        avviso.hidden = false;
       })
       // I trattini sono già in pagina: un hub giù non lascia niente da fare qui.
       .catch(() => {});
@@ -74,5 +92,13 @@ const { sessioni, token, costo } = Astro.props;
   .agentic-os-cifre dd{
     margin:0;
     font-size:clamp(30px, 6vw, 58px);
+  }
+  /* Sotto le cifre e più tenue: è una nota sulla loro freschezza, non un errore.
+     Un colore d'allarme direbbe "qualcosa è rotto", mentre qui il degrado sta
+     funzionando come previsto. */
+  .agentic-os-vecchi{
+    margin:16px 0 0;
+    font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+    opacity:0.7; text-align:center;
   }
 </style>
