@@ -7,7 +7,28 @@ import assert from 'node:assert/strict';
 import { gestisciAgenticStatus } from '../worker/agentic-status.js';
 
 const realFetch = globalThis.fetch;
-afterEach(() => { globalThis.fetch = realFetch; delete globalThis.__SEGNALA_SENTRY__; });
+const realCaches = globalThis.caches;
+afterEach(() => {
+  globalThis.fetch = realFetch;
+  if (realCaches === undefined) delete globalThis.caches; else globalThis.caches = realCaches;
+  delete globalThis.__SEGNALA_SENTRY__;
+});
+
+// La Cache API non esiste in node:test, ed è il motivo per cui il Worker la usa
+// via `globalThis.caches?.default`: senza il doppio qui sotto il codice deve
+// funzionare identico, solo senza ultimo-valore-buono. Due metodi soli, match e
+// put, perché sono gli unici due che il Worker chiama.
+const cacheFinta = () => {
+  let salvato = null;
+  const finta = {
+    match: async () => (salvato ? salvato.clone() : undefined),
+    put: async (_richiesta, risposta) => { salvato = risposta.clone(); },
+    semina: (corpo) => { salvato = new Response(JSON.stringify(corpo), { status: 200 }); },
+    haSalvato: () => salvato !== null,
+  };
+  globalThis.caches = { default: finta };
+  return finta;
+};
 
 const catturaSegnalazioni = () => {
   const viste = [];
@@ -90,5 +111,64 @@ test('JSON upstream malformato: degrada, non esplode', async () => {
   const risposta = await gestisciAgenticStatus(richiesta(), ENV);
 
   assert.equal(risposta.status, 200);
+  assert.deepEqual(await risposta.json(), { sessionsToday: null, tokensToday: null, costUsdToday: null });
+});
+
+// --- ultimo valore buono ----------------------------------------------------
+// Il 13/08 due riavvii di Prometheus di pochi minuti hanno fatto mostrare "—" al
+// widget. Un riavvio di un servizio interno non dovrebbe essere visibile su una
+// pagina pubblica: meglio "numeri di qualche minuto fa", dichiarati tali, che un
+// trattino. Cache API e non KV: nessun binding nuovo, nessuna infrastruttura da
+// creare.
+
+test('un successo salva l ultimo valore buono in cache', async () => {
+  const cache = cacheFinta();
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ sessions_today: 3, tokens_today: 48213, cost_usd_today: 1.42 }), { status: 200 });
+
+  await gestisciAgenticStatus(richiesta(), ENV);
+
+  assert.equal(cache.haSalvato(), true);
+});
+
+test('hub giu CON ultimo valore buono: serve i numeri vecchi, dichiarati vecchi', async () => {
+  catturaSegnalazioni();
+  const cache = cacheFinta();
+  cache.semina({ sessionsToday: 3, tokensToday: 48213, costUsdToday: 1.42, salvatoIl: Date.now() - 120_000 });
+  globalThis.fetch = async () => { throw new Error('network down'); };
+
+  const risposta = await gestisciAgenticStatus(richiesta(), ENV);
+  const dati = await risposta.json();
+
+  assert.equal(risposta.status, 200);
+  assert.equal(dati.sessionsToday, 3);
+  assert.equal(dati.tokensToday, 48213);
+  assert.equal(dati.costUsdToday, 1.42);
+  // Dichiarato vecchio, non spacciato per fresco: la pagina lo dice al visitatore
+  // e smoke.yml lato hub ci fallisce sopra invece di vedere verde.
+  assert.equal(dati.stale, true);
+  assert.ok(dati.ageSeconds >= 120 && dati.ageSeconds < 130, `ageSeconds inatteso: ${dati.ageSeconds}`);
+  assert.equal(risposta.headers.get('Cache-Control'), 'no-store');
+});
+
+test('un ultimo valore buono troppo vecchio non si serve: meglio il trattino', async () => {
+  catturaSegnalazioni();
+  const cache = cacheFinta();
+  // Oltre l ora: "qualche minuto fa" e' utile, "stamattina" e' una bugia.
+  cache.semina({ sessionsToday: 9, tokensToday: 1, costUsdToday: 1, salvatoIl: Date.now() - 3_600_001 });
+  globalThis.fetch = async () => { throw new Error('network down'); };
+
+  const risposta = await gestisciAgenticStatus(richiesta(), ENV);
+
+  assert.deepEqual(await risposta.json(), { sessionsToday: null, tokensToday: null, costUsdToday: null });
+});
+
+test('hub giu SENZA niente in cache: null come prima', async () => {
+  catturaSegnalazioni();
+  cacheFinta();
+  globalThis.fetch = async () => { throw new Error('network down'); };
+
+  const risposta = await gestisciAgenticStatus(richiesta(), ENV);
+
   assert.deepEqual(await risposta.json(), { sessionsToday: null, tokensToday: null, costUsdToday: null });
 });
