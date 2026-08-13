@@ -28,6 +28,11 @@ const TIMEOUT_MS = 5000;
 // Cache API accetta di tenere un oggetto nostro.
 const CHIAVE_ULTIMO_BUONO = 'https://agentic-os.interno/ultimo-valore-buono';
 
+// La richiesta che la sonda passa all'handler. Non viene mai spedita: l'handler
+// ignora il suo argomento `_request` e parla direttamente con l'hub. Esiste solo
+// perche' la firma la vuole.
+const CHIAVE_SONDA = 'https://agentic-os.interno/sonda';
+
 // Oltre l'ora non si serve più. "Qualche minuto fa" è un'informazione utile,
 // "stamattina" presentata come stato attuale è una bugia — e il trattino, che è
 // onesto, torna a essere la risposta giusta.
@@ -103,6 +108,54 @@ async function salvaUltimoBuono(numeri) {
   } catch {
     // Deliberatamente muto: è un'ottimizzazione del degrado, non un requisito.
   }
+}
+
+// Sonda schedulata (Cloudflare Cron Trigger, vedi `triggers` in wrangler.jsonc).
+//
+// Esiste perche' l'altra sonda, `smoke.yml` nel repo agentic-os, gira su GitHub
+// Actions: CHIEDE `*/10` e misurato ne fa ~55, perche' GitHub strozza i cron
+// frequenti sui repo pubblici. Un disservizio di due minuti — come i due del
+// 13/08 — le passa sotto. Questa sta sul bordo e non viene strozzata.
+//
+// **Non aggiunge logica, aggiunge un innesco.** `gestisciAgenticStatus` segnala
+// gia' a Sentry quando l'hub non risponde; finora quel codice girava solo se
+// passava un visitatore. Alle 4 del mattino non passa nessuno, ed e' esattamente
+// quando l'hub si rompe senza testimoni. Riusare lo stesso percorso invece di
+// scriverne uno parallelo significa anche che la sonda misura CIO' CHE VEDE IL
+// VISITATORE, non una strada gemella che puo' divergere in silenzio.
+//
+// Nessuna richiesta HTTP verso noi stessi: si chiama la funzione, non la rotta.
+export async function sondaHub(env) {
+  const risposta = await gestisciAgenticStatus(new Request(CHIAVE_SONDA), env);
+  const dati = await risposta.json();
+
+  // Due modi di essere degradati, e il secondo e' quello che inganna: `null`
+  // significa "non ho potuto leggere l'hub", ma `stale` significa "l'hub e' giu'
+  // e sto servendo numeri vecchi" — tre campi PIENI, di valori veri. Guardare
+  // solo i null direbbe "tutto bene" per un'ora intera.
+  const degradato = dati.sessionsToday === null || dati.stale === true;
+
+  // Log strutturato, ed e' l'UNICA traccia che un run sano lascia. Vale la pena
+  // sapere perche': @sentry/cloudflare crea uno span `faas.cron` per ogni
+  // invocazione, ma il `tracesSampler` in worker/sentry.js campiona solo
+  // `/api/contact` e restituisce 0 per tutto il resto — quindi quello span viene
+  // scartato, di proposito, e in Sentry di un run riuscito non resta niente.
+  // Alzare il campionamento qui costerebbe ~21.000 span al mese di quota tracing
+  // per informazione che nessuno leggerebbe.
+  //
+  // Quindi: il fallimento va a Sentry come evento (lo manda gia'
+  // `gestisciAgenticStatus`), il successo resta in Workers Logs, dove
+  // `observability: enabled` in wrangler.jsonc lo raccoglie. Si logga anche
+  // quando va bene perche' un run che non lascia traccia non distingue "sano" da
+  // "non sono mai partito".
+  console.log(JSON.stringify({
+    sonda: 'agentic-os',
+    degradato,
+    stale: dati.stale === true,
+    eta_s: dati.ageSeconds ?? null,
+  }));
+
+  return degradato;
 }
 
 export async function gestisciAgenticStatus(_request, env) {

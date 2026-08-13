@@ -2,7 +2,7 @@
 // in wrangler.jsonc). Tutto il resto lo serve l'Asset Worker senza passare di qui.
 import { inviaTracciaAsk } from './langfuse.js';
 import { gestisciRadar } from './radar.js';
-import { gestisciAgenticStatus } from './agentic-status.js';
+import { gestisciAgenticStatus, sondaHub } from './agentic-status.js';
 import { conta } from './crawler.js';
 //
 // ADR-0001 §4: la scelta della lingua su `/` è demandata all'edge.
@@ -385,5 +385,22 @@ export default {
         'Strict-Transport-Security': HSTS,
       },
     });
+  },
+
+  /**
+   * Cron Trigger, ogni 2 minuti (`triggers.crons` in wrangler.jsonc). Sorveglia
+   * l'hub Agentic OS quando nessun visitatore lo sta facendo.
+   *
+   * `await` e non `ctx.waitUntil`: qui il lavoro NON è dopo una risposta, è
+   * l'unica ragione per cui l'invocazione esiste. Con waitUntil il runtime
+   * considererebbe l'handler finito subito, e @sentry/cloudflare chiuderebbe lo
+   * span e farebbe il flush del client prima che la sonda abbia parlato — la
+   * segnalazione arriverebbe a client già smaltito.
+   *
+   * @param {ScheduledController} _controller
+   * @param {Record<string, string>} env
+   */
+  async scheduled(_controller, env) {
+    await sondaHub(env);
   },
 };

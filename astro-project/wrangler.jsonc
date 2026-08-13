@@ -61,6 +61,32 @@
   // all'apex. Contenuto duplicato per i motori, e una seconda superficie pubblica
   // che nessuno sorveglia.
   "workers_dev": false,
+  // Sonda sull'hub Agentic OS (worker/agentic-status.js → sondaHub).
+  //
+  // Esiste perché l'altra sonda, `smoke.yml` nel repo agentic-os, gira su GitHub
+  // Actions: chiede `*/10` e misurato ne fa ~55 (intervalli fra 38 e 93 minuti),
+  // perché GitHub strozza i cron frequenti sui repo pubblici. Un disservizio di
+  // due minuti le passa sotto. Questa sta sul bordo e non viene strozzata.
+  //
+  // `*/2` e non `*/1`: 720 invocazioni al giorno contro 1.440 — entrambe
+  // trascurabili sulle 100k del piano free, ma sono anche il doppio delle
+  // richieste verso Railway, che gira sui crediti gratuiti. A due minuti un
+  // disservizio di pochi minuti si vede; uno di sessanta secondi può ancora
+  // sfuggire, ed è il tetto DICHIARATO di questa sonda, non un difetto da
+  // scoprire dopo.
+  //
+  // CPU: il limite free è 10 ms per Cron Trigger. Qui il tempo se ne va quasi
+  // tutto ad aspettare la rete, che non è CPU — una fetch e un JSON da cento
+  // byte ci stanno larghi.
+  //
+  // NON è un cron monitor di Sentry: il piano free ne include UNO e il posto è di
+  // `supabase-keepalive`, che vale di più. Quindi il pattern è un watchdog ATTIVO
+  // che manda un evento, non un monitor passivo che aspetta un check-in. La
+  // differenza conta e va detta: questa sonda si accorge che l'hub è giù, non si
+  // accorge di essere morta lei.
+  "triggers": {
+    "crons": ["*/2 * * * *"]
+  },
   "observability": {
     "enabled": true
   }
