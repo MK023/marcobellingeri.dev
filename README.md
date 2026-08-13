@@ -139,9 +139,25 @@ you would not have known otherwise.
 - **Cron monitor on the Supabase keepalive.** The workflow already opens an issue when the
   ping *fails*; nobody notices when the job **never runs at all**, and that is the scenario
   that pauses the database (GitHub disables schedules after 60 days of inactivity on the
-  repo). A cron monitor is the only instrument that makes an absence observable, and it sits
-  **outside** GitHub so it does not share the failure domain it watches. The check-in cannot
-  make the ping fail: a watchman that kills what it watches is worse than no watchman.
+  repo). A cron monitor makes that absence observable, and it sits **outside** GitHub so it
+  does not share the failure domain it watches. The check-in cannot make the ping fail: a
+  watchman that kills what it watches is worse than no watchman.
+- **An active watchdog for the other three schedules, because there is only one seat.**
+  Sentry includes exactly **one** cron monitor per plan. `magazine-ingest`, `visibility` and
+  `llm-council-e2e` all register their monitors, all receive their check-ins, and all sit
+  `disabled` behind the quota — verified through the API on 2026-08-13, which is the only way
+  that fact ever surfaces. So the pattern is inverted for them: `scripts/sentinella-cron.mjs`
+  runs weekly, asks the GitHub API when each schedule last **fired** (only `schedule` runs
+  count — a manual dispatch proves the workflow works, not that the cron does), and sends a
+  `CronMuto` **error event** for any that has gone quiet, plus one deduplicated issue. Error
+  quota is ample and nearly unused; cron seats are one. An error event alarms on something
+  that *happened* and a cron monitor on the *absence* of a signal — they are not the same
+  instrument, and covering an absence with an event still needs someone to notice it first.
+  That someone is the watchdog. Worth writing down, or in six months it reads as a downgrade.
+  Verified end to end rather than assumed: a forced quiet cron produced the event, and Sentry
+  filed it at **high** priority, which is what the existing notification automation fires on.
+  The blind spot is stated, not solved: **nothing watches the watchdog**, and the one active
+  seat stays on the keepalive, where a paused database costs more than everything else.
 - **No session replay**, by choice. It would record the DOM of a form where people type their
   name, email and brief, on a site that says it does not track, in exchange for 50 sessions a
   month, which is a sample that answers no question at all.
