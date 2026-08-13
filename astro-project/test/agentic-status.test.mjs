@@ -4,7 +4,8 @@
 // davanti, token della status API dietro.
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { gestisciAgenticStatus } from '../worker/agentic-status.js';
+import { gestisciAgenticStatus, sondaHub } from '../worker/agentic-status.js';
+import worker from '../worker/index.js';
 
 const realFetch = globalThis.fetch;
 const realCaches = globalThis.caches;
@@ -171,4 +172,66 @@ test('hub giu SENZA niente in cache: null come prima', async () => {
   const risposta = await gestisciAgenticStatus(richiesta(), ENV);
 
   assert.deepEqual(await risposta.json(), { sessionsToday: null, tokensToday: null, costUsdToday: null });
+});
+
+// --- la sonda schedulata -----------------------------------------------------
+// Cloudflare Cron Trigger ogni 2 minuti. Esiste perche' smoke.yml, che gira su
+// GitHub Actions, CHIEDE `*/10` ma misurato ne fa ~55: GitHub strozza i cron
+// frequenti sui repo pubblici, quindi un disservizio di due minuti gli passa
+// sotto. Questa sonda sta sul bordo e non viene strozzata.
+//
+// Il lavoro vero lo fa gia' `gestisciAgenticStatus`, che segnala a Sentry quando
+// l'hub non risponde. Alla sonda manca solo di INVOCARLO quando nessun
+// visitatore lo sta facendo: e' quello, e nient'altro, il valore che aggiunge.
+
+test('la sonda dice degradato quando l hub non risponde', async () => {
+  const viste = catturaSegnalazioni();
+  globalThis.fetch = async () => { throw new Error('network down'); };
+
+  assert.equal(await sondaHub(ENV), true);
+  // Segnalato UNA volta, dal percorso condiviso: la sonda non aggiunge un
+  // secondo evento sullo stesso guasto.
+  assert.equal(viste.length, 1);
+});
+
+test('la sonda dice sano quando i tre numeri arrivano', async () => {
+  const viste = catturaSegnalazioni();
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ sessions_today: 3, tokens_today: 48213, cost_usd_today: 1.42 }), { status: 200 });
+
+  assert.equal(await sondaHub(ENV), false);
+  assert.equal(viste.length, 0);
+});
+
+test('numeri VECCHI dalla cache sono degradato, non salute', async () => {
+  // Il caso che il fail-open rende invisibile: l'hub e' giu' ma il Worker serve
+  // l'ultimo valore buono, quindi i tre campi sono pieni. Guardare solo i null
+  // direbbe "tutto bene" per un'ora intera.
+  catturaSegnalazioni();
+  const cache = cacheFinta();
+  cache.semina({ sessionsToday: 3, tokensToday: 48213, costUsdToday: 1.42, salvatoIl: Date.now() - 60_000 });
+  globalThis.fetch = async () => { throw new Error('network down'); };
+
+  assert.equal(await sondaHub(ENV), true);
+});
+
+test('la sonda non esplode mai: un guasto suo non deve diventare un cron rosso', async () => {
+  catturaSegnalazioni();
+  globalThis.fetch = async () => { throw new Error('network down'); };
+
+  // env senza URL: il percorso condiviso risponde vuoto senza chiamare nessuno.
+  assert.equal(await sondaHub({}), true);
+});
+
+test('il Worker espone scheduled, ed e la sonda', async () => {
+  catturaSegnalazioni();
+  let chiamate = 0;
+  globalThis.fetch = async () => {
+    chiamate += 1;
+    return new Response(JSON.stringify({ sessions_today: 1, tokens_today: 2, cost_usd_today: 3 }), { status: 200 });
+  };
+
+  assert.equal(typeof worker.scheduled, 'function');
+  await worker.scheduled({ cron: '*/2 * * * *', scheduledTime: Date.now() }, ENV, { waitUntil: () => {} });
+  assert.equal(chiamate, 1);
 });
