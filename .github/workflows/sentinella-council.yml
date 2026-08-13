@@ -1,0 +1,74 @@
+name: Sentinella llm-council
+
+# Sorveglia la sentinella di un ALTRO repo: llm-council ha un E2E settimanale
+# contro l'API vera, e GitHub disabilita gli schedule dopo 60 giorni di inattivita'
+# sul repository, in silenzio. Quel progetto va a sprint — due mesi fermo e' normale.
+#
+# Vive qui e non li' perche' questo sito ha attivita' quasi quotidiana: i suoi
+# schedule non scadono. Una guardia che muore dello stesso male che sorveglia non
+# serve a niente.
+#
+# Sostituisce il cron monitor Sentry, non percorribile: un solo monitor incluso per
+# piano, e su account free il seggio e' di supabase-keepalive.
+#
+# Martedi', il giorno dopo la run del council: se il lunedi' e' saltato, si vede
+# subito. Il limite di 10 giorni sta nello script, non qui.
+on:
+  schedule:
+    - cron: "0 8 * * 2"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  battito:
+    name: La sentinella del council batte ancora?
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write # per la issue automatica quando tace
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      # La logica del verdetto prima della rete: se il confronto sulle date si
+      # rompe, questo step lo dice invece di lasciare passare per sempre un "viva".
+      - name: Self-check della logica
+        run: node scripts/sentinella-e2e-council.mjs --self-check
+
+      # Nessun token: i workflow run di un repo pubblico si leggono in anonimo,
+      # quindi niente PAT cross-repo da custodire.
+      - name: Controlla il battito
+        id: battito
+        run: node scripts/sentinella-e2e-council.mjs
+
+      # La issue si apre QUI, non su llm-council: il GITHUB_TOKEN vale solo per il
+      # repo che lo emette, e un PAT cross-repo sarebbe una credenziale long-lived
+      # creata per aprire una issue l'anno. Il titolo porta il nome dell'altro repo.
+      - name: Apri una issue se tace
+        if: failure() && steps.battito.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITOLO: "Sentinella E2E di llm-council ferma — il cron settimanale non spara piu'"
+        run: |
+          # Una sentinella spenta resta spenta finche' qualcuno non la riaccende:
+          # senza questo controllo si aprirebbe una issue identica ogni martedi'.
+          aperte=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$TITOLO" --json number --jq 'length')
+          if [ "$aperte" != "0" ]; then
+            echo "issue gia' aperta, non ne apro un'altra"
+            exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "$TITOLO" \
+            --body "$(printf '%s\n' \
+              "L'E2E settimanale di MK023/llm-council non risulta partito da oltre 10 giorni." \
+              "" \
+              "Causa tipica: GitHub disabilita gli schedule dopo 60 giorni senza attivita' sul repository." \
+              "Si riaccende dalla tab Actions di quel repo, oppure con un commit qualsiasi." \
+              "" \
+              "Run di questo controllo: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")"
