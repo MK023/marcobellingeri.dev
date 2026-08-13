@@ -1,0 +1,99 @@
+name: Sentinella cron
+
+# Sorveglia i cron che NON hanno un monitor Sentry: sono ancora partiti?
+#
+# Un errore si vede — lo script fallisce, `catchTopLevel` manda l'evento, il workflow
+# apre la issue. Un cron che non parte non produce niente da vedere, e GitHub
+# disabilita gli schedule dopo 60 giorni di inattivita' sul repository, in silenzio.
+#
+# La strada canonica sarebbe un cron monitor Sentry, che si allarma sull'ASSENZA del
+# check-in. Non e' percorribile: Sentry include UN SOLO cron monitor per piano e il
+# seggio e' di `supabase-keepalive` (verificato via API il 13-08: gli altri tre
+# esistono, ricevono i check-in e restano `disabled`). Quindi il pattern e' rovesciato
+# — un guardiano ATTIVO che manda un evento, non un monitor passivo che ne aspetta uno.
+# La quota errori del piano free e' ampia; i seggi cron sono uno.
+#
+# Vive qui perche' questo sito ha attivita' quasi quotidiana e i suoi schedule non
+# scadono. Una guardia che muore dello stesso male che sorveglia non serve a niente.
+#
+# Martedi': il giorno dopo i due cron settimanali (llm-council e2e, visibility), cosi'
+# un lunedi' saltato si vede subito. Il mensile ha il suo limite piu' largo. I limiti
+# stanno nello script, non qui.
+#
+# SICUREZZA: nessun payload di evento entra in un `run:`. Le uniche interpolazioni
+# sono un secret, il token del repo e i contesti statici della run.
+on:
+  schedule:
+    - cron: "0 8 * * 2"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  battito:
+    name: I cron sorvegliati battono ancora?
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write # per la issue automatica quando uno tace
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      # La logica del verdetto prima della rete: se il confronto sulle date si rompe,
+      # o se un limite in tabella scende sotto il proprio periodo, questo step lo dice
+      # invece di lasciare passare per sempre un "viva".
+      - name: Self-check della logica
+        run: node scripts/sentinella-cron.mjs --self-check
+
+      # Nessun token GitHub: i workflow run di un repo pubblico si leggono in anonimo,
+      # quindi niente PAT cross-repo da custodire per leggere llm-council.
+      #
+      # Il DSN invece serve: e' l'evento a Sentry a fare da allarme al posto del cron
+      # monitor che non possiamo accendere. Senza DSN lo script resta un no-op su quel
+      # fronte e il verdetto non cambia — fail-open, come tutto il resto di sentry.mjs.
+      - name: Controlla il battito
+        id: battito
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: node scripts/sentinella-cron.mjs | tee battito.txt
+
+      # La issue si apre QUI anche per i cron di llm-council: il GITHUB_TOKEN vale solo
+      # per il repo che lo emette, e un PAT cross-repo sarebbe una credenziale
+      # long-lived creata per aprire una issue l'anno.
+      #
+      # Sentry e la issue non sono ridondanti: l'evento arriva dove Marco guarda ogni
+      # giorno, la issue resta attaccata al repo e non si chiude da sola.
+      - name: Apri una issue se qualcuno tace
+        if: failure() && steps.battito.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITOLO: "Un cron sorvegliato non spara piu'"
+        run: |
+          # Un cron spento resta spento finche' qualcuno non lo riaccende: senza questo
+          # controllo si aprirebbe una issue identica ogni martedi'.
+          aperte=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$TITOLO" --json number --jq 'length')
+          if [ "$aperte" != "0" ]; then
+            echo "issue gia' aperta, non ne apro un'altra"
+            exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "$TITOLO" \
+            --body "$(printf '%s\n' \
+              "Almeno un cron sorvegliato non risulta partito entro il suo limite." \
+              "" \
+              '```' \
+              "$(cat battito.txt)" \
+              '```' \
+              "" \
+              "Causa tipica: GitHub disabilita gli schedule dopo 60 giorni senza attivita' sul repository." \
+              "Si riaccende dalla tab Actions del repo interessato, oppure con un commit qualsiasi." \
+              "" \
+              "Lo stesso allarme e' arrivato su Sentry come evento CronMuto." \
+              "" \
+              "Run di questo controllo: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")"
