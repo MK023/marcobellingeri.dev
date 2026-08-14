@@ -21,11 +21,23 @@ on:
 
 permissions:
   issues: write # per l'issue automatica on-failure
+  contents: read # per il checkout richiesto dal guardiano dei cron, sotto
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
+      # Checkout e node servono SOLO al guardiano in coda: il ping e' un curl e resta
+      # tale. Trenta secondi in piu' ogni tre giorni per non lasciare scoperto l'unico
+      # anello che non ha nessuno sopra di se'.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
       - name: Ping REST (query minima, chiave anon)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -56,6 +68,26 @@ jobs:
       # `|| true` NON e' pigrizia: questo step sorveglia il keepalive, e un guardiano
       # che uccide cio' che sorveglia e' peggio di nessun guardiano. Se Sentry e' giu'
       # o l'URL cambia, il ping a Supabase resta comunque andato a buon fine.
+      # L'ALTRA META' DELLA COPERTURA RECIPROCA.
+      #
+      # `sentinella-cron.yml` sorveglia i cron senza monitor — incluso questo. Ma se
+      # tace LUI non se ne accorge nessuno, ed e' il problema circolare che questo step
+      # chiude: questo workflow e' l'unico con un monitor Sentry ATTIVO, quindi e' il
+      # posto giusto da cui guardare il guardiano.
+      #
+      # Non serviva spostare il seggio cron: il keepalive tiene il suo allarme diretto
+      # (un DB in pausa costa piu' di tutto il resto) e in cambio presta i suoi occhi.
+      #
+      # `continue-on-error` perche' questo passo NON e' il keepalive: un guardiano che
+      # fa fallire cio' che ospita e' peggio di nessun guardiano. Se il guardiano tace,
+      # l'evento Sentry parte comunque dallo script.
+      - name: E il guardiano dei cron, batte ancora?
+        if: always()
+        continue-on-error: true
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: node scripts/sentinella-cron.mjs
+
       - name: Check-in Sentry (il cron e' vivo)
         if: always()
         env:

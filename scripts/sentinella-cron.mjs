@@ -23,24 +23,31 @@
 // non e' una guardia — ed e' anche il motivo per cui llm-council, che va a sprint,
 // non puo' sorvegliarsi da solo.
 //
-// LIMITE ONESTO, NON RISOLTO. Nessuno sorveglia QUESTO script. Il seggio cron
-// attivo potrebbe spostarsi qui e coprire tutti e tre i casi in un colpo, ma oggi
-// sta su `supabase-keepalive`, dove un DB in pausa costa piu' di tutto il resto.
-// E' un compromesso, scritto invece che lasciato intendere.
+// CHI SORVEGLIA IL GUARDIANO (risolto il 14-08, senza spostare il seggio Sentry).
+// Il problema era circolare: questo script vede gli altri cron tacere, ma se tace LUI
+// non se ne accorge nessuno. La soluzione non e' spostare l'unico monitor attivo — che
+// sta su `supabase-keepalive`, dove un DB in pausa costa piu' di tutto il resto e
+// perderebbe il suo allarme diretto. E' la COPERTURA RECIPROCA:
+//
+//   questo guardiano  -> sorveglia i tre cron muti E `supabase-keepalive`
+//   `supabase-keepalive` -> lancia questo stesso script, quindi sorveglia il guardiano
+//   il monitor Sentry attivo -> sorveglia `supabase-keepalive`
+//
+// Ogni anello ha qualcuno sopra, e nessun seggio cambia mano. Il keepalive gira ogni
+// tre giorni ed e' il piu' affidabile della catena proprio perche' e' l'unico con un
+// allarme passivo vero.
 //
 //   node scripts/sentinella-cron.mjs              # esce 1 se qualcuno tace
 //   node scripts/sentinella-cron.mjs --self-check # verifica la logica, niente rete
 
 import { captureException } from "../engine/lib/sentry.mjs";
 
-// I cron sorvegliati. `supabase-keepalive` NON e' in lista: ha l'unico monitor
-// attivo, e duplicare un allarme che gia' funziona aggiunge rumore, non copertura.
-//
-// Il limite e' il periodo piu' un margine: uno slittamento del runner non deve
-// aprire una issue, due periodi di silenzio si'.
+// I cron sorvegliati. Il limite e' il periodo piu' un margine: uno slittamento del
+// runner non deve aprire una issue, due periodi di silenzio si'.
 const SORVEGLIATI = [
   {
     slug: "llm-council-e2e",
+    periodo: 7, // giorni fra due run schedulate
     repo: "MK023/llm-council",
     workflow: "e2e.yml",
     limite: 10, // settimanale (lun 06:00 UTC) + 3 giorni
@@ -48,6 +55,7 @@ const SORVEGLIATI = [
   },
   {
     slug: "visibility",
+    periodo: 7, // giorni fra due run schedulate
     repo: "MK023/marcobellingeri.dev",
     workflow: "visibility.yml",
     limite: 10, // settimanale (lun 06:00 UTC) + 3 giorni
@@ -55,10 +63,33 @@ const SORVEGLIATI = [
   },
   {
     slug: "magazine-ingest",
+    periodo: 31, // giorni fra due run schedulate
     repo: "MK023/marcobellingeri.dev",
     workflow: "magazine-ingest.yml",
     limite: 40, // mensile (il 1° alle 06:00 UTC) + 9 giorni
     cosa: "l'ingestione mensile del magazine",
+  },
+  {
+    // In lista dal 14-08 anche se HA il monitor attivo: e' l'anello che sorveglia il
+    // guardiano, e un anello portante va guardato da entrambe le parti. La ridondanza
+    // qui e' il punto, non il rumore.
+    slug: "supabase-keepalive",
+    periodo: 3, // giorni fra due run schedulate
+    repo: "MK023/marcobellingeri.dev",
+    workflow: "supabase-keepalive.yml",
+    limite: 5, // ogni 3 giorni + 2
+    cosa: "il keepalive che tiene il DB fuori dalla pausa",
+  },
+  {
+    // Il guardiano guarda anche se stesso: da solo non servirebbe a niente — se non
+    // parte, non puo' accorgersene. Serve perche' questo script gira anche DENTRO
+    // supabase-keepalive, e li' la riga diventa l'unico occhio sul guardiano.
+    slug: "sentinella-cron",
+    periodo: 1, // giorni fra due run schedulate
+    repo: "MK023/marcobellingeri.dev",
+    workflow: "sentinella-cron.yml",
+    limite: 3, // giornaliero + 2
+    cosa: "il guardiano stesso, visto da chi lo ospita",
   },
 ];
 
@@ -119,10 +150,13 @@ async function selfCheck() {
   assert.equal(verdetto("2026-07-14T00:00:00Z", adesso, 40).viva, true, "30 giorni sotto 40: viva");
   assert.equal(verdetto("2026-07-14T00:00:00Z", adesso, 10).viva, false, "30 giorni sopra 10: muta");
 
-  // Ogni sorvegliato deve avere un limite maggiore del proprio periodo, o l'allarme
-  // suonerebbe a ogni giro: e' la configurazione a poter essere sbagliata, non la logica.
+  // Ogni sorvegliato deve avere un limite MAGGIORE DEL PROPRIO PERIODO, o l'allarme
+  // suonerebbe a ogni giro. La versione precedente chiedeva `limite >= 10`, che era il
+  // periodo dei soli cron settimanali travestito da regola generale: ha smesso di valere
+  // il giorno in cui sono entrati in lista un cron da 3 giorni e uno giornaliero.
+  // E' la configurazione a poter essere sbagliata, non la logica sulle date.
   for (const s of SORVEGLIATI) {
-    assert.ok(s.limite >= 10, `${s.slug}: limite troppo stretto`);
+    assert.ok(s.limite > s.periodo, `${s.slug}: limite ${s.limite} non supera il periodo ${s.periodo}`);
     assert.ok(s.repo.includes("/") && s.workflow.endsWith(".yml"), `${s.slug}: puntatore malformato`);
   }
 

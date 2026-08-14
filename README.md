@@ -156,8 +156,13 @@ you would not have known otherwise.
   That someone is the watchdog. Worth writing down, or in six months it reads as a downgrade.
   Verified end to end rather than assumed: a forced quiet cron produced the event, and Sentry
   filed it at **high** priority, which is what the existing notification automation fires on.
-  The blind spot is stated, not solved: **nothing watches the watchdog**, and the one active
-  seat stays on the keepalive, where a paused database costs more than everything else.
+  **Mutual cover closes the circle** (2026-08-14). The watchdog runs **daily** and now also
+  watches `supabase-keepalive`; the keepalive — the one job with an *active* Sentry monitor —
+  runs the same script in turn, so it is the eye on the watchdog. Every link has something
+  above it: watchdog → the four crons, keepalive → watchdog, Sentry monitor → keepalive. No
+  seat changed hands, and the keepalive keeps its direct alarm, which matters because a paused
+  database costs more than everything else. The step in the keepalive is
+  `continue-on-error`: a guard that fails what it hosts is worse than no guard.
 - **No session replay**, by choice. It would record the DOM of a form where people type their
   name, email and brief, on a site that says it does not track, in exchange for 50 sessions a
   month, which is a sample that answers no question at all.

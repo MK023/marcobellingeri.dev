@@ -34,7 +34,7 @@ const copy = {
     },
     finestraH: 'PERCHÉ 25 ORE E NON "OGGI"',
     finestra:
-      'Ogni sessione è una serie a sé: un contatore che cresce finché la sessione vive, e poi resta fermo. La finestra la decide il Collector, che smette di esporre una serie un giorno dopo il suo ultimo aggiornamento. Non è un giorno di calendario, è l\'attività delle ultime venticinque ore circa. Tanto quanto questi numeri possono dire senza barare.',
+      'Ogni sessione è una serie a sé: un contatore che cresce finché la sessione vive, e poi resta fermo. Per sommarli chiedo all\'archivio il valore più alto che ogni serie ha toccato nelle ultime venticinque ore. Un contatore non torna indietro, quindi quel massimo è il totale di quella sessione. Chiederlo invece al Collector, che dopo un po\' smette di esporre una serie, sembrava equivalente e non lo era: a ogni suo riavvio le sessioni già chiuse sparivano dal conto. Non è un giorno di calendario, è l\'attività delle ultime venticinque ore circa. Tanto quanto questi numeri possono dire senza barare.',
     confineH: 'COSA NON ESCE DA QUI',
     confine:
       "Tre numeri aggregati, e basta. Nessun prompt, nessuna risposta, nessuna query libera sul database delle metriche. L'identità non arriva nemmeno all'archivio, perché il Collector tiene una allow-list sulle label: un attributo che nessuno ha dichiarato sicuro viene scartato per difetto, invece di essere cancellato dopo. La scelta nasce da una misura, non da una lettura. La mia email vera arrivava come label di Prometheus, e la correzione ovvia perdeva dati senza dirlo.",
@@ -55,7 +55,7 @@ const copy = {
     },
     finestraH: 'WHY 25 HOURS AND NOT "TODAY"',
     finestra:
-      'Every session is its own series: a counter that grows while the session lives, then stops. The window comes from the Collector, which stops exposing a series one day after its last update. This is not a calendar day, it is roughly the last twenty five hours of activity. As much as these numbers can claim without cheating.',
+      'Every session is its own series: a counter that grows while the session lives, then stops. To add them up I ask the archive for the highest value each series reached in the last twenty five hours. A counter never goes backwards, so that maximum is the session’s total. Asking the Collector instead, which stops exposing a series after a while, looked equivalent and was not: every time it restarted, the sessions that had already ended dropped out of the count. This is not a calendar day, it is roughly the last twenty five hours of activity. As much as these numbers can claim without cheating.',
     confineH: 'WHAT DOES NOT LEAVE THIS HUB',
     confine:
       'Three aggregate numbers, and nothing else. No prompts, no answers, no free-form queries against the metrics database. Identity never even reaches storage, because the Collector keeps an allow-list on labels: an attribute nobody declared safe is dropped by default, rather than deleted afterwards. That choice came from a measurement, not from a reading. My real email address was arriving as a Prometheus label, and the obvious fix lost data without saying so.',
