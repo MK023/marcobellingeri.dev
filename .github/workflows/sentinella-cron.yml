@@ -16,15 +16,16 @@ name: Sentinella cron
 # Vive qui perche' questo sito ha attivita' quasi quotidiana e i suoi schedule non
 # scadono. Una guardia che muore dello stesso male che sorveglia non serve a niente.
 #
-# Martedi': il giorno dopo i due cron settimanali (llm-council e2e, visibility), cosi'
-# un lunedi' saltato si vede subito. Il mensile ha il suo limite piu' largo. I limiti
-# stanno nello script, non qui.
+# GIORNALIERO dal 14-08, non piu' settimanale. Due motivi: il keepalive gira ogni tre
+# giorni e va visto entro il suo limite di 5, e soprattutto questo workflow e' ora un
+# anello della copertura reciproca — piu' spesso batte, piu' stretta e' la finestra in
+# cui un cron morto resta invisibile. I limiti stanno nello script, non qui.
 #
 # SICUREZZA: nessun payload di evento entra in un `run:`. Le uniche interpolazioni
 # sono un secret, il token del repo e i contesti statici della run.
 on:
   schedule:
-    - cron: "0 8 * * 2"
+    - cron: "0 8 * * *"
   workflow_dispatch:
 
 permissions: {}
