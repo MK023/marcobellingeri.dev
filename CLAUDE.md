@@ -42,6 +42,13 @@ Always `lint` + `check` + `test` green before saying "done".
 
 ## How we work here (specific to this repo)
 
+- **Cut the branch from `origin/main`, never from `HEAD`.** More than one session works in
+  this working copy at a time, so `HEAD` is wherever the last one left it rather than what
+  has been reviewed: `git checkout -b <name> origin/main`. For the same reason prefer
+  adding the files you actually touched over `git add -A`. On 2026-08-14 a branch cut from
+  `HEAD` inherited another session's just-committed fix and carried it into production
+  inside a PR whose review was about something else (#205 then closed itself with zero
+  commits, because #206 had already shipped its content).
 - **Every change goes in a branch and a PR, never on `main`** (not even locally). The agent
   merges the **code** once the gates are green; the author merges the **content** (articles).
 - **`main` is production**: automatic deploy on every push. Autonomy stops at production.
