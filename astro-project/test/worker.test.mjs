@@ -554,3 +554,52 @@ test('ask: config mancante -> 503', async (t) => {
   const r = await gestisciAsk(askReq({ q: 'una domanda valida sul magazine', turnstile: 'x' }), { TURNSTILE_SECRET_KEY: 't' });
   assert.equal(r.status, 503);
 });
+
+// Il 429 di /api/agentic-status porta `Retry-After` dal 16/08 (PR #216); contact
+// e ask no, ed erano rimasti indietro solo perche' quella PR non li toccava. Un
+// client che riceve 429 senza Retry-After ritenta a occhio: di solito subito, e
+// resta fuori piu' a lungo di quanto il limite gli chiederebbe.
+test('contatto: il 429 dice quando ritentare', async () => {
+  const r = await gestisciContatto(
+    new Request('https://marcobellingeri.dev/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'ok@x.com', brief: 'un messaggio abbastanza lungo' }),
+    }),
+    { CONTACT_LIMITER: { limit: async () => ({ success: false }) } },
+  );
+
+  assert.equal(r.status, 429);
+  // 60 = il `period` di CONTACT_LIMITER in wrangler.jsonc.
+  assert.equal(r.headers.get('Retry-After'), '60');
+});
+
+test('ask: il 429 dice quando ritentare', async () => {
+  const r = await gestisciAsk(
+    new Request('https://marcobellingeri.dev/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: 'una domanda qualsiasi' }),
+    }),
+    { ASK_LIMITER: { limit: async () => ({ success: false }) } },
+    { waitUntil: () => {} },
+  );
+
+  assert.equal(r.status, 429);
+  assert.equal(r.headers.get('Retry-After'), '60');
+});
+
+// RFC 9110: un 405 DEVE portare `Allow`. La #216 l'ha dato a
+// /api/agentic-status e ha lasciato indietro queste due, che rifiutavano i
+// metodi sbagliati senza dire quale usare.
+test('contatto: il 405 dice quale metodo usare', async () => {
+  const r = await gestisciContatto(new Request('https://marcobellingeri.dev/api/contact'), {});
+  assert.equal(r.status, 405);
+  assert.equal(r.headers.get('Allow'), 'POST');
+});
+
+test('ask: il 405 dice quale metodo usare', async () => {
+  const r = await gestisciAsk(new Request('https://marcobellingeri.dev/api/ask'), {}, { waitUntil: () => {} });
+  assert.equal(r.status, 405);
+  assert.equal(r.headers.get('Allow'), 'POST');
+});

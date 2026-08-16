@@ -119,7 +119,8 @@ async function verificaTurnstile(env, token, prefisso) {
  * @returns {Promise<Response>}
  */
 export async function gestisciContatto(request, env) {
-  if (request.method !== 'POST') return rispostaJson({ error: 'method' }, 405);
+  // RFC 9110: senza `Allow` il 405 rifiuta senza dire cosa usare.
+  if (request.method !== 'POST') return rispostaJson({ error: 'method' }, 405, { Allow: 'POST' });
 
   // Rate limit per IP (binding CONTACT_LIMITER): ~5/min, ma APPROSSIMATIVO e
   // per-location per design di Cloudflare — il contatore è locale a ogni isolate
@@ -129,7 +130,9 @@ export async function gestisciContatto(request, env) {
   if (env.CONTACT_LIMITER) {
     const ip = request.headers.get('CF-Connecting-IP') || 'sconosciuto';
     const { success } = await env.CONTACT_LIMITER.limit({ key: ip });
-    if (!success) return rispostaJson({ error: 'rate' }, 429);
+    // `Retry-After` = il period del binding: senza, un client ritenta a occhio —
+    // di solito subito, e resta fuori piu' a lungo di quanto il limite chiederebbe.
+    if (!success) return rispostaJson({ error: 'rate' }, 429, { 'Retry-After': '60' });
   }
 
   // Difesa in profondità: il form vive solo sul nostro dominio. Un Origin diverso
@@ -207,12 +210,15 @@ export async function gestisciContatto(request, env) {
  */
 export async function gestisciAsk(request, env, ctx) {
   const t0 = Date.now();
-  if (request.method !== 'POST') return rispostaJson({ error: 'method' }, 405);
+  // RFC 9110: senza `Allow` il 405 rifiuta senza dire cosa usare.
+  if (request.method !== 'POST') return rispostaJson({ error: 'method' }, 405, { Allow: 'POST' });
 
   if (env.ASK_LIMITER) {
     const ip = request.headers.get('CF-Connecting-IP') || 'sconosciuto';
     const { success } = await env.ASK_LIMITER.limit({ key: ip });
-    if (!success) return rispostaJson({ error: 'rate' }, 429);
+    // `Retry-After` = il period del binding: senza, un client ritenta a occhio —
+    // di solito subito, e resta fuori piu' a lungo di quanto il limite chiederebbe.
+    if (!success) return rispostaJson({ error: 'rate' }, 429, { 'Retry-After': '60' });
   }
 
   const origin = request.headers.get('Origin');

@@ -83,6 +83,18 @@ Other nets:
   disables **no rules at all**. The only exception sits on the line itself with the
   reason next to it (the Worker's anti-header-injection regex, where control characters are
   the target rather than the mistake).
+- **One list of security headers for everything the Worker generates**, in `worker/headers.js`.
+  `public/_headers` covers static assets and the API responses never passed through it, so the
+  list had been copied into four places and had started to drift. Two mirrors hold it: one test
+  writes the five values out in full and checks the Worker's responses carry them, another reads
+  `public/_headers` and fails if the two ever disagree.
+- **A rate limit on the three routes that generate work** (`/api/contact`, `/api/ask`,
+  `/api/agentic-status`), declared in `wrangler.jsonc` as a runtime binding rather than a WAF
+  rule, so it is reviewed in a pull request like everything else. `/api/radar` has none: it is
+  answered from the edge cache for half an hour at a time, so a flood costs one round of feeds. The counter is per Cloudflare
+  location and eventually consistent by design: a ceiling against a flood from one source, not
+  an exact quota. Verifying one needs every request on a single connection: spread them across
+  parallel connections and each gets its own counter, so a working limit looks absent.
 - **gitleaks** across the whole history on every push to `main`, and in a local pre-commit hook.
 - **Push protection** from secret scanning: GitHub refuses a push containing a secret instead
   of discovering it afterwards.
