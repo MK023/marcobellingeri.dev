@@ -56,6 +56,13 @@ database. So the keepalive also **checks in with a Sentry cron monitor**, which 
 silence and lives *outside* GitHub: a watchman inside the same failure domain it watches is
 not a watchman. The check-in cannot make the ping fail.
 
+That monitor is the only one this account has: Sentry includes one per plan, and the other
+three schedules had registered theirs and been left `disabled` behind the quota, receiving
+check-ins and alarming nobody. They are covered instead by `scripts/sentinella-cron.mjs`,
+which runs daily, asks the GitHub API when each schedule last fired, and sends an error
+event for the ones that have gone quiet. The keepalive runs that same script, so the job
+holding the only live monitor is also the one watching the watchdog.
+
 **Errors** go to Sentry. Every script has a top-level catch (`lib/sentry.mjs`, envelope API
 over fetch, zero deps) that sends the stack, the script name and the `engine` environment
 before exiting 1. The external semantics match a bare crash, so CI and the automatic issues

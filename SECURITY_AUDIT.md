@@ -237,7 +237,8 @@ completeness.
   switches off and Supabase pauses. The risk remains (GitHub cannot be forced), but since
   2026-07-13 it is **no longer silent**: a Sentry cron monitor alarms on a missing check-in.
   Putting it *outside* GitHub is deliberate, because a watchman inside the same failure domain
-  it watches is not a watchman.
+  it watches is not a watchman. *This holds for the keepalive and only for the keepalive. The
+  other three schedules were found unwatched on 2026-08-13: see the addendum of 2026-08-14.*
 
 ---
 
@@ -301,3 +302,53 @@ about to become public.
 **Findings open after the addendum: 0 actionable, the 3 Info items above.** (CodeQL raised 2
 HIGH on the first version of the title sanitisation. Both were well founded, and both were
 fixed in `9fe593d` with property tests.)
+
+---
+
+## Addendum 2026-08-14: three alarms that were registered and silent
+
+The entry under "known future risks" said the missing-run case was covered by a Sentry cron
+monitor. True for `supabase-keepalive`, and false for everything else, which nobody had
+checked because the monitors *existed*.
+
+**What the API said.** Sentry includes **one** cron monitor per plan. `magazine-ingest`,
+`visibility` and `llm-council-e2e` had all registered a monitor, were all receiving their
+check-ins, and all sat `disabled` behind the quota. Three jobs whose absence nothing could
+observe, each with a green-looking check-in in its workflow log.
+
+This is the worst shape a control can take. A missing alarm gets noticed eventually; an alarm
+that exists, receives its input and never fires gets trusted. It was found by listing the
+monitors through the API, never by reading a workflow.
+
+Related: querying the alert rules through `/projects/{org}/{proj}/rules/` now answers **410
+Gone**. Sentry moved to `detectors` + `workflows` under `/organizations/{org}/`. The detectors
+for the three monitors read `enabled: true`, which is exactly the reading that makes everything
+look fine, because the thing that is off is the monitor and not the detector.
+
+**What was done, and why it is not the obvious fix.** The obvious fix is to move the single
+active seat onto whatever matters most. That was rejected: the seat sits on the keepalive,
+where a paused database costs more than the rest of the chain combined, and moving it would
+have traded one blind spot for another.
+
+Instead the pattern is inverted. `scripts/sentinella-cron.mjs` runs **daily**, asks the GitHub
+API when each schedule last *fired* (only `schedule` runs count, since a manual dispatch proves
+the workflow works and not the cron), and sends a `CronMuto` **error event** for any that has
+gone quiet. Error quota is ample and nearly unused; cron seats are one.
+
+An error event alarms on something that happened and a cron monitor on the absence of a signal.
+Those are different instruments, and covering an absence with an event still needs something
+active to notice it first.
+
+**And the watchman has a watchman.** The circle was closed with mutual cover rather than a
+fourth tool: the daily watchdog also watches `supabase-keepalive`, and the keepalive, which is
+the one job with a live Sentry monitor, runs the same script and so watches the watchdog. Its
+step is `continue-on-error`, because a guard that fails what it hosts is worse than no guard.
+
+**Verified end to end, not inferred** (the failure mode this addendum is about is precisely a
+control believed rather than tested). Forcing a schedule to read as quiet produced the event,
+and Sentry filed it at **`priority: high`**, which is the condition the existing notification
+automation fires on. The test issue was resolved afterwards.
+
+Residual, and stated rather than closed: this depends on the GitHub API remaining readable
+anonymously for public repositories, and on the keepalive itself running. The keepalive is the
+only link with a passive alarm, which is why it is the one holding the seat.
