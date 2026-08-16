@@ -46,3 +46,26 @@ test('produzione: sentry.js registra __SEGNALA_SENTRY__ ed è la entry di wrangl
   const wrangler = readFileSync(new URL('../wrangler.jsonc', import.meta.url).pathname, 'utf8');
   assert.match(wrangler, /"main":\s*"worker\/sentry\.js"/, 'wrangler non usa più sentry.js come entry');
 });
+
+test('ogni limiter usato dal Worker esiste come binding in wrangler.jsonc', () => {
+  // La guardia nel codice e' `if (env.X_LIMITER)`: serve perche' il binding non
+  // esiste nei test ne' in `wrangler dev`, ma rende il controllo FAIL-OPEN. Se
+  // qualcuno toglie una voce da `ratelimits`, il rate limit si spegne in
+  // silenzio e ogni test resta verde — la stessa forma del difetto che il
+  // 16/08 abbiamo chiuso su /api/agentic-status, dove il limite era dichiarato
+  // e non esisteva. Questo specchio la rende una build rossa.
+  const worker = (p) => readFileSync(new URL(`../worker/${p}`, import.meta.url).pathname, 'utf8');
+  const codice = ['index.js', 'agentic-status.js', 'radar.js'].map(worker).join('\n');
+  const wrangler = readFileSync(new URL('../wrangler.jsonc', import.meta.url).pathname, 'utf8');
+
+  const usati = [...new Set([...codice.matchAll(/env\.([A-Z_]+_LIMITER)\b/g)].map((m) => m[1]))];
+  assert.ok(usati.length >= 3, `trovati solo ${usati.length} limiter nel codice: la regex non legge piu' il Worker?`);
+
+  for (const nome of usati) {
+    assert.match(
+      wrangler,
+      new RegExp(`"name":\\s*"${nome}"`),
+      `${nome} e' usato nel Worker ma non e' dichiarato in wrangler.jsonc: il limite sarebbe spento in produzione, in silenzio`,
+    );
+  }
+});
