@@ -1,7 +1,7 @@
 ---
 lang: it
 title: "Un robots.txt permissivo non è una licenza"
-date: 2026-08-18
+date: 2026-08-11
 description: "Ho controllato le licenze di dieci fonti che il mio scraper leggeva da un mese. Ne sono passate due. Quella che faceva entrare tutti i crawler non mi concedeva niente, e quella che bloccava i bot sarebbe andata benissimo."
 tags: [webdev, legal, ai, opensource]
 edicola: "robots.txt e licenze"
