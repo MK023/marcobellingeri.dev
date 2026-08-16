@@ -8,6 +8,7 @@
 // ammessi solo sui domini della fonte, risposta upstream cappata. Fail-open per
 // fonte: un feed giù toglie uno strato, mai la pagina.
 import { FONTI } from '../src/data/radar-fonti.js';
+import { HEADER_SICUREZZA } from './headers.js';
 
 // Stesso patto di index.js:62 — il reporter lo registra worker/sentry.js, così
 // questo file resta puro (niente SDK negli import) e i test lo sostituiscono con
@@ -116,7 +117,8 @@ const scarica = async (url, tetto = TETTO_UPSTREAM) => {
 export async function gestisciRadar(request, _env, ctx) {
   if (request.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'method' }), {
-      status: 405, headers: { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff' },
+      status: 405,
+      headers: { 'Content-Type': 'application/json', Allow: 'GET', ...HEADER_SICUREZZA },
     });
   }
 
@@ -176,7 +178,7 @@ export async function gestisciRadar(request, _env, ctx) {
     status: 200,
     headers: {
       'Content-Type': 'application/json',
-      'X-Content-Type-Options': 'nosniff',
+      ...HEADER_SICUREZZA,
       // 5 min nel browser, 30 min all'edge: "in tempo quasi reale" dichiarato,
       // non millantato — la pagina mostra "aggiornato N minuti fa".
       'Cache-Control': 'public, max-age=300, s-maxage=1800',

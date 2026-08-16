@@ -10,6 +10,8 @@
 // Due credenziali, non una: Cloudflare Access lascia passare la richiesta
 // (CF-Access-Client-*), la status API ha comunque il SUO token (Authorization).
 // Toglierne una lascerebbe l'endpoint appeso a un solo strato.
+import { HEADER_SICUREZZA } from './headers.js';
+
 const segnala = (messaggio, extra) => globalThis.__SEGNALA_SENTRY__?.(messaggio, extra);
 
 const TIMEOUT_MS = 5000;
@@ -28,9 +30,10 @@ const TIMEOUT_MS = 5000;
 // Cache API accetta di tenere un oggetto nostro.
 const CHIAVE_ULTIMO_BUONO = 'https://agentic-os.interno/ultimo-valore-buono';
 
-// La richiesta che la sonda passa all'handler. Non viene mai spedita: l'handler
-// ignora il suo argomento `_request` e parla direttamente con l'hub. Esiste solo
-// perche' la firma la vuole.
+// La richiesta che la sonda passa all'handler. Non viene mai spedita: serve solo
+// perche' la firma la vuole, e perche' l'handler ne legge il metodo. `new Request`
+// senza opzioni e' una GET, quindi la sonda passa la guardia sul metodo — se un
+// giorno diventasse altro, la sonda si vedrebbe rispondere 405 da se stessa.
 const CHIAVE_SONDA = 'https://agentic-os.interno/sonda';
 
 // Oltre l'ora non si serve più. "Qualche minuto fa" è un'informazione utile,
@@ -45,7 +48,7 @@ const rispostaVuota = () =>
     status: 200,
     headers: {
       'Content-Type': 'application/json',
-      'X-Content-Type-Options': 'nosniff',
+      ...HEADER_SICUREZZA,
       // niente cache sul degradato: l'hub può tornare su tra un minuto
       'Cache-Control': 'no-store',
     },
@@ -73,7 +76,7 @@ async function rispostaDegradata() {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'X-Content-Type-Options': 'nosniff',
+          ...HEADER_SICUREZZA,
           // Come il vuoto: l'hub può tornare su tra un minuto, e un numero vecchio
           // messo in cache al bordo diventerebbe vecchio due volte.
           'Cache-Control': 'no-store',
@@ -158,7 +161,19 @@ export async function sondaHub(env) {
   return degradato;
 }
 
-export async function gestisciAgenticStatus(_request, env) {
+export async function gestisciAgenticStatus(request, env) {
+  // Rotta di sola lettura: un DELETE che risponde 200 racconta a un client che la
+  // cancellazione e' riuscita. Non muta niente — non c'e' codice di scrittura da
+  // raggiungere — ma e' semantica HTTP sbagliata su un endpoint pubblico, cioe' il
+  // tipo di dettaglio che genera bug a valle invece che qui. Stessa forma di
+  // `gestisciRadar`. `Allow` non e' decorativo: senza, il 405 non dice cosa usare.
+  if (request.method !== 'GET') {
+    return new Response(null, {
+      status: 405,
+      headers: { Allow: 'GET', ...HEADER_SICUREZZA },
+    });
+  }
+
   if (!env.AGENTIC_OS_STATUS_URL) return rispostaVuota();
 
   try {
@@ -191,7 +206,7 @@ export async function gestisciAgenticStatus(_request, env) {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'X-Content-Type-Options': 'nosniff',
+          ...HEADER_SICUREZZA,
           // 30s: "quasi in tempo reale" davvero, senza bussare all'hub a ogni visita.
           'Cache-Control': 'public, max-age=30, s-maxage=30',
         },
