@@ -4,6 +4,7 @@ import { inviaTracciaAsk } from './langfuse.js';
 import { gestisciRadar } from './radar.js';
 import { gestisciAgenticStatus, sondaHub } from './agentic-status.js';
 import { conta } from './crawler.js';
+import { HEADER_SICUREZZA } from './headers.js';
 //
 // ADR-0001 §4: la scelta della lingua su `/` è demandata all'edge.
 // Italia → italiano, resto del mondo → inglese. Il paese lo dà Cloudflare in
@@ -24,22 +25,21 @@ export function scegliLingua(paese, cookie = null) {
 }
 
 // public/_headers copre solo gli asset statici: le risposte generate dal Worker
-// (JSON dell'API, 302 sulla root) non ci passano e vanno messe a mano. Valore
-// allineato a public/_headers, che resta la fonte di verità per gli asset.
-const HSTS = 'max-age=63072000; includeSubDomains; preload';
+// (JSON dell'API, 302 sulla root) non ci passano e vanno messe a mano. La lista
+// vive in worker/headers.js, una sola volta per tutte le rotte.
 
 // Forma UUID: valida sia gli article_id dalla RPC sia il session id del client
 // prima che tocchino query o telemetria.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const rispostaJson = (obj, status = 200) =>
+const rispostaJson = (obj, status = 200, headerExtra = {}) =>
   new Response(JSON.stringify(obj), {
     status,
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
-      'X-Content-Type-Options': 'nosniff',
-      'Strict-Transport-Security': HSTS,
+      ...HEADER_SICUREZZA,
+      ...headerExtra,
     },
   });
 
@@ -346,13 +346,31 @@ export default {
    * @param {Request & { cf?: { country?: string } }} request
    * @param {{ ASSETS: { fetch: (r: Request) => Promise<Response> } }} env
    */
-  fetch(request, env, ctx) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/contact') return gestisciContatto(request, env);
     if (url.pathname === '/api/ask') return gestisciAsk(request, env, ctx);
     if (url.pathname === '/api/radar') return gestisciRadar(request, env, ctx);
-    if (url.pathname === '/api/agentic-status') return gestisciAgenticStatus(request, env);
+    // Il limite sta QUI e non dentro `gestisciAgenticStatus` — a differenza di
+    // /api/contact e /api/ask, che si difendono da soli — perché quell'handler ha
+    // anche un chiamante interno: la sonda del cron lo invoca come funzione, senza
+    // passare dalla rotta e senza avere un IP. Dentro l'handler, la sonda finirebbe
+    // nel secchio 'sconosciuto' con chiunque altro non ne abbia: un flood la
+    // farebbe rimbalzare con 429, lei leggerebbe una risposta che non sono i numeri
+    // e segnalerebbe a Sentry un hub giù che sta benissimo. Un allarme falso
+    // prodotto dalla nostra stessa difesa. Sul confine HTTP, invece, la sonda non
+    // ci passa per costruzione.
+    if (url.pathname === '/api/agentic-status') {
+      if (env.STATUS_LIMITER) {
+        const ip = request.headers.get('CF-Connecting-IP') || 'sconosciuto';
+        const { success } = await env.STATUS_LIMITER.limit({ key: ip });
+        // `Retry-After` = il period del binding: senza, un client ritenta subito
+        // e resta fuori più a lungo di quanto servirebbe.
+        if (!success) return rispostaJson({ error: 'rate' }, 429, { 'Retry-After': '60' });
+      }
+      return gestisciAgenticStatus(request, env);
+    }
 
     // Da qui in giu' passano solo le pagine HTML (vedi run_worker_first in
     // wrangler.jsonc): un pageview E' una richiesta HTML, e gli asset restano
@@ -382,7 +400,7 @@ export default {
       headers: {
         Location: destinazione.toString(),
         'Cache-Control': 'no-store',
-        'Strict-Transport-Security': HSTS,
+        ...HEADER_SICUREZZA,
       },
     });
   },

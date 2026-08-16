@@ -27,9 +27,15 @@
   // piano free: 100k data point scritti al giorno, ~1.100 il traffico attuale.
   // Non e' un segreto: e' il nome di un dataset sul nostro account.
   "analytics_engine_datasets": [{ "binding": "CRAWLERS", "dataset": "crawler_passaggi" }],
+  // `period` accetta solo 10 o 60 secondi (doc del binding): 60 richieste/minuto
+  // e' generoso per un widget che si aggiorna a intervalli e ostile a chi cicla.
+  // Il contatore e' per data center e "eventually consistent" per design, quindi
+  // e' un tetto contro il flood, non una ghigliottina al 61esimo colpo — e vale la
+  // pena saperlo prima di leggere un grafico e credere che il limite non funzioni.
   "ratelimits": [
     { "name": "CONTACT_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
-    { "name": "ASK_LIMITER", "namespace_id": "1002", "simple": { "limit": 10, "period": 60 } }
+    { "name": "ASK_LIMITER", "namespace_id": "1002", "simple": { "limit": 10, "period": 60 } },
+    { "name": "STATUS_LIMITER", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } }
   ],
   "assets": {
     "directory": "./dist",

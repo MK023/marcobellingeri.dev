@@ -235,3 +235,98 @@ test('il Worker espone scheduled, ed e la sonda', async () => {
   await worker.scheduled({ cron: '*/2 * * * *', scheduledTime: Date.now() }, ENV, { waitUntil: () => {} });
   assert.equal(chiamate, 1);
 });
+
+// ─── La superficie pubblica della rotta ──────────────────────────────────────
+//
+// Tre rilievi di un assessment OWASP API del 16/08, tutti misurati in
+// produzione: la rotta rispondeva 200 a POST/PUT/DELETE/PATCH, usciva col solo
+// `nosniff` mentre l'HTML riceve cinque header, e non aveva nessun limite.
+
+const richiestaConMetodo = (metodo) =>
+  new Request('https://marcobellingeri.dev/api/agentic-status', { method: metodo });
+
+const richiestaDa = (ip) =>
+  new Request('https://marcobellingeri.dev/api/agentic-status', { headers: { 'CF-Connecting-IP': ip } });
+
+const hubSano = () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ sessions_today: 3, tokens_today: 48213, cost_usd_today: 1.42 }), { status: 200 });
+};
+
+// I valori stanno scritti qui per esteso e non importati dal Worker: un test che
+// confronta una costante con se stessa non puo' fallire. Questi sono gli stessi
+// cinque header di public/_headers, che resta la fonte di verita'.
+const HEADER_ATTESI = {
+  'strict-transport-security': 'max-age=63072000; includeSubDomains; preload',
+  'content-security-policy': "frame-ancestors 'none'",
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'permissions-policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
+};
+
+const assertHeaderSicurezza = (risposta, dove) => {
+  for (const [nome, valore] of Object.entries(HEADER_ATTESI)) {
+    assert.equal(risposta.headers.get(nome), valore, `${dove}: header ${nome} assente o diverso`);
+  }
+};
+
+test('un metodo che non e GET riceve 405 e Allow, non i tre numeri', async () => {
+  hubSano();
+  for (const metodo of ['POST', 'PUT', 'DELETE', 'PATCH']) {
+    const r = await gestisciAgenticStatus(richiestaConMetodo(metodo), ENV);
+    assert.equal(r.status, 405, `${metodo} doveva essere rifiutato`);
+    // Senza `Allow` un 405 non dice al client cosa dovrebbe usare.
+    assert.equal(r.headers.get('Allow'), 'GET', `${metodo}: manca Allow`);
+  }
+});
+
+test('la risposta coi numeri freschi porta gli header di sicurezza', async () => {
+  hubSano();
+  assertHeaderSicurezza(await gestisciAgenticStatus(richiesta(), ENV), 'risposta fresca');
+});
+
+test('anche il degradato e il vuoto portano gli header di sicurezza', async () => {
+  catturaSegnalazioni();
+  globalThis.fetch = async () => { throw new Error('network down'); };
+  assertHeaderSicurezza(await gestisciAgenticStatus(richiesta(), ENV), 'degradato');
+  // Senza URL configurato non si chiama nessuno: e' l'altra risposta possibile.
+  assertHeaderSicurezza(await gestisciAgenticStatus(richiesta(), {}), 'vuoto');
+});
+
+test('oltre il limite la rotta risponde 429 con Retry-After', async () => {
+  hubSano();
+  const env = { ...ENV, STATUS_LIMITER: { limit: async () => ({ success: false }) } };
+  const r = await worker.fetch(richiestaDa('203.0.113.7'), env, { waitUntil: () => {} });
+
+  assert.equal(r.status, 429);
+  // Il periodo del binding e' 60s: dire al client quando ritentare evita che
+  // ritenti subito e resti fuori piu' a lungo.
+  assert.equal(r.headers.get('Retry-After'), '60');
+});
+
+test('il limite conta per IP di chi chiede', async () => {
+  hubSano();
+  let chiave = null;
+  const env = { ...ENV, STATUS_LIMITER: { limit: async ({ key }) => { chiave = key; return { success: true }; } } };
+  const r = await worker.fetch(richiestaDa('203.0.113.7'), env, { waitUntil: () => {} });
+
+  assert.equal(chiave, '203.0.113.7');
+  assert.equal(r.status, 200);
+});
+
+test('la sonda NON passa dal rate limit: un flood non le fa dire "hub giu"', async () => {
+  // Il test che discrimina fra le due implementazioni possibili. Se il limite
+  // stesse dentro `gestisciAgenticStatus`, la sonda del cron — che chiama la
+  // funzione, non la rotta, e non ha nessun IP — finirebbe nel secchio
+  // 'sconosciuto' insieme a chiunque altro non ne abbia. Un flood la farebbe
+  // rimbalzare con 429, lei leggerebbe una risposta che non sono i numeri e
+  // segnalerebbe a Sentry un hub giu' che invece sta benissimo: un allarme
+  // falso generato dalla nostra stessa difesa.
+  catturaSegnalazioni();
+  hubSano();
+  let chiamate = 0;
+  const env = { ...ENV, STATUS_LIMITER: { limit: async () => { chiamate += 1; return { success: false }; } } };
+
+  assert.equal(await sondaHub(env), false, 'la sonda deve vedere l hub sano');
+  assert.equal(chiamate, 0, 'la sonda non deve consumare il limite');
+});
