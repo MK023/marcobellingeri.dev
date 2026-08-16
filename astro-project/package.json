@@ -18,7 +18,7 @@
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
     "@fontsource/anton": "^5.3.0",
-    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/source-serif-4": "^5.3.0",
     "@sentry/astro": "^10.66.0",
     "@sentry/browser": "^10.69.0",
