@@ -1,7 +1,7 @@
 ---
 lang: en
 title: "A permissive robots.txt is not a licence"
-date: 2026-08-18
+date: 2026-08-11
 description: "I audited ten sources my scraper had been reading for a month. Two passed. The one that let every crawler in granted me nothing, and the one that blocked bots would have been fine."
 tags: [webdev, legal, ai, opensource]
 edicola: "robots.txt is no licence"
