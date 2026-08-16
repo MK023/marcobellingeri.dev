@@ -588,3 +588,18 @@ test('ask: il 429 dice quando ritentare', async () => {
   assert.equal(r.status, 429);
   assert.equal(r.headers.get('Retry-After'), '60');
 });
+
+// RFC 9110: un 405 DEVE portare `Allow`. La #216 l'ha dato a
+// /api/agentic-status e ha lasciato indietro queste due, che rifiutavano i
+// metodi sbagliati senza dire quale usare.
+test('contatto: il 405 dice quale metodo usare', async () => {
+  const r = await gestisciContatto(new Request('https://marcobellingeri.dev/api/contact'), {});
+  assert.equal(r.status, 405);
+  assert.equal(r.headers.get('Allow'), 'POST');
+});
+
+test('ask: il 405 dice quale metodo usare', async () => {
+  const r = await gestisciAsk(new Request('https://marcobellingeri.dev/api/ask'), {}, { waitUntil: () => {} });
+  assert.equal(r.status, 405);
+  assert.equal(r.headers.get('Allow'), 'POST');
+});
