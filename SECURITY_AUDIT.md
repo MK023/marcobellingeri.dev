@@ -352,3 +352,59 @@ automation fires on. The test issue was resolved afterwards.
 Residual, and stated rather than closed: this depends on the GitHub API remaining readable
 anonymously for public repositories, and on the keepalive itself running. The keepalive is the
 only link with a passive alarm, which is why it is the one holding the seat.
+
+---
+
+## Addendum 2026-08-16: the `/api` surface, and a measurement that lied
+
+An OWASP API pass over the public surface found three things on `/api/agentic-status`, all low,
+none exploitable today. They are recorded because the reason for fixing them is not the risk.
+
+**Methods.** The route answered `200` to POST, PUT, DELETE and PATCH; only TRACE was refused.
+Nothing mutates, because the route is read-only and there is no write path to reach, but a
+`DELETE` that answers `200` tells a client the deletion worked. Now `405` with `Allow: GET`, the shape
+`gestisciRadar` already had.
+
+**Headers.** The route went out with `nosniff` alone while the HTML gets five. `public/_headers`
+covers static assets; responses the Worker generates do not pass through it. That was already
+finding L-3, fixed then for HSTS on two responses and never generalised, so the list lived
+copied into four places and had started to drift. It now sits in `worker/headers.js`, imported
+by `index`, `agentic-status` and `radar`. The test writes the five values out in full rather
+than importing the constant: a test that compares a constant against itself cannot fail.
+
+**Rate limiting.** `agentic-os/CLAUDE.md` claimed "Cloudflare does it at the edge". Measured: 60
+requests in about 20 seconds, zero `429`, and no rule on the zone. A control that is asserted
+and absent is worse than one that is missing, because whoever reads the claim stops looking for
+the thing. There is now a `STATUS_LIMITER` binding at 60/minute per IP, the same mechanism as
+`CONTACT_LIMITER` and `ASK_LIMITER`, which were already here, so this widens an existing pattern
+rather than introducing one. Finding I-3 still stands as written: the counter is per location
+and eventually consistent by design, which makes it a ceiling against a flood from one source
+and not a guillotine on the 61st request.
+
+**Where the limit sits, which is the one design decision here.** It is in the router, not in
+`gestisciAgenticStatus`, unlike `/api/contact` and `/api/ask` which guard themselves. That
+handler has an internal caller: the cron probe invokes it as a function, with no IP. Inside the
+handler the probe would land in the `'sconosciuto'` bucket along with everyone else lacking one,
+a flood would bounce it with `429`, and it would read a response that is not the numbers and
+report to Sentry a hub that is perfectly healthy. That is a false alarm manufactured by our own
+defence. A test covers it, and the test was checked by moving the limit into the handler and
+watching it go red.
+
+### The measurement that lied
+
+Straight after the deploy, production said the limit was not working. Twice.
+
+| how it was measured | result |
+| --- | --- |
+| 70 sequential `curl` calls, one process each (~60s) | 70 × `200`, spread past the window |
+| 90 requests, `xargs -P 15`, 2s | 90 × `200`, 15 connections and 15 counters |
+| 130 URLs handed to **one** `curl`, 7s | 62 × `200` then 68 × `429` |
+
+The counter is per connection and per Cloudflare location. Parallelism does not sharpen this
+test, it dilutes it. Before concluding the control was absent, the deploy log was read instead of the measurement,
+and `env.STATUS_LIMITER (60 requests/60s)` was sitting right there. When a control looks
+missing, check what was actually deployed before believing the probe. Both wrong measurements would have looked identical had the limit genuinely been absent,
+which is the same defect this addendum exists to close, seen from the other side.
+
+`/api/contact` and `/api/ask` now carry `Retry-After: 60` on their `429` as well. They were left
+behind only because the pass that added it did not touch them.

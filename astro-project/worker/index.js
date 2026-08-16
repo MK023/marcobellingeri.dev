@@ -129,7 +129,9 @@ export async function gestisciContatto(request, env) {
   if (env.CONTACT_LIMITER) {
     const ip = request.headers.get('CF-Connecting-IP') || 'sconosciuto';
     const { success } = await env.CONTACT_LIMITER.limit({ key: ip });
-    if (!success) return rispostaJson({ error: 'rate' }, 429);
+    // `Retry-After` = il period del binding: senza, un client ritenta a occhio —
+    // di solito subito, e resta fuori piu' a lungo di quanto il limite chiederebbe.
+    if (!success) return rispostaJson({ error: 'rate' }, 429, { 'Retry-After': '60' });
   }
 
   // Difesa in profondità: il form vive solo sul nostro dominio. Un Origin diverso
@@ -212,7 +214,9 @@ export async function gestisciAsk(request, env, ctx) {
   if (env.ASK_LIMITER) {
     const ip = request.headers.get('CF-Connecting-IP') || 'sconosciuto';
     const { success } = await env.ASK_LIMITER.limit({ key: ip });
-    if (!success) return rispostaJson({ error: 'rate' }, 429);
+    // `Retry-After` = il period del binding: senza, un client ritenta a occhio —
+    // di solito subito, e resta fuori piu' a lungo di quanto il limite chiederebbe.
+    if (!success) return rispostaJson({ error: 'rate' }, 429, { 'Retry-After': '60' });
   }
 
   const origin = request.headers.get('Origin');
