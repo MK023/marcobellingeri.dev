@@ -50,6 +50,10 @@
 | **SANS ISC / DShield** | The footer of every page carries a **CC BY-NC-SA 4.0** licence link (confirmed by pulling the `href` out of the primary HTML on three pages: `isc.sans.edu/about.html`, `isc.sans.edu/`, `dshield.org/about.html`). **NC** forbids commercial use, **SA** would force the share-alike downstream. Out for the same reason as Cloudflare Radar. This one had been pending on a 403 that has since lifted. Verified 2026-08-19 | [creativecommons.org/licenses/by-nc-sa/4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) · footer of [isc.sans.edu](https://isc.sans.edu/about.html) |
 | **OECD AI Incidents Monitor** | The primary terms page is **403** on `oecd.org/en/about/terms-conditions.html` and on `oecd.org/termsandconditions/`, over curl **and** over a second network path, so it was never read. The `oecd.ai` page itself carries only `© 2026 OECD. All rights reserved` and names no licence. An unreadable licence is an ambiguous one, and ambiguous means out. Verified 2026-08-19 | oecd.ai (footer) · oecd.org terms (403) |
 | **CSIRTS.com** | Two reasons, and the second is the one that matters. First: the site serves 134 KB and contains **no terms page, no licence, not even a copyright line** — nothing to read, so nothing grants anything. Second, and structural: it is an aggregator, and its own title advertises what it re-serves — *"Unified Security Advisory Feed (CISA, CERT-EU, NVD, KEV)"*. **CERT-EU is already rejected here** as "All rights reserved". An aggregator cannot grant rights it does not hold, so taking CERT-EU through it would be the same rejected content through a side door. Verified 2026-08-19 | [csirts.com](https://www.csirts.com/) (308 to the `www` host) |
+| **KrCERT/CC** (South Korea) · **TWCERT/CC** (Taiwan) | Dropped at the cheapest gate, before licensing: **no feed at all**. Not a single `application/rss+xml` or `atom+xml` in the source of either home page. Both jurisdictions do have a national open licence (KOGL, Taiwan OGDL), which is exactly why they were looked at, and it made no difference. Verified 2026-08-19 | krcert.or.kr · twcert.org.tw |
+| **CERT Polska / NASK** (Poland) | The feed is the best of this round and the licence is still missing. `cert.pl/en/atom.xml` answers **200 `text/xml`, zero redirects**, 714 KB, **100 entries, most recent stamped the same day**: on freshness it beats most of what is in use. But the primary declares only **`© 2026 NASK`**, with no reuse licence, no terms page and no Creative Commons notice, checked over curl and over a second rendering path. Ambiguous means out. **Reopenable**: the feed work is done, so if NASK ever publishes reuse terms this becomes a small job | [cert.pl](https://cert.pl/en/) · feed `cert.pl/en/atom.xml` |
+| **RIA / CERT-EE** (Estonia) | Real feed (`ria.ee/en/rss-feeds/rss.xml`, 200 `application/rss+xml`, zero redirects, 66 KB, 100 items) but the most recent item was 13 days old when measured, and the site declares no reuse licence. Ambiguous means out. Verified 2026-08-19 | ria.ee |
+| **NSM** (Norway) | Real feed (`nsm.no/rss/alle-oppdateringer-fra-nsm/`, 200, zero redirects) but thin and slow: 10 items, most recent 15 days old, closer to a newsletter than a bulletin stream. And the footer carries only a privacy policy, no reuse licence: Norway's **NLOD** exists but a public body applies it per dataset, it is not inherited. Ambiguous means out. Verified 2026-08-19 | nsm.no |
 | **CNCERT/CC** (China) | **Not evaluated for licensing**: before compliance there is an editorial choice. It is a Chinese state agency, and citing it as a source on a site selling AI security in Europe is a visible political stance, not a technical detail. Marco's decision on 2026-07-25: not pursued | — |
 
 ## Channel 2, the competitor roster
@@ -142,6 +146,30 @@ for selecting. Working through them costs one verification each and produces alm
 no's. The round on 25 July finished 0 for 9. Starting instead from the list of countries with an
 open public licence, and only then looking for the CERT, inverts the ratio between checks and
 results.
+
+### The refinement, after the second round finished 0 for 6 (2026-08-19)
+
+Jurisdiction-first was run properly on six countries that **do** have a national open licence
+(Norway NLOD, Korea KOGL, Taiwan OGDL, Poland, Switzerland, Estonia). It still finished 0 for 6,
+and the reason is worth writing down because it makes the next round cheaper.
+
+**A national open licence is not inherited.** It is something a public body *applies*, per
+publisher and per dataset, and a CERT does not get covered by it merely by being part of that
+government. Poland has the strongest feed of the round (100 entries, refreshed the same day) and
+its CERT still declares nothing but `© 2026 NASK`. Norway has the NLOD and NSM's footer carries
+only a privacy policy. This is the Singapore case generalised: right licence, wrong perimeter.
+
+So the gate is not *"does this country have an open licence"*. It is **"does this publisher apply
+it to this content, in writing, on a page I can read"**. The countries already in use pass that
+test explicitly: the NCSC UK terms page names the OGL, CERT-FR's mentions légales name the
+Licence Ouverte, NCSC-NL's copyright page names CC0. A country having a licence somewhere is
+necessary and nowhere near sufficient.
+
+**Order the checks by cost, cheapest disqualifier first.** This round the order was: does a feed
+exist in the page source (killed Korea and Taiwan for free) → does the feed actually run, 200 and
+XML and no redirect (all three survivors passed) → is there a written licence on the primary
+(killed all three). Reversing that order would have meant reading six licence pages to reach the
+same place.
 
 ## How to add a source
 
