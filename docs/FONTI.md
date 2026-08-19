@@ -54,6 +54,7 @@
 | **CERT Polska / NASK** (Poland) | The feed is the best of this round and the licence is still missing. `cert.pl/en/atom.xml` answers **200 `text/xml`, zero redirects**, 714 KB, **100 entries, most recent stamped the same day**: on freshness it beats most of what is in use. But the primary declares only **`© 2026 NASK`**, with no reuse licence, no terms page and no Creative Commons notice, checked over curl and over a second rendering path. Ambiguous means out. **Reopenable**: the feed work is done, so if NASK ever publishes reuse terms this becomes a small job | [cert.pl](https://cert.pl/en/) · feed `cert.pl/en/atom.xml` |
 | **RIA / CERT-EE** (Estonia) | Real feed (`ria.ee/en/rss-feeds/rss.xml`, 200 `application/rss+xml`, zero redirects, 66 KB, 100 items) but the most recent item was 13 days old when measured, and the site declares no reuse licence. Ambiguous means out. Verified 2026-08-19 | ria.ee |
 | **NSM** (Norway) | Real feed (`nsm.no/rss/alle-oppdateringer-fra-nsm/`, 200, zero redirects) but thin and slow: 10 items, most recent 15 days old, closer to a newsletter than a bulletin stream. And the footer carries only a privacy policy, no reuse licence: Norway's **NLOD** exists but a public body applies it per dataset, it is not inherited. Ambiguous means out. Verified 2026-08-19 | nsm.no |
+| **ACSC / ASD** (Australia) | **Closed on 2026-08-19, a decision of Marco's, and not for the licence.** The licence clears and stays recorded here because it is true: **CC BY 4.0**, *"All material presented on this website is provided under a Creative Commons Attribution 4.0 International licence"*, excluding the Coat of Arms, the ACSC logo and third-party material, with attribution bound to the letter as **"Australian Signals Directorate, © Commonwealth of Australia 2026"** (the year sits inside the string, so it gets rechecked rather than generated). What sinks it is reach: **the host does not answer at all**, and the block is theirs rather than ours. Measured 2026-08-19: `www.cyber.gov.au` and `www.asd.gov.au` both fail to connect, while `www.australia.gov.au` answers 200 from the same machine and the same second, so it is not the network, the DNS or the route — it is those two hosts refusing non-local traffic. `wrangler dev` would leave from a datacentre too, so it buys nothing. It **could** have entered as a point with no bulletins (the EU style), since a verified licence is the only condition of entry and a static point never fetches anything: dropped anyway, because a permanent point that can never carry a bulletin adds a country to the globe and nothing to the reader | [cyber.gov.au/acsc/copyright](https://cyber.gov.au/acsc/copyright) (page updated 2026-01-13, read while it was still reachable) |
 | **CNCERT/CC** (China) | **Not evaluated for licensing**: before compliance there is an editorial choice. It is a Chinese state agency, and citing it as a source on a site selling AI security in Europe is a visible political stance, not a technical detail. Marco's decision on 2026-07-25: not pursued | — |
 
 ## Channel 2, the competitor roster
@@ -96,10 +97,15 @@ the output, which is luck, not a control.
 
 ## Approved but not wired
 
-One, as of 2026-07-25: **ACSC** (Australia), whose licence clears but whose wiring is blocked
-by a reachability doubt (detail below). Every other source that cleared the licence gate is in
-use above: those without a feed enter as a **point with no bulletins** (the EU style) rather
-than sitting on the bench, since a verified licence is the only condition of entry.
+**None, as of 2026-08-19.** The only entry that ever sat here, ACSC (Australia), was closed on
+that date: its licence cleared, its host does not answer, and it is in the rejected table above
+with the measurement.
+
+The rule that keeps this section empty is worth restating, because it is what stops a bench from
+forming: a verified licence is the **only** condition of entry. A source that clears the licence
+and has no feed does not wait here, it goes in as a **point with no bulletins** (the EU style),
+which is how NCSC NZ, the International AI Safety Report and the White House entered. So an entry
+in this section is always a temporary state or a mistake.
 
 ### Why three of the sources in use have no feed
 
@@ -108,20 +114,6 @@ than sitting on the bench, since a verified licence is the only condition of ent
 | **NCSC NZ** | `/rss/` and `/newsroom/rss/` answer **200 with a "Page not found" page** (a soft 404). There is not a single `application/rss+xml` in the source: their *Subscribe* is a mailing list. There is a JSON-LD with 89 alerts (url and name) but **no dates**, and the Radar sorts by date and promises "today's bulletins". It would admit a list that cannot keep that promise |
 | **International AI Safety Report** | No `rss` in the source (verified by Marco on 2026-07-24) |
 | **White House** | The `/presidential-actions/feed/` feed **exists and is valid** (200, `application/rss+xml`, zero redirects), but it carries *all* presidential actions. Measured on 2026-07-24: **0 items out of 30** concerned AI (June's executive order was already outside the window). A keyword filter would feed an empty point 95% of the time, so no freshness claim is better |
-
-### ACSC (Australia), approved but not wired
-
-The licence is fine: **CC BY 4.0**, *"All material presented on this website is provided under
-a Creative Commons Attribution 4.0 International licence"*, excluding the Coat of Arms, the
-ACSC logo and third-party material
-([cyber.gov.au/acsc/copyright](https://cyber.gov.au/acsc/copyright), updated 2026-01-13).
-Attribution is bound to the letter: **"Australian Signals Directorate, © Commonwealth of
-Australia 2026"**. The year is inside the string, so it gets rechecked rather than generated.
-
-What is missing is the feed: no `rss` in the source of the alerts page (verified by Marco).
-There is also a reachability doubt, since `cyber.gov.au` does not answer from the development
-network (3 timeouts, then a failed connection), so it needs a try from `wrangler dev` before
-being wired up.
 
 ## Pending (licence page unreachable or not found, recheck before using them)
 
