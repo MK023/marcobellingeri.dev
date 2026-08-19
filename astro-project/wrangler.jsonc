@@ -57,6 +57,22 @@
       "/api/contact", "/api/ask", "/api/radar", "/api/agentic-status",
       "!/_astro/*", "!/fonts/*", "!/*.xml", "!/*.pdf", "!/*.txt", "!/*.json"
     ],
+    // PERCHE' GLI URL DEL SITO FINISCONO CON LO SLASH. Non e' una scelta di Astro:
+    // e' questa riga, ed era implicita. La catena, verificata sulle due doc:
+    //   1. Astro `build.format` sta al default 'directory' -> ogni pagina esce
+    //      come `/en/writing/<slug>/index.html`.
+    //   2. Astro `trailingSlash` NON c'entra: la doc dice che sulle pagine
+    //      prerenderizzate lo slash "is handled by the hosting platform, and may
+    //      not respect your chosen configuration". Questo sito e' output:'static',
+    //      quindi e' tutto prerenderizzato e quella manopola qui non fa niente.
+    //      E' la manopola che verrebbe voglia di girare, ed e' quella sbagliata.
+    //   3. Cloudflare decide, e il suo default e' "auto-trailing-slash": serve
+    //      `/slug/` con 200 e manda `/slug` in 307 su `/slug/`.
+    // Scritto esplicito al valore che era gia' il default: zero cambiamento di
+    // comportamento oggi, e se un domani Cloudflare cambia il proprio default
+    // gli URL del sito non si spostano sotto i piedi di sitemap, canonical e
+    // dei canonical gia' depositati su dev.to.
+    "html_handling": "auto-trailing-slash",
     // Un URL inesistente riceveva il 404 spoglio del runtime. Ora riceve dist/404.html.
     "not_found_handling": "404-page"
   },

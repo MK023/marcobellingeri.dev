@@ -87,6 +87,12 @@ Always `lint` + `check` + `test` green before saying "done".
   (`Record<Lang>`), verbose logs in `engine/lib/*`.
 - The `ponytail:` markers are **declared ceilings** with an upgrade path beside them, not debt
   to pay down.
+- **The trailing slash on every URL is Cloudflare's**, not Astro's: `html_handling`
+  (`auto-trailing-slash`) in `wrangler.jsonc`, where the reasoning is written. `trailingSlash`
+  in `astro.config.mjs` does **nothing** here, because prerendered pages are the host's call.
+  Changing the shape now would move every indexed URL, so don't: keep the two ends agreeing
+  instead. Anything that builds or parses one of these URLs by hand belongs under the
+  round-trip test in `engine/test/edicola.test.mjs`.
 
 ## References (read on demand)
 
