@@ -2,6 +2,7 @@
 // La merge è pura (zero rete, zero fs); il CLI si spawna con fetch mockata.
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
+import { canonicalDi } from "../lib/devto.mjs";
 import { mergeCards, slugFromCanonical } from "../lib/edicola.mjs";
 import { runEngine } from "./helpers/spawn.mjs";
 
@@ -27,6 +28,23 @@ const CARDS = [
 
 test("slugFromCanonical: canonical della writing collection -> slug", () => {
   assert.equal(slugFromCanonical("https://marcobellingeri.dev/en/writing/audit-di-se"), "audit-di-se");
+});
+
+// La #218 ha aggiunto lo slash finale a canonicalDi perche' la pagina si
+// dichiara canonical cosi'. Qui c'era il SECONDO parser dello stesso URL,
+// ancorato con $ e senza slash: da quel merge un articolo nuovo tornava slug
+// null, quindi niente card in Edicola, in silenzio. I test non l'hanno vista
+// perche' provavano solo la forma vecchia.
+// La guardia vera e' il giro completo: chi costruisce l'URL e chi lo rilegge
+// devono restare d'accordo da soli, senza che qualcuno se lo ricordi.
+test("giro completo: quello che canonicalDi costruisce, slugFromCanonical lo rilegge", () => {
+  for (const slug of ["audit-di-se", "canonical-first", "x"]) {
+    assert.equal(slugFromCanonical(canonicalDi(slug)), slug);
+  }
+});
+
+test("slugFromCanonical: lo slash finale non azzera lo slug", () => {
+  assert.equal(slugFromCanonical("https://marcobellingeri.dev/en/writing/audit-di-se/"), "audit-di-se");
 });
 
 test("slugFromCanonical: url estranei, sporchi o assenti -> null", () => {

@@ -2,7 +2,13 @@
 // La pila dell'Edicola come dato: merge tra le card esistenti (edicola.json)
 // e gli articoli pubblicati su dev.to con canonical sul sito. Logica pura:
 // niente rete, niente filesystem — il CLI (edicola.mjs) fa l'I/O.
-const CANONICAL = /^https:\/\/marcobellingeri\.dev\/en\/writing\/([a-z0-9-]+)$/;
+// Lo slash finale e' opzionale, e non e' tolleranza gratuita: canonicalDi lo
+// emette (la pagina si dichiara canonical cosi'), ma su dev.to i pezzi usciti
+// prima della #218 conservano la forma senza. Questo parser legge un dato che
+// arriva da fuori e che esiste in due forme, quindi le accetta entrambe.
+// Il giro completo canonicalDi -> slugFromCanonical e' sotto test: e' li' che
+// si accorge se le due meta' ricominciano a divergere.
+const CANONICAL = /^https:\/\/marcobellingeri\.dev\/en\/writing\/([a-z0-9-]+)\/?$/;
 
 // slug della writing collection dal canonical_url, o null se l'articolo
 // non è un cross-post nostro.
