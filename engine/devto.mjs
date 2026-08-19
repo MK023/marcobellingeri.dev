@@ -9,7 +9,7 @@
 // preavviso). L'approvazione resta UNA, al merge della PR: qui non si decide
 // nulla di editoriale, si gira l'interruttore alla data che l'autore ha scritto.
 import { readFile, readdir } from "node:fs/promises";
-import { parseArticle, upsertArticle, publishedArticles, inUscita } from "./lib/devto.mjs";
+import { parseArticle, upsertArticle, publishedArticles, inUscita, canonicalDi } from "./lib/devto.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
 import { catchTopLevel } from "./lib/sentry.mjs";
 
@@ -17,7 +17,6 @@ import { catchTopLevel } from "./lib/sentry.mjs";
 catchTopLevel("devto");
 
 const WRITING_EN = new URL("../astro-project/src/content/writing/en/", import.meta.url);
-const canonicalDi = (slug) => `https://marcobellingeri.dev/en/writing/${slug}`;
 
 const args = process.argv.slice(2);
 const publish = args.includes("--publish");

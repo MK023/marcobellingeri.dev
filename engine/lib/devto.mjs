@@ -34,6 +34,10 @@ export function urlNonCondiviso(url) {
 // A mano e non `/\/+$/`: quella regex, su una corsa di slash che non finisce la
 // stringa, backtracka in tempo super-lineare (S8786) — la stessa forma che sul
 // Radar portava 200k char a 30s. Scorrere la coda una volta e' O(n) e basta.
+// L'URL canonico di un pezzo della writing collection. Vive qui e non nella CLI
+// perche' il test possa importarlo senza eseguire lo script.
+export const canonicalDi = (slug) => `https://marcobellingeri.dev/en/writing/${slug}/`;
+
 export function chiaveCanonical(u) {
   const s = u ?? "";
   let i = s.length;

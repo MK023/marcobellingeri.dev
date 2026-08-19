@@ -2,7 +2,7 @@
 // Stub di fetch globale con cattura delle richieste, zero rete.
 import { test, afterEach } from "node:test";
 import { strict as assert } from "node:assert";
-import { parseArticle, upsertArticle, inUscita, urlNonCondiviso, chiaveCanonical } from "../lib/devto.mjs";
+import { parseArticle, upsertArticle, inUscita, urlNonCondiviso, chiaveCanonical, canonicalDi } from "../lib/devto.mjs";
 import { runEngine } from "./helpers/spawn.mjs";
 
 const realFetch = globalThis.fetch;
@@ -210,6 +210,17 @@ test("writing: nessun link relativo nei body, che sul mirror sarebbero 404", asy
     }
   }
   assert.deepEqual(rotti, [], `link relativi nel contenuto: sul mirror dev.to sono 404\n${rotti.join("\n")}`);
+});
+
+// Misurato il 19-08-2026: l'URL nudo risponde 307 verso quello con lo slash,
+// che risponde 200. Le pagine si autodichiarano canonical CON lo slash. L'engine
+// ne mandava a dev.to uno SENZA: il rel=canonical di ogni specchio puntava a un
+// redirect, e non combaciava con quello che la pagina di destinazione dichiara
+// di se'. E' la stessa classe che il test del magazine presidia gia' (link del
+// feed == canonical della pagina): la si perdeva solo perche' per writing
+// nessuno l'aveva scritta.
+test("canonicalDi: manda lo stesso canonical che la pagina dichiara, slash incluso", () => {
+  assert.equal(canonicalDi("x"), "https://marcobellingeri.dev/en/writing/x/");
 });
 
 // ---- inUscita: il decisore puro dell'uscita programmata -----------------
