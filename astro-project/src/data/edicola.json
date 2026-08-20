@@ -1,8 +1,8 @@
 [
   {
     "label": {
-      "it": "Il test passava, l'attacco pure",
-      "en": "The test passed, so did the attack"
+      "it": "Il test che non vedeva l'attacco",
+      "en": "The test that missed the attack"
     },
     "sub": {
       "it": "dev.to · Bug Smash 2026",
@@ -12,8 +12,8 @@
   },
   {
     "label": {
-      "it": "L'allarme mentiva",
-      "en": "The alarm was lying"
+      "it": "L'allarme che mentiva",
+      "en": "The alarm that lied"
     },
     "sub": {
       "it": "dev.to · Bug Smash 2026",
