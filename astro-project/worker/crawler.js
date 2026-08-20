@@ -15,6 +15,14 @@
 // leggendo il sito adesso, tramite ChatGPT" — confonderlo con GPTBot, che
 // addestra e basta, cancella proprio la differenza che interessa.
 const FAMIGLIE = [
+  // Primo di tutti, perche' e' l'unico che non e' ne' un crawler ne' una persona:
+  // e' il NOSTRO monitor di uptime. Misurato il 20-08-2026 sui dati veri, faceva
+  // il 90% di tutto il traffico del sito — ~1.450 passaggi al giorno su ~1.600,
+  // uno al minuto su /en/ da Francoforte e Amsterdam. Finiva in `bot-ignoto`, e
+  // li' dentro rendeva falso ogni rapporto umani/bot che questo contatore esiste
+  // per dare. Classificarlo invece di scartarlo tiene il dato intero: il
+  // passaggio c'e' stato e consuma quota Worker, semplicemente non e' pubblico.
+  ['sentryuptimebot', 'sentry-uptime'],
   ['chatgpt-user', 'chatgpt-user'],
   ['oai-searchbot', 'oai-searchbot'],
   ['gptbot', 'gptbot'],

@@ -16,6 +16,16 @@ const UA_UMANO =
 
 test('crawler: i bot IA si riconoscono per famiglia, non alla rinfusa', () => {
   assert.equal(classifica('Mozilla/5.0 (compatible; GPTBot/1.2; +https://openai.com/gptbot)'), 'gptbot');
+
+  // Misurato il 20-08-2026 sui dati veri: SentryUptimeBot e' il 90% di TUTTO il
+  // traffico del sito (~1.450 passaggi al giorno su ~1.600), colpisce solo /en/
+  // una volta al minuto da Francoforte e Amsterdam. Non e' un crawler e non e'
+  // una persona: e' il nostro stesso monitor di uptime. Dentro `bot-ignoto`
+  // rendeva falso ogni rapporto umani/bot che il contatore esiste per dare.
+  assert.equal(
+    classifica('SentryUptimeBot/1.0 (+https://docs.sentry.io/product/alerts/uptime-monitoring/)'),
+    'sentry-uptime',
+  );
   assert.equal(classifica('Mozilla/5.0 (compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot)'), 'oai-searchbot');
   assert.equal(classifica('Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)'), 'claudebot');
   assert.equal(classifica('Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/bot)'), 'perplexitybot');
