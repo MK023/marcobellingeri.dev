@@ -36,7 +36,7 @@ Every command runs under `doppler run --`. Expected environment:
 | `VALYU_API_KEY` | Channel 1 sourcing |
 | `FIRECRAWL_API_KEY` | Channel 2 competitor scraping |
 | `DEVTO_API_KEY` | cross-posting the writing collection to dev.to (`devto.mjs`, `edicola.mjs`) |
-| `PERPLEXITY_API_KEY`, `GSC_CLIENT_ID/SECRET/REFRESH_TOKEN`, `GSC_SITE_URL` | discoverability monitor (`visibility.mjs`) |
+| `PERPLEXITY_API_KEY`, `GSC_CLIENT_ID/SECRET/REFRESH_TOKEN`, `GSC_SITE_URL` | discoverability monitor (`visibility.mjs`). The monitor only reads, but since 2026-08-20 the refresh token carries `auth/webmasters`, not `.readonly`: it can resubmit the sitemap. Widened on purpose, and worth knowing before assuming a monitor's credential is harmless |
 | `LANGFUSE_BASE_URL/_PUBLIC_KEY/_SECRET_KEY` | tracing (optional: without them, tracing is a no-op) |
 | `SENTRY_DSN` | error tracking (optional: without it, `lib/sentry.mjs` is a no-op) |
 
