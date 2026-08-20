@@ -38,8 +38,8 @@
   {
     "slug": "tool-use-jobsearch",
     "label": {
-      "it": "Tool-use in JobSearch",
-      "en": "Tool-use in JobSearch"
+      "it": "JSON garantito da Claude",
+      "en": "Guaranteed JSON from Claude"
     },
     "sub": {
       "it": "dev.to · 2026",
