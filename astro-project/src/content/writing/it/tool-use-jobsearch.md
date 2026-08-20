@@ -1,8 +1,8 @@
 ---
 lang: it
-title: "Dal parsing del JSON nel testo al tool use di Claude in JobSearch"
+title: "JSON garantito da Claude, e i cinque parser che ho cancellato per averlo"
 date: 2026-07-21
-description: "Avevo cinque funzioni il cui unico mestiere era riparare JSON che Claude aveva appena scritto. Una PR le ha cancellate tutte, e la sorpresa è arrivata dopo il lancio."
+description: "Avevo cinque funzioni il cui unico mestiere era riparare JSON che Claude aveva appena scritto. Forzare un tool solo con tool_choice ha reso il parsing un problema dell'API invece che mio, e una PR le ha cancellate tutte. La sorpresa è arrivata dopo il lancio."
 tags: [ai, python, claude, programming]
 ---
 
