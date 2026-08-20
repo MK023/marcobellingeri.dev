@@ -83,16 +83,27 @@ The raw `User-Agent` is kept **only when the visitor is not classified as human*
 UA fingerprints a person and buys nothing here; a bot's UA is the only way to notice a family
 we do not know yet.
 
-Reading the numbers needs no endpoint, just the SQL API:
+Reading the numbers needs no endpoint, just the SQL API. Both variables live in Doppler, in
+`dev` and in `prd`:
 
 ```bash
-curl "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/analytics_engine/sql" \
+curl "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/analytics_engine/sql" \
   -H "Authorization: Bearer $CF_ANALYTICS_TOKEN" \
   --data "SELECT index1 AS famiglia, SUM(_sample_interval) AS passaggi
           FROM crawler_passaggi
           WHERE timestamp > NOW() - INTERVAL '7' DAY
           GROUP BY famiglia ORDER BY passaggi DESC"
 ```
+
+`CF_ANALYTICS_TOKEN` is a **dedicated read-only token**, `Account → Account Analytics → Read`
+and nothing else. That is worth a sentence because for a while it did not exist, and the query
+above was being run with the Wrangler **deploy** token, which happened to carry the permission.
+It worked, and it was a token that can rewrite the site being used to read a counter.
+
+Least privilege is easy to declare and easy to check, so check it: the deploy token lists one
+zone, the analytics token lists **zero**, and on `workers/scripts` the analytics token answers
+`403`. Note that `/zones` returns `200` either way. The status code alone does not discriminate,
+the length of the result does.
 
 `SUM(_sample_interval)` and not `COUNT(*)`: above a certain volume the dataset samples, and a
 raw count would quietly under-report. The two questions this answers are different ones. How
