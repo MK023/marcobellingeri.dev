@@ -1,5 +1,27 @@
 [
   {
+    "label": {
+      "it": "Il test che non vedeva l'attacco",
+      "en": "The test that missed the attack"
+    },
+    "sub": {
+      "it": "dev.to · Bug Smash 2026",
+      "en": "dev.to · Bug Smash 2026"
+    },
+    "href": "https://dev.to/mk023/i-wrote-a-test-for-prompt-injection-it-passed-while-the-attack-worked-kc9"
+  },
+  {
+    "label": {
+      "it": "L'allarme che mentiva",
+      "en": "The alarm that lied"
+    },
+    "sub": {
+      "it": "dev.to · Bug Smash 2026",
+      "en": "dev.to · Bug Smash 2026"
+    },
+    "href": "https://dev.to/mk023/the-alarm-wasnt-silent-it-was-lying-iam"
+  },
+  {
     "slug": "crawler-o-persone",
     "label": {
       "it": "crawler o persone",
