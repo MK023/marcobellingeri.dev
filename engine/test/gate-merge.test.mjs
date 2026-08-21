@@ -1,8 +1,10 @@
 // Unit del decisore del merge automatico della card (lib/gate-merge.mjs).
 // La decisione è pura; l'esecuzione — il merge vero — sta nel workflow.
-// Il difetto che questi test fissano: il 2026-08-21 il workflow ha mergiato un
-// secondo dopo il terzo check verde, quando GitHub non aveva ancora ricalcolato
-// la mergiabilità, e si è preso "the base branch policy prohibits the merge".
+// Quello che questi test fissano: il 2026-08-21 il workflow mergiava guardando
+// solo i check, e su una PR BLOCKED si prendeva "the base branch policy
+// prohibits the merge". La causa di quel BLOCKED era un'altra (i run
+// `pull_request` parcheggiati, vedi edicola-card.yml); qui si fissa che il gate
+// non mergia mai al buio, qualunque sia la ragione del blocco.
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { decidiMerge } from "../lib/gate-merge.mjs";
@@ -50,7 +52,7 @@ test("tre verdi e UNSTABLE: mergia — i check NON richiesti che restano skipped
   assert.equal(d.azione, "mergia");
 });
 
-test("tre verdi ma BLOCKED: aspetta — è il difetto del 2026-08-21, GitHub non ha ancora ricalcolato", () => {
+test("tre verdi ma BLOCKED: aspetta, non mergia — il blocco ha una causa e non la conosce il gate", () => {
   const d = decidiMerge({ checkRuns: tuttiVerdi, richiesti: RICHIESTI, statoMerge: "BLOCKED", tentativiRimasti: 10 });
   assert.equal(d.azione, "aspetta");
   assert.match(d.motivo, /BLOCKED/);

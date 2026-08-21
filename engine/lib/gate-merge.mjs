@@ -1,8 +1,12 @@
 // Decide se la PR della card e' pronta per il merge automatico. Puro: chi
 // interroga GitHub e chi mergia e' il workflow edicola-card.
-// I tre check richiesti verdi NON bastano: GitHub ricalcola la mergiabilita'
-// in modo asincrono, e nella finestra fra il terzo verde e il ricalcolo la PR
-// risponde ancora BLOCKED. Mergiare li' dentro e' il difetto del 2026-08-21.
+// I tre check richiesti verdi NON bastano: "verdi" e "mergiabile" sono due
+// domande diverse, e la risposta alla seconda vive nel mergeStateStatus. Una PR
+// puo' restare BLOCKED coi tre verdi addosso — per esempio quando le sue check
+// suite `pull_request` sono parcheggiate in action_required (vedi la testata di
+// edicola-card.yml, che e' il difetto vero del 2026-08-21). Questo gate non
+// sistema quel caso: aspetta invece di mergiare al buio, e a tempo scaduto si
+// ferma lasciando la PR aperta e la issue al workflow.
 const MERGIABILI = new Set(["CLEAN", "UNSTABLE"]);
 const SENZA_RITORNO = new Set(["DIRTY", "BEHIND"]);
 
