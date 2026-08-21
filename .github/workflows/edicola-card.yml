@@ -13,10 +13,16 @@ name: Edicola card
 # La decisione (verdi? mergiabile? tempo scaduto?) sta in engine/edicola-gate.mjs,
 # che ha i suoi test; qui resta solo l'esecuzione. Stessa forma di advance.mjs.
 #
-# GitHub non fa partire workflow da eventi generati col GITHUB_TOKEN
-# (anti-ricorsione): una PR creata qui non triggererebbe i CI `pull_request`, e il
-# merge del bot non triggererebbe il Deploy `push`. L'eccezione documentata è
-# workflow_dispatch, quindi CI e Deploy si lanciano esplicitamente da qui.
+# L'anti-ricorsione del GITHUB_TOKEN non salta i workflow: li PARCHEGGIA. Una PR
+# creata qui fa nascere i run `pull_request` in `action_required`, fermi in attesa
+# di approvazione — e una PR con le proprie check suite parcheggiate resta BLOCKED
+# per chiunque, bot o umano. Misurato il 2026-08-21: run creati alle 13:11:16,
+# approvati alle 13:23:42, PR mergiabile e mergiata alle 13:24:36. Quindi qui si
+# approvano, invece di lanciare una copia dei CI che finirebbe attaccata a un
+# dispatch e non alla PR.
+#
+# Il Deploy invece resta da lanciare a mano: il push del merge del bot non triggera
+# il `push`, e li' l'eccezione documentata e' workflow_dispatch.
 #
 # Nessun dato dell'evento entra in un `run:`: branch e contenuti sono generati qui.
 on:
@@ -65,16 +71,31 @@ jobs:
           git commit -am "feat(edicola): card automatica dagli articoli pubblicati su dev.to"
           git push -u origin "$branch"
           pr=$(gh pr create --title "feat(edicola): card automatica da dev.to" \
-            --body "Card generate da engine/edicola.mjs (cron Edicola card): articoli pubblicati su dev.to con canonical sul sito. I CI sono lanciati dal workflow (le PR del bot non li triggerano da sole). Merge automatico quando i tre check richiesti sono verdi E GitHub ha ricalcolato la mergiabilita'.")
+            --body "Card generate da engine/edicola.mjs (cron Edicola card): articoli pubblicati su dev.to con canonical sul sito. I CI di questa PR nascono parcheggiati (anti-ricorsione del GITHUB_TOKEN) e li sblocca il workflow. Merge automatico quando i tre check richiesti sono verdi E GitHub ha ricalcolato la mergiabilita'.")
 
-          # I CI non partono da soli su una PR del bot (vedi testata): si lanciano qui.
-          gh workflow run site-ci.yml --ref "$branch"
-          gh workflow run backend-ci.yml --ref "$branch"
+          # I CI della PR esistono gia' ma sono parcheggiati (vedi testata): si
+          # approvano. GitHub li crea qualche secondo dopo la PR, quindi si
+          # riprova finche' non compaiono.
+          sha=$(git rev-parse HEAD)
+          approvati=0
+          for _ in $(seq 1 12); do
+            sleep 10
+            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$sha" \
+              --jq '.workflow_runs[] | select(.event=="pull_request" and .conclusion=="action_required") | .id'); do
+              gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve" --silent
+              approvati=$((approvati + 1))
+            done
+            if [ "$approvati" -gt 0 ]; then break; fi
+          done
+          if [ "$approvati" -eq 0 ]; then
+            echo "nessun run pull_request da approvare: i CI non partirebbero, meglio fermarsi"
+            exit 1
+          fi
+          echo "run pull_request approvati: $approvati"
 
           # Il contatore scende: a zero il gate risponde `ferma` invece di
           # aspettare per sempre. La soglia di "verde" e i nomi dei check
           # richiesti stanno nel gate, non qui.
-          sha=$(git rev-parse HEAD)
           azione=aspetta
           for i in $(seq 60 -1 0); do
             sleep 20
