@@ -1,5 +1,17 @@
 [
   {
+    "slug": "canonical-first",
+    "label": {
+      "it": "Canonical-first su dev.to",
+      "en": "Canonical-first on dev.to"
+    },
+    "sub": {
+      "it": "dev.to · 2026",
+      "en": "dev.to · 2026"
+    },
+    "href": "https://dev.to/mk023/cross-posting-to-devto-without-giving-away-your-seo-5gd"
+  },
+  {
     "label": {
       "it": "Il test che non vedeva l'attacco",
       "en": "The test that missed the attack"
