@@ -2,14 +2,18 @@ name: Edicola card
 
 # La card dell'Edicola nasce da sola: quando un articolo della writing collection
 # risulta PUBBLICATO su dev.to (il publish è il gesto umano di Marco, lì), questo
-# cron aggiunge la card a src/data/edicola.json e porta la PR fino in produzione.
+# cron aggiunge la card a src/data/edicola.json e ne apre la PR.
 #
-# Perché la catena è "a mano" invece del solo auto-merge: GitHub non fa partire
-# workflow da eventi generati col GITHUB_TOKEN (anti-ricorsione) — una PR creata
-# qui non triggererebbe i CI `pull_request`, e il merge del bot non triggererebbe
-# il Deploy `push`. L'eccezione documentata è workflow_dispatch: quindi i CI sul
-# branch e il Deploy su main si lanciano esplicitamente da qui, e il merge parte
-# solo quando i tre check richiesti dal ruleset di main sono verdi sul commit.
+# Il bot si ferma alla PR: il merge è di Marco. Non è una regola di stile, è
+# quello che fa il ruleset di main. Con require_extra_approval_for_unattributed_changes
+# una PR firmata github-actions[bot] resta BLOCKED anche a tre check verdi e con
+# un'approvazione addosso — misurato il 2026-08-21 sullo stesso identico contenuto:
+# PR umana CLEAN, PR del bot BLOCKED. Il merge umano fa partire il Deploy da solo,
+# quindi qui non si lancia più niente dopo la PR.
+#
+# I CI invece vanno lanciati: GitHub non fa partire workflow da eventi generati col
+# GITHUB_TOKEN (anti-ricorsione), quindi una PR creata qui non triggererebbe i CI
+# `pull_request`. L'eccezione documentata è workflow_dispatch.
 #
 # Nessun dato dell'evento entra in un `run:`: branch e contenuti sono generati qui.
 on:
@@ -19,8 +23,8 @@ on:
 
 permissions:
   contents: write # push del branch card
-  pull-requests: write # apertura e merge della PR
-  actions: write # dispatch dei CI sul branch e del Deploy su main
+  pull-requests: write # apertura della PR
+  actions: write # dispatch dei CI sul branch della card
   issues: write # per l'issue automatica on-failure
 
 concurrency:
@@ -30,7 +34,7 @@ concurrency:
 jobs:
   card:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       # pin per SHA (supply-chain): il tag e' mobile, il commit no
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -42,7 +46,7 @@ jobs:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: node engine/edicola.mjs # zero dipendenze npm: nessun install
-      - name: PR, gate verdi, merge, deploy
+      - name: Apre la PR della card e lancia i CI
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -58,31 +62,12 @@ jobs:
           git commit -am "feat(edicola): card automatica dagli articoli pubblicati su dev.to"
           git push -u origin "$branch"
           pr=$(gh pr create --title "feat(edicola): card automatica da dev.to" \
-            --body "Card generate da engine/edicola.mjs (cron Edicola card): articoli pubblicati su dev.to con canonical sul sito. Merge automatico a gate verdi, deploy in coda.")
+            --body "Card generate da engine/edicola.mjs (cron Edicola card): articoli pubblicati su dev.to con canonical sul sito. I CI sono lanciati dal workflow (le PR del bot non li triggerano da sole). La merge e il deploy sono di Marco.")
 
           # I CI non partono da soli su una PR del bot (vedi testata): si lanciano qui.
           gh workflow run site-ci.yml --ref "$branch"
           gh workflow run backend-ci.yml --ref "$branch"
-
-          # Attesa dei 3 check richiesti dal ruleset (test, build-e-csp, db-rebuild)
-          # sul commit di testa: verdi -> merge; uno rosso -> job rosso -> issue.
-          sha=$(git rev-parse HEAD)
-          esito=""
-          for i in $(seq 1 60); do
-            sleep 20
-            json=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/check-runs?per_page=100" \
-              --jq '[.check_runs[] | select(.name=="test" or .name=="build-e-csp" or .name=="db-rebuild")]')
-            verdi=$(echo "$json" | jq '[.[] | select(.status=="completed" and .conclusion=="success")] | length')
-            rossi=$(echo "$json" | jq '[.[] | select(.status=="completed" and .conclusion!="success")] | length')
-            echo "check richiesti: $verdi/3 verdi, $rossi rossi"
-            [ "$rossi" -gt 0 ] && { esito=rosso; break; }
-            [ "$verdi" -eq 3 ] && { esito=verde; break; }
-          done
-          [ "$esito" = "verde" ] || { echo "gate non verdi: niente merge"; exit 1; }
-
-          gh pr merge "$pr" --squash --delete-branch
-          # Il push su main del bot non triggera il Deploy: si lancia qui.
-          gh workflow run deploy.yml --ref main
+          echo "card in PR, il merge e' tuo: $pr"
       - name: Apri issue se la card fallisce
         if: failure()
         env:
