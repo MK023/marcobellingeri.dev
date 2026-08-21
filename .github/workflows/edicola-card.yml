@@ -2,18 +2,21 @@ name: Edicola card
 
 # La card dell'Edicola nasce da sola: quando un articolo della writing collection
 # risulta PUBBLICATO su dev.to (il publish è il gesto umano di Marco, lì), questo
-# cron aggiunge la card a src/data/edicola.json e ne apre la PR.
+# cron aggiunge la card a src/data/edicola.json e la porta fino in produzione.
 #
-# Il bot si ferma alla PR: il merge è di Marco. Non è una regola di stile, è
-# quello che fa il ruleset di main. Con require_extra_approval_for_unattributed_changes
-# una PR firmata github-actions[bot] resta BLOCKED anche a tre check verdi e con
-# un'approvazione addosso — misurato il 2026-08-21 sullo stesso identico contenuto:
-# PR umana CLEAN, PR del bot BLOCKED. Il merge umano fa partire il Deploy da solo,
-# quindi qui non si lancia più niente dopo la PR.
+# L'attesa prima del merge è in due tempi, e non è prudenza: i tre check richiesti
+# verdi e "la PR è mergiabile" sono due domande diverse, e la seconda arriva dopo.
+# Il 2026-08-21 il merge partiva un secondo dopo il terzo verde, quando GitHub non
+# aveva ancora ricalcolato, e si prendeva "the base branch policy prohibits the
+# merge". Ora si aspetta anche mergeStateStatus.
 #
-# I CI invece vanno lanciati: GitHub non fa partire workflow da eventi generati col
-# GITHUB_TOKEN (anti-ricorsione), quindi una PR creata qui non triggererebbe i CI
-# `pull_request`. L'eccezione documentata è workflow_dispatch.
+# La decisione (verdi? mergiabile? tempo scaduto?) sta in engine/edicola-gate.mjs,
+# che ha i suoi test; qui resta solo l'esecuzione. Stessa forma di advance.mjs.
+#
+# GitHub non fa partire workflow da eventi generati col GITHUB_TOKEN
+# (anti-ricorsione): una PR creata qui non triggererebbe i CI `pull_request`, e il
+# merge del bot non triggererebbe il Deploy `push`. L'eccezione documentata è
+# workflow_dispatch, quindi CI e Deploy si lanciano esplicitamente da qui.
 #
 # Nessun dato dell'evento entra in un `run:`: branch e contenuti sono generati qui.
 on:
@@ -23,8 +26,8 @@ on:
 
 permissions:
   contents: write # push del branch card
-  pull-requests: write # apertura della PR
-  actions: write # dispatch dei CI sul branch della card
+  pull-requests: write # apertura e merge della PR
+  actions: write # dispatch dei CI sul branch e del Deploy su main
   issues: write # per l'issue automatica on-failure
 
 concurrency:
@@ -34,7 +37,7 @@ concurrency:
 jobs:
   card:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       # pin per SHA (supply-chain): il tag e' mobile, il commit no
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -46,7 +49,7 @@ jobs:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: node engine/edicola.mjs # zero dipendenze npm: nessun install
-      - name: Apre la PR della card e lancia i CI
+      - name: PR, attesa della mergiabilita', merge, deploy
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -62,12 +65,29 @@ jobs:
           git commit -am "feat(edicola): card automatica dagli articoli pubblicati su dev.to"
           git push -u origin "$branch"
           pr=$(gh pr create --title "feat(edicola): card automatica da dev.to" \
-            --body "Card generate da engine/edicola.mjs (cron Edicola card): articoli pubblicati su dev.to con canonical sul sito. I CI sono lanciati dal workflow (le PR del bot non li triggerano da sole). La merge e il deploy sono di Marco.")
+            --body "Card generate da engine/edicola.mjs (cron Edicola card): articoli pubblicati su dev.to con canonical sul sito. I CI sono lanciati dal workflow (le PR del bot non li triggerano da sole). Merge automatico quando i tre check richiesti sono verdi E GitHub ha ricalcolato la mergiabilita'.")
 
           # I CI non partono da soli su una PR del bot (vedi testata): si lanciano qui.
           gh workflow run site-ci.yml --ref "$branch"
           gh workflow run backend-ci.yml --ref "$branch"
-          echo "card in PR, il merge e' tuo: $pr"
+
+          # Il contatore scende: a zero il gate risponde `ferma` invece di
+          # aspettare per sempre. La soglia di "verde" e i nomi dei check
+          # richiesti stanno nel gate, non qui.
+          sha=$(git rev-parse HEAD)
+          azione=aspetta
+          for i in $(seq 60 -1 0); do
+            sleep 20
+            stato=$(gh pr view "$pr" --json mergeStateStatus --jq .mergeStateStatus)
+            azione=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/check-runs?per_page=100" \
+              | node engine/edicola-gate.mjs "$stato" "$i")
+            [ "$azione" = "aspetta" ] || break
+          done
+          [ "$azione" = "mergia" ] || { echo "niente merge: $azione"; exit 1; }
+
+          gh pr merge "$pr" --squash --delete-branch
+          # Il push su main del bot non triggera il Deploy: si lancia qui.
+          gh workflow run deploy.yml --ref main
       - name: Apri issue se la card fallisce
         if: failure()
         env:
