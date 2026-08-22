@@ -144,9 +144,19 @@ export async function upsertArticle({ title, description, tags, body, canonicalU
   const chiave = chiaveCanonical(canonicalUrl);
   const esistente = (await r.json()).find((a) => chiaveCanonical(a.canonical_url) === chiave);
 
+  // I tag vanno in ARRAY. La forma "a,b,c,d" Forem la ignora in SILENZIO:
+  // risponde 200, l'articolo risulta aggiornato, e la tag_list resta quella di
+  // prima. Misurato il 2026-08-22 sull'articolo 4457686 — PUT con la stringa,
+  // tag_list invariata; stesso articolo, stessa chiave, PUT con l'array,
+  // tag_list aggiornata nello stesso minuto.
+  //
+  // Ha zittito la sincronizzazione dei tag da sempre, senza un errore: i draft
+  // nascevano senza nessun tag (csp-hash-no-highlighter aveva quattro tag nel
+  // frontmatter e tag_list vuota su dev.to), e i pezzi usciti finora portano i
+  // tag che l'autore ha messo a mano nell'editor, non quelli del repo.
   const article = {
     title, description, body_markdown: body,
-    canonical_url: canonicalUrl, tags: tags.slice(0, 4).join(","),
+    canonical_url: canonicalUrl, tags: tags.slice(0, 4),
   };
   if (publish) article.published = true;
 
