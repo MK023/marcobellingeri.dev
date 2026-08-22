@@ -77,7 +77,12 @@ test("upsertArticle: canonical nuovo -> POST create, draft di default (published
   const post = calls.find((c) => c.method === "POST");
   assert.equal(post.headers["api-key"], "k");
   assert.equal(post.body.article.canonical_url, "https://marcobellingeri.dev/en/writing/x");
-  assert.equal(post.body.article.tags, "security,webdev,astro,css"); // max 4 (limite dev.to)
+  // ARRAY, non "a,b,c,d": la stringa comma-separated Forem la ignora in
+  // SILENZIO, con 200 e l'articolo che resta com'era. Misurato il 2026-08-22
+  // sull'articolo 4457686: PUT con la stringa -> tag_list invariata; stesso
+  // articolo, PUT con l'array -> tag_list aggiornata. Il caso su cui si vede
+  // e' il create, dove il draft nasceva senza nessun tag.
+  assert.deepEqual(post.body.article.tags, ["security", "webdev", "astro", "css"]); // max 4 (limite dev.to)
   // Draft di default: `published` NON viene mandato — sul create l'API defaulta
   // a false, e sull'update omettere = non toccare lo stato live.
   assert.equal("published" in post.body.article, false);
