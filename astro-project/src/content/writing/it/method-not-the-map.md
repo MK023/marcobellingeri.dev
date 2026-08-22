@@ -1,93 +1,83 @@
 ---
 lang: it
-title: "Ho fatto un pentest al mio hub AI e ho pubblicato il metodo, non la mappa."
+title: "Ho fatto un pentest al mio hub AI e ho pubblicato il metodo, non la mappa"
 date: 2026-08-22
-description: "Un audit in sola lettura del mio stack di osservabilità, condotto come un ingaggio vero. Non ha trovato niente di sfruttabile, e non è la parte interessante: la parte interessante sono quattro controlli che sembravano verdi e non facevano niente."
-tags: [ai, programming, productivity, security]
+description: "Un audit in sola lettura del mio stack di osservabilità, condotto come un ingaggio vero. Quasi ogni cosa seria che ha trovato stava dentro una difesa scritta poche ore prima, e la peggiore stava dentro le prove che uso per dimostrare che le difese funzionano."
+tags: [ai, opentelemetry, programming, security]
 edicola: "Il metodo, non la mappa"
 ---
 
 La settimana scorsa ho fatto un penetration test alla mia infrastruttura. Niente Burp Suite, nessun exploit lanciato contro la produzione, nessuna CVE saltata fuori. Tutto l'ingaggio si è ridotto a una sola abitudine: non credere che un controllo funzioni finché non l'ho visto funzionare.
 
-Il bersaglio è un piccolo hub di osservabilità che mi sono costruito per il mio lavoro di coding assistito dall'AI. Sei servizi: un OpenTelemetry Collector che riceve metriche e log da Claude Code, Prometheus, Grafana, un archivio dei log, una status API minuscola e un tunnel davanti a tutto. La superficie pubblica sono tre numeri aggregati. Tutto il resto resta privato. Quel confine, tre numeri fuori e nient'altro, era esattamente la cosa che stavo testando.
+Il bersaglio è un piccolo hub di osservabilità che mi sono costruito per il mio lavoro di coding assistito dall'AI. Sei servizi in un solo file compose: un tunnel, un OpenTelemetry Collector che riceve metriche e log da Claude Code, Prometheus, Grafana, Loki e una status API. La superficie pubblica sono tre numeri aggregati. Tutto il resto resta privato. Quel confine, tre numeri fuori e nient'altro, era esattamente la cosa che stavo testando.
 
-Voglio essere preciso su che tipo di test è stato, perché la parola "pentest" porta con sé un'immagine che non corrisponde. Non ho lanciato traffico d'attacco contro il sistema vivo. La piattaforma fattura a consumo, davanti ci sono un rate limiter e un WAF, e una raffica di probe sarebbe costata soldi e avrebbe avvelenato i suoi stessi risultati. Quindi è stato un audit in sola lettura del codice e della configurazione, strutturato come un ingaggio, dalla ricognizione al report, più una corsa dinamica contro tutto lo stack tirato su in locale con Docker. Le cose interessanti non sono venute dall'entrare. Sono venute dal verificare se le difese reggono quando le esegui davvero.
+La parola "pentest" porta con sé un'immagine che non corrisponde, quindi: non ho lanciato traffico d'attacco contro il sistema vivo. La piattaforma fattura a consumo, davanti ci sono un rate limiter e un WAF, e una raffica di probe sarebbe costata soldi e avrebbe avvelenato i suoi stessi risultati. È stato un audit in sola lettura del codice e della configurazione, strutturato come un ingaggio, più una corsa dinamica contro tutto lo stack tirato su in locale con Docker. Le cose interessanti non sono venute dall'entrare. Sono venute dal verificare se le difese reggono quando le esegui.
 
-## L'audit non ha trovato niente di sfruttabile, e non è la parte interessante
+## Quasi tutto quello che contava stava dentro una difesa
 
-Il passaggio statico non ha prodotto bug sfruttabili. Non perché abbia guardato con superficialità, ma perché quel codice ha una proprietà insolita: quasi ogni difesa si porta dietro un commento che nomina il guasto esatto che previene e la data in cui qualcuno l'ha misurato. Autenticazione all'ingest, non al tunnel. Identità tolta con una allow-list, non con una deny-list. Container non-root e pinnati per digest. Segreti fuori da git, con uno scanner che ha un canarino piantato apposta perché non possa passare mentre è cieco.
+Mi aspettavo che i rilievi si concentrassero dove non aveva guardato nessuno. È successo l'opposto. Quasi ogni difetto serio stava dentro un controllo scritto giorni o ore prima, quasi sempre da me, quasi sempre con accanto un commento che nominava il guasto da cui proteggeva. Il codice vecchio è stato osservato: ha girato contro traffico vero, qualcuno l'ha interrogato di ritorno, qualcuno ci è rimasto sorpreso. Una difesa scritta ieri è stata soltanto ragionata, che sembra la stessa cosa e non lo è.
 
-Leggere quella roba è rassicurante e anche un po' inutile. Un commento che dice "questo è sicuro" è un'affermazione, e il punto di una security review è che le affermazioni sono il punto di partenza, non quello d'arrivo. Quindi il lavoro vero era la seconda metà: tirare su tutto e provare a far comportare male le cose sicure.
+## Allow-list, non deny-list
 
-## Lezione uno: allow-list, non deny-list
+La prima versione del mio confine di privacy cancellava i cinque attributi d'identità che Claude Code è stato misurato mandare: `user.email`, con dentro un indirizzo vero, più `user.id`, `user.account_id`, `user.account_uuid` e `organization.id`. Non c'è un flag per spegnerli, e una `delete_key` per ciascuno funziona fino al giorno in cui il client ne aggiunge un sesto. Questa telemetria è in beta e il suo insieme di attributi non è un contratto. Su un confine di privacy una deny-list fallisce in apertura su tutto quello di cui non ha mai sentito parlare.
 
-Il confine della privacy è dove la telemetria dell'AI diventa pericolosa. Il client che gli do in pasto manda `user.email`, con dentro un indirizzo vero, su quasi ogni record di log. Sempre. Non c'è un flag per spegnerlo. Va benissimo finché sei l'unico a vedere quei dati, e diventa un problema nell'istante in cui uno solo di quei record potrebbe essere visto da qualcun altro.
-
-La riparazione ingenua è elencare i campi identificanti e cancellarli.
+Tenere quello che è noto e sicuro, e buttare il resto, trasforma un attributo sconosciuto in un'etichetta mancante invece che in una fuga. Il prezzo è che un produttore futuro le cui etichette non sono in elenco resta muto, ed è la direzione giusta in cui rompersi.
 
 ```yaml
-# per favore, non fatelo su un confine di privacy
-transform/redact:
-  metric_statements:
-    - context: datapoint
-      statements:
-        - delete_key(datapoint.attributes, "user.email")
-        - delete_key(datapoint.attributes, "organization.id")
+- context: resource
+  statements:
+    - keep_keys(resource.attributes, ["service.name"])
+    - set(resource.attributes["service.name"], "claude-code")
 ```
 
-Funziona e marcisce. L'insieme degli attributi è in beta e non è un contratto. Il giorno in cui il client aggiunge un sesto campo identificante, una deny-list di quelli che conoscevi lo lascia passare. Su un confine di privacy, una deny-list fallisce in apertura su tutto quello di cui non ha mai sentito parlare.
+Quella seconda riga non è ridondante, e capire perché mi è costato una misura. `keep_keys` filtra le chiavi, non i valori, e `service.name` è l'unico attributo che diventa una label di indice in Loki. Il 20/08/2026 un mittente che aveva il token d'ingest ha scritto `service.name: claude-code-…vittima@example.com` e quell'indirizzo è arrivato come label di indice, con la cardinalità che ne consegue. Il tetto sotto è `max_global_streams_per_user`, 5000 di default, che è un limite e non una difesa. Un produttore, un valore lecito, fissato.
 
-Quindi la configurazione tiene un elenco corto di campi noti e sicuri, e butta via il resto.
+## "Indipendenti" è una misura, non un commento
+
+Su quel confine avevo due barriere, una nel Collector e una in Loki, che rifiltra qualunque cosa le arrivi. Una mia nota di design le chiamava indipendenti: ne rompi una, tiene l'altra.
+
+Non lo erano, e lo so soltanto perché una prova è diventata rossa. `keep_keys(log.attributes, …)` governa gli attributi del record, e l'`otlp_config` di Loki ha tre sezioni, tutte e tre di attributi. Gli attributi di scope attraversavano entrambe intatti. Togli l'elenco di Loki per testare l'isolamento e uno `scope.secret` piantato apposta diventa di colpo interrogabile, seduto accanto ai dati che volevo, mentre identità e contenuto restano fuori. La riparazione sembra un no-op ed è tutta la correzione:
 
 ```yaml
-transform/allowlist:
-  metric_statements:
-    - context: resource
-      statements:
-        # il valore di service.name lo sceglie il client: fissalo, non filtrare solo le chiavi
-        - keep_keys(resource.attributes, ["service.name"])
-        - set(resource.attributes["service.name"], "claude-code")
-    - context: datapoint
-      statements:
-        - keep_keys(datapoint.attributes, ["model", "type", "session.id"])
+- context: scope
+  statements:
+    - keep_keys(scope.attributes, [])
 ```
 
-Un attributo sconosciuto diventa un'etichetta mancante invece che una fuga. Il prezzo è che un produttore futuro le cui etichette non sono in elenco resta muto, ed è la direzione giusta in cui rompersi.
+Il client oggi non manda attributi di scope. La lista è vuota perché adesso non costa niente e copre qualunque cosa ci metta una versione futura. Quello che avrebbe dovuto avvisarmi è che lo stesso buco esisteva due volte: due giorni dopo il percorso delle metriche è saltato fuori che lasciava uscire gli attributi di scope come label `otel_scope_*` senza passare da nessuna allow-list, mentre il commento accanto a quell'exporter dichiarava il confine chiuso. Stessa forma, corretta su un percorso e non sull'altro, con in mezzo della prosa che affermava andasse bene.
 
-## Lezione due: "indipendenti" è una misura, non un commento
+## Una prova che si esegue non è una prova che esercita
 
-Su quel confine avevo due barriere. Una nel Collector, una nell'archivio dei log, che rifiltra qualunque cosa gli arrivi. Mi ero raccontato che fossero indipendenti: ne rompi una, tiene l'altra.
-
-Non lo erano, e lo so soltanto perché una prova è diventata rossa. La allow-list del Collector filtrava gli attributi di resource e quelli di record, ma non ha mai toccato quelli di scope, che quindi la attraversavano intatti e venivano presi solo dall'elenco dell'archivio. Togli l'elenco dell'archivio per testare l'isolamento e una chiave piantata nello scope diventa di colpo interrogabile, seduta accanto ai dati che volevo. Due barriere indipendenti sull'identità e sul contenuto, e non indipendenti su quel terzo insieme.
-
-La parola "indipendenti" l'avevo scritta in una nota di design e ci avevo creduto. La configurazione veniva parsata. Un controllo statico sulla forma sarebbe passato. Solo una prova che è girata, e che poi è andata a guardare, ha trovato il buco. Adesso rompo ogni barriera apposta e verifico che l'altra tenga, invece di fidarmi dell'etichetta che le ho messo sopra.
-
-## Lezione tre: una prova che si esegue non è una prova che esercita
-
-Questa è quella su cui continuo a tornare. Da qualche parte nella configurazione c'era una riga che doveva azzerare il trace ID su ogni record di log prima dell'archiviazione. Era scritta correttamente, nel posto giusto. C'era pure un test che la eseguiva.
+Da qualche parte nel percorso dei log c'era una riga che doveva azzerare il trace ID su ogni record prima dell'archiviazione. Scritta correttamente, nel posto giusto, e coperta da una prova che la eseguiva.
 
 ```yaml
 # sembra giusta, fallisce su ogni record
 - set(log.trace_id.string, "")
 ```
 
-Falliva su ogni singolo record. Il setter interpreta il valore come un trace ID, la stringa vuota non è un trace ID valido, quindi lo statement andava in errore, la pipeline scriveva un warning e tirava dritto, e il campo arrivava all'archivio intatto. Il valore che vuole è l'ID di tutti zeri, `"000...000"`, che è il modo della specifica di dire "nessuna traccia". Il test che la "copriva" faceva girare la pipeline ma non mandava mai un trace ID, quindi la riga rotta non aveva niente su cui rompersi. Verde, e cieca.
+Il setter passa da `ParseTraceID`, che pretende 32 caratteri esadecimali. La stringa vuota non lo è, quindi lo statement falliva su ogni record, il Collector scriveva `warn … failed to execute statement` e tirava dritto, e il campo arrivava a Loki intatto. Misurato il 21/08/2026 sul primo traffico vero: due warning per record, circa 180 per sessione, e una barriera dichiarata e assente. Il valore che il parser accetta è l'ID di tutti zeri, il modo della specifica OTel di dire "nessuna traccia".
 
-La riparazione nella configurazione è stata un valore corretto. La riparazione nella mia testa è stata più grossa. Una prova che gira non è la stessa cosa di una prova che esercita quello che ti interessa. Se il payload non porta l'attributo che il controllo dovrebbe togliere, il controllo può essere un no-op e tutte le spie restano verdi.
+La prova non poteva vederlo, perché il payload non portava mai un trace ID. Non c'era niente su cui la riga rotta potesse rompersi. Verde, e cieca.
 
-## Lezione quattro: verde non vuol dire assente
+Il suo gemello è peggio, perché lì il guasto era condizionale. OTTL documenta che `set` non fa assolutamente niente se il valore si risolve a nil, quindi una riga che riduceva il body del log al nome dell'evento non faceva nulla, in silenzio, su ogni record senza `event.name`. Misurato contro il Collector vero: un body che conteneva un prompt e un indirizzo è arrivato in Loki verbatim. Nessuna delle due prove poteva prenderlo, perché il client manda sempre `event.name` e il payload sintetico doveva contenerlo per soddisfare un'altra asserzione. La difesa era un no-op esattamente nel caso per cui esisteva. Si chiudono allo stesso modo, facendo portare la cosa al payload: la prova sulla privacy adesso spinge dentro `deadbeefdeadbeefdeadbeefdeadbeef` come trace ID e pretende che non torni.
 
-Un tema ha continuato a ripetersi. Uno scanner delle dipendenze passava perché non legge dentro i wheel impacchettati, quindi una copia vulnerabile stava nell'immagine a un comando di distanza dall'essere reinstallata, invisibile al gate. Un watchdog trattava un risultato vuoto come zero fallimenti, il che vuol dire che avrebbe detto "sano" esattamente nel momento in cui il suo stesso input fosse sparito. Un grep sulla privacy che riporta "nessuna etichetta identificante trovata" quando non c'era niente da guardare non ti sta dicendo nulla, e suona come una buona notizia.
+## La peggiore stava dentro le prove
 
-Ognuna di queste cose ha l'aspetto di un pass. Nessuna è la prova della proprietà che volevi. La contromossa è sempre la stessa: fai in modo che il sistema te la mostri, non lasciargli tenere il silenzio e chiamarlo successo.
+Quelle prove in shell sono lo strumento che questo progetto usa per non avere guasti silenziosi. Durante l'audit ho trovato un guasto silenzioso dentro lo strumento, vecchio sei ore e mio.
 
-## La corsa dinamica
+Due di loro pinnavano l'immagine del Collector alla lettera, `0.158.0`, sotto un commento che dichiarava fosse lo stesso digest della produzione. Una PR di dipendenze aveva portato compose e Dockerfile Railway a `0.159.0`, Dependabot non legge la shell, e le prove hanno continuato a scaricare la vecchia e a passare. Quindi la frase con cui avevo verificato quell'aggiornamento, "prova del contratto verde sull'immagine nuova", era falsa. Il pin non si copia più, si legge da `docker-compose.yml`, che è la copia unica, e ogni prova adesso stampa l'immagine su cui sta girando, perché una prova che non dice cosa ha testato sta chiedendo di essere creduta.
 
-Così ho tirato su tutto il percorso delle metriche in locale con segreti finti e ho spinto dentro una metrica che portava identità, con un token valido. Il canarino è deliberato: un'email in `user.email`, un id in `organization.id`, e un valore ostile dentro `service.name` stesso.
+Poi ho scritto un gate di CI perché non ricapitasse, e una revisione avversaria ha trovato il gate nato rotto. Contava quante prove derivano la propria immagine cercando la stringa `docker-compose.yml` nel testo intero del file, commenti inclusi: così il commento che descrive la derivazione sopravviveva alla derivazione, e togliendo la riga vera il conteggio restava a tre e il gate restava verde. Sono quindici righe sotto un commento che vieta esattamente quel pattern, in un file dove lo stesso errore era già stato fatto tre volte.
+
+La forma ha fratelli, una volta che la cerchi. Una scansione bloccante dell'immagine passava perché disinstallare pip non è la stessa cosa che rimuoverlo: `ensurepip/_bundled/` ne conserva una seconda copia come wheel, lo scanner non legge dentro un archivio, e il codice vulnerabile viaggiava nell'immagine a un `python -m ensurepip` dall'essere reinstallato. Un watchdog leggeva una metrica assente come zero guasti, quindi avrebbe detto "sano" esattamente nel momento in cui il suo input fosse sparito. Ognuna di queste cose ha l'aspetto di un pass. Nessuna è la prova della proprietà che volevi.
+
+## La corsa dinamica, e cosa non dimostra
+
+Così ho tirato su il percorso delle metriche in locale con segreti finti e ho spinto dentro una metrica che portava identità, con un token valido. Il canarino è deliberato: un'email in `user.email`, un id in `organization.id`, e un valore ostile dentro `service.name` stesso.
 
 ```text
 # prima l'autenticazione, prima che qualunque altra cosa abbia voce in capitolo
-niente token   -> 401
+niente token    -> 401
 token sbagliato -> 401
 token valido    -> 200   # accettata: adesso vediamo cosa le sopravvive
 ```
@@ -98,23 +88,22 @@ Poi ho letto l'exporter. Questa è l'unica serie che espone, per intero:
 claude_code_token_usage{job="claude-code",model="claude-opus-5",session_id="sess-canary",type="input"} 4242
 ```
 
-L'email non c'è. L'id dell'organizzazione non c'è. Il `service.name` ostile non è diventato un'etichetta, è stato fissato a `claude-code`. Quello che è rimasto sono le tre chiavi che avevo ammesso. E il valore, `4242`, si è propagato fino ai numeri pubblici. Quest'ultima parte è il compromesso onesto: il token autentica il produttore fidato, quindi impedisce a qualcun altro di scrivere nella mia pipeline, ma non trasforma i valori del produttore stesso in qualcosa che io possa mettere in dubbio. Nove verifiche, tutte verdi: autenticazione all'ingest, la allow-list su entrambi i percorsi, il contratto della status API, la prova di privacy sui log con le immagini vere, la retention, gli alert.
+L'email non c'è, l'id dell'organizzazione non c'è, il `service.name` ostile è stato fissato invece di diventare una label. Quello che è rimasto sono le tre chiavi che avevo ammesso.
 
-Due limiti che non ho intenzione di nascondere. Il payload è sintetico, quindi dimostra che la allow-list scarta quello che le passo io, non che il client mandi soltanto quello. Su questo stesso progetto un payload sintetico ha già confermato una query e poi mi ha mentito. E una corsa in locale non è la produzione. La baseline vera arriva ancora dal far girare il client vero una volta e leggere cosa atterra.
+E il valore, `4242`, è arrivato fino ai numeri pubblici, che è la metà onesta. Una allow-list di nomi non vincola i valori: chi ha il token d'ingest può scrivere `claude_code.token.usage` col numero che vuole, e le query pubbliche leggono un contatore con `max_over_time(…[25h])`, quindi un picco iniettato resta appiccicato venticinque ore e non si annulla aspettando né riavviando. Misurato su uno stack di prova: `1e12` token. Quello lì non si chiude qui, e la ragione conta. Il token identifica il produttore fidato, che è l'unica fonte che questi numeri hanno, quindi filtrare i valori sarebbe un secondo parere senza una seconda fonte. Quello che il progetto può fare è impedire che il numero arrivi da qualcun altro, e le tre query pubbliche adesso portano `{job="otel-collector"}` per questo.
+
+Il payload è anche sintetico, quindi dimostra che la allow-list scarta quello che le passo io, non che il client mandi soltanto quello. Su questo stesso progetto un payload sintetico ha già confermato una query e poi mi ha mentito.
 
 ## Cosa non ho pubblicato, e perché
 
-Esiste una versione di questo articolo che elenca per nome ogni debolezza residua del sistema in esecuzione, con la rotta esatta e la finestra esatta. Quel report l'ho scritto. Resta privato.
+Esiste una versione di questo articolo che elenca per nome ogni debolezza residua del sistema in esecuzione, con la rotta esatta e la finestra esatta. Quel report l'ho scritto. Resta nel cassetto.
 
-Un penetration test della tua infrastruttura viva è, letto nel modo sbagliato, una mappa. Ogni "rischio accettato" è anche un elenco di indicazioni stradali per qualcuno che non le aveva. Quindi il report con dentro il bersaglio va nel cassetto, e quello che esce è il metodo e le lezioni, con gli hostname e i buchi specifici limati via. Se prendi la sicurezza abbastanza sul serio da fare l'audit al tuo lavoro, prendila abbastanza sul serio da non consegnare l'audit a chiunque.
+L'obiezione ovvia è che il repository è pubblico, quindi cosa sto trattenendo. La risposta è l'aggregazione. Ogni difetto qui sopra è chiuso, ed è chiuso alla luce del sole, con la misura che l'ha trovato dentro il commit che l'ha corretto. Un elenco di quello che è ancora aperto, tutto in un posto, con le rotte e i tempi uno accanto all'altro, è un oggetto diverso. Non è una divulgazione, sono indicazioni stradali.
 
-È l'ultima lezione, ed è quella che terrei se dovessi perdere tutte le altre. La parte utile di una security review non è mai stata l'elenco di cos'è sbagliato in un sistema. Era l'insieme di abitudini che l'avrebbero preso in qualunque altro.
+## Cosa guarderei sul tuo
 
-## Le abitudini, tutte in un posto
+Se mandi telemetria da un client di coding AI, leggi un record grezzo prima di leggere la tua configurazione. In questa classe di prodotti l'identità parte di default, l'insieme degli attributi è in beta, e ogni deny-list che scrivi oggi è l'elenco dei campi che esistevano stamattina.
 
-- Dai per scontato che l'identità parta di default. Guarda cosa manda il client prima che la tua configurazione entri in gioco.
-- Allow-list sul confine della privacy. Una deny-list fallisce in apertura alla prossima release.
-- Se ti appoggi a due barriere, rompine una alla volta e verifica che l'altra tenga.
-- Una prova che si esegue non è una prova che esercita. Fai in modo che il payload porti la cosa.
-- Verde non vuol dire assente. Fai in modo che il sistema ti mostri la proprietà, non accettare il silenzio.
-- Leggi la configurazione per ultima. Falla girare, e interrogala di ritorno.
+Se ti appoggi a due barriere, la domanda utile non è se sono configurate entrambe. È quale insieme di dati ne sta vedendo una sola. Rompine una alla volta e interroga di ritorno l'altra. La parola "indipendenti" in una nota di design è un'affermazione, e la mia è sopravvissuta a due percorsi prima che una prova la smentisse.
+
+E se hai delle prove, chiediti contro cosa hanno girato davvero le ultime tre volte che erano verdi. Le mie scaricavano un'immagine che la produzione si era già lasciata alle spalle, e me l'hanno detto nel modo più gentile a disposizione: passando.

@@ -1,89 +1,79 @@
 ---
 lang: en
-title: "I pentested my own AI hub and shipped the method, not the map."
+title: "I pentested my own AI hub and shipped the method, not the map"
 date: 2026-08-22
-description: "A read-only audit of my own observability stack, run like an engagement. It found nothing exploitable, which was not the interesting part: the interesting part was watching four controls that looked green turn out to be doing nothing."
-tags: [ai, programming, productivity, security]
+description: "A read-only audit of my own observability stack, run like an engagement. Almost every serious thing it found was inside a defence I had written hours earlier, and the worst one was inside the proofs I use to show the defences work."
+tags: [ai, opentelemetry, programming, security]
 edicola: "The method, not the map"
 ---
 
-I ran a penetration test on my own infrastructure last week. No Burp Suite, no exploit fired at production, no CVE popped. The entire engagement came down to one habit: refusing to believe a control was working until I had watched it work.
+I ran a penetration test on my own infrastructure last week. No Burp Suite, no exploit fired at production, no CVE popped. The whole engagement came down to one habit: refusing to believe a control was working until I had watched it work.
 
-The target is a small observability hub I built for my own AI-assisted coding. Six services: an OpenTelemetry Collector taking metrics and logs from Claude Code, Prometheus, Grafana, a log store, a tiny status API, and a tunnel in front. The public surface is three aggregate numbers. Everything else stays private. That boundary, three numbers out and nothing else, was the whole thing I was testing.
+The target is a small observability hub I built for my own AI-assisted coding. Six services in one compose file: a tunnel, an OpenTelemetry Collector taking metrics and logs from Claude Code, Prometheus, Grafana, Loki, and a status API. The public surface is three aggregate numbers. Everything else stays private. That boundary, three numbers out and nothing else, was the whole thing I was testing.
 
-I want to be honest about what kind of test this was, because the word "pentest" carries a picture that does not match. I did not throw attack traffic at the live system. The platform bills by usage, there is a rate limiter and a WAF in front, and a flood of probes would have cost money and poisoned its own results. So this was a read-only audit of the code and config, structured like an engagement, recon through reporting, plus a dynamic run against the whole stack brought up locally in Docker. The interesting findings did not come from breaking in. They came from checking whether the defenses hold when you actually run them.
+The word "pentest" carries a picture that does not match, so: I did not throw attack traffic at the live system. The platform bills by usage, there is a rate limiter and a WAF in front, and a flood of probes would have cost money and poisoned its own results. It was a read-only audit of the code and config, structured like an engagement, plus a dynamic run against the whole stack brought up locally in Docker. The interesting findings did not come from breaking in. They came from checking whether the defences hold when you run them.
 
-## The audit found nothing exploitable, which was not the interesting part
+## Almost everything serious was inside a defence
 
-The static pass came up empty on exploitable bugs. Not because I looked lightly, but because the codebase has an unusual property: nearly every defense carries a comment naming the exact failure it prevents and the date someone measured it. Auth at the ingest, not at the tunnel. Identity stripped by an allow-list, not a deny-list. Containers non-root and pinned by digest. Secrets out of git, checked by a scanner with a planted canary so the scanner cannot pass while blind.
+I expected the findings to cluster around the parts nobody had looked at. They did the opposite. Nearly every serious defect sat inside a control written days or hours earlier, usually by me, usually with a comment beside it naming what it protected against. Old code has been observed: it has run against real traffic, it has been queried back, someone has been surprised by it. A defence written yesterday has only been reasoned about, which feels like the same thing and is not.
 
-Reading that is reassuring and also slightly useless. A comment that says "this is safe" is a claim, and the entire point of a security review is that claims are where you start, not where you stop. So the real work was the second half: bring it up, and try to make the safe things misbehave.
+## Allow-list, not deny-list
 
-## Lesson one: allow-list, not deny-list
+The first version of my privacy boundary deleted the five identity attributes Claude Code was measured sending: `user.email`, carrying a real address, plus `user.id`, `user.account_id`, `user.account_uuid` and `organization.id`. There is no flag that turns them off, and a `delete_key` for each one works right up until the client adds a sixth. This telemetry is beta and its attribute set is not a contract. At a privacy boundary a deny-list fails open on everything it has not heard of.
 
-The privacy boundary is where AI telemetry gets dangerous. The client I feed sends `user.email`, carrying a real address, on almost every log record. Always. There is no flag to turn it off. That is fine when you own all the data and a problem the instant any of it could be seen.
-
-The naive fix is to list the identifying fields and delete them.
+Keeping what is known-safe and dropping the rest turns an unknown attribute into a missing label instead of a leak. The price is that a future producer whose labels are not listed goes silent, which is the correct direction to fail.
 
 ```yaml
-# please don't do this at a privacy boundary
-transform/redact:
-  metric_statements:
-    - context: datapoint
-      statements:
-        - delete_key(datapoint.attributes, "user.email")
-        - delete_key(datapoint.attributes, "organization.id")
+- context: resource
+  statements:
+    - keep_keys(resource.attributes, ["service.name"])
+    - set(resource.attributes["service.name"], "claude-code")
 ```
 
-It works and it rots. The attribute set is beta and is not a contract. The day the client adds a sixth identifying field, a deny-list of the ones you knew passes the new one through. A deny-list at a privacy boundary fails open on everything it has not heard of.
+That second line is not redundant, and finding out why cost me a measurement. `keep_keys` filters keys, not values, and `service.name` is the one attribute that becomes an index label in Loki. On 2026-08-20 a sender holding the ingest token wrote `service.name: claude-code-…victim@example.com` and the address arrived as an index label, with the cardinality that follows. The ceiling underneath is `max_global_streams_per_user`, 5000 by default, which is a limit and not a defence. One producer, one legal value, pinned.
 
-So the config keeps a short list of known-safe fields and drops the rest.
+## "Independent" is a measurement, not a comment
+
+I had two barriers on that boundary, one in the Collector and one in Loki, which re-filters whatever reaches it. A design note of mine called them independent: break one, the other holds.
+
+They were not, and I only know because a proof went red. `keep_keys(log.attributes, …)` governs record attributes, and Loki's `otlp_config` has three sections, all three of attributes. Scope attributes crossed both untouched. Remove Loki's list to test the isolation and a planted `scope.secret` was suddenly queryable, sitting next to the data I wanted, while identity and content stayed out. The repair reads like a no-op and is the whole fix:
 
 ```yaml
-transform/allowlist:
-  metric_statements:
-    - context: resource
-      statements:
-        # the client picks service.name's value, so pin it, don't just filter keys
-        - keep_keys(resource.attributes, ["service.name"])
-        - set(resource.attributes["service.name"], "claude-code")
-    - context: datapoint
-      statements:
-        - keep_keys(datapoint.attributes, ["model", "type", "session.id"])
+- context: scope
+  statements:
+    - keep_keys(scope.attributes, [])
 ```
 
-An unknown attribute becomes a missing label instead of a leak. The cost is that a future producer whose labels are not listed goes silent, and that is the correct direction to fail.
+The client sends no scope attributes today. The list is empty because it costs nothing now and covers whatever a future version puts there. What should have warned me is that the same hole existed twice: two days later the metrics path turned out to be leaking scope attributes as `otel_scope_*` labels past any allow-list, while the comment beside that exporter declared the boundary closed. Same shape, fixed on one path and not the other, with prose in between asserting it was fine.
 
-## Lesson two: "independent" is a measurement, not a comment
+## A proof that executes is not a proof that exercises
 
-I had two barriers on that boundary. One in the Collector, one in the log store, which re-filters anything that reaches it. I told myself they were independent: break one, the other holds.
-
-They were not, and I only know that because a proof went red. The Collector allow-list filtered resource attributes and record attributes, but never scope attributes, so those crossed it untouched and only the store's list was catching them. Pull the store's list to test isolation and a planted key in the scope was suddenly queryable, sitting next to the data I wanted. Two barriers that were independent on identity and on content, and not independent on that third set.
-
-I had written the word "independent" in a design note and believed it. The config parsed. A static shape check would have passed. Only a proof that ran, and then looked, found the gap. Now I break each barrier on purpose and confirm the other still holds, instead of trusting the label on it.
-
-## Lesson three: a proof that executes is not a proof that exercises
-
-This is the one I keep coming back to. Somewhere in the config there was a line meant to zero out a trace ID on every log record before storage. It was written correctly, in the right place. There was even a test that executed it.
+Somewhere in the log path there was a line meant to zero the trace ID on every record before storage. Written correctly, in the right place, and covered by a proof that ran it.
 
 ```yaml
 # looks right, fails on every record
 - set(log.trace_id.string, "")
 ```
 
-It failed on every single record. The setter parses the value as a trace ID, an empty string is not a valid one, so the statement errored, the pipeline logged a warning and moved on, and the field arrived at the store untouched. The value it wants is the all-zeroes ID, `"000...000"`, which is the spec's way of saying "no trace." The test that "covered" it ran the pipeline but never sent a trace ID, so there was nothing for the broken line to fail on. Green, and blind.
+The setter goes through `ParseTraceID`, which wants 32 hex characters. The empty string is not one, so the statement failed on every record, the Collector wrote `warn … failed to execute statement` and carried on, and the field reached Loki untouched. Measured on 2026-08-21 against the first real traffic: two warnings per record, around 180 per session, and a barrier that was declared and absent. The value the parser accepts is the all-zeroes ID, the OTel spec's way of saying "no trace".
 
-The fix in the config was one correct value. The fix in my head was bigger. A proof that runs is not the same as a proof that exercises the thing you care about. If the payload does not carry the attribute the control is supposed to strip, the control can be a no-op and every light stays green.
+The proof could not see it, because the payload never carried a trace ID. There was nothing for the broken line to fail on. Green, and blind.
 
-## Lesson four: green is not the same as absent
+Its twin is worse, because there the failure was conditional. OTTL documents that `set` does nothing at all if the value resolves to nil, so a line collapsing the log body to the event name quietly did nothing on any record without an `event.name`. Measured against the real Collector: a body containing a prompt and an address arrived in Loki verbatim. Neither proof could have caught it, because the client always sends `event.name` and the synthetic payload had to include it to satisfy a different assertion. The defence was a no-op in exactly the case it existed for. Both close the same way, by making the payload carry the thing: the privacy proof now pushes `deadbeefdeadbeefdeadbeefdeadbeef` as a trace ID and asserts it does not come back.
 
-A theme kept repeating. A dependency scanner passed because it does not read inside packaged wheels, so a vulnerable copy sat in the image one command away from being reinstalled, invisible to the gate. A watchdog treated an empty result as zero failures, which means it would report "healthy" at the exact moment its own input disappeared. A privacy grep that reports "no identifying label found" when there was nothing to look at is telling you nothing and sounding like good news.
+## The worst one was inside the proofs
 
-Each of these looks like a pass. None of them is evidence of the property you wanted. The counter to all of it is the same move: make the system show you the thing, do not let it stay silent and call that success.
+Those shell proofs are the instrument this project uses to not have silent failures. During the audit I found a silent failure inside the instrument, six hours old and mine.
 
-## The dynamic run
+Two of them pinned the Collector image literally, `0.158.0`, under a comment claiming it was the same digest as production. A dependency PR had moved compose and the Railway Dockerfile to `0.159.0`, Dependabot does not read shell, and the proofs went on pulling the old image and passing. So the sentence I had written to verify that upgrade, "contract proof green on the new image", was false. The pin is no longer copied, it is read out of `docker-compose.yml`, which is the single copy, and each proof now prints the image it is running on, because a proof that does not say what it tested is asking to be trusted.
 
-So I brought the whole metrics path up locally with fake secrets and pushed one metric carrying identity with a valid token. The canary is deliberate: an email in `user.email`, an id in `organization.id`, and a hostile value in `service.name` itself.
+Then I wrote a CI gate so it could not happen again, and an adversarial review found the gate born broken. It counted how many proofs derive their image by searching the whole file for the string `docker-compose.yml`, comments included, so the comment describing the derivation survived the derivation: delete the real line and the count stayed at three and the gate stayed green. That is fifteen lines below a comment forbidding exactly that pattern, in a file where the same mistake had already been made three times.
+
+The shape has siblings once you look for it. A blocking image scan went green because uninstalling pip is not the same as removing it: `ensurepip/_bundled/` keeps a second copy as a wheel, the scanner does not read inside an archive, and the vulnerable code shipped one `python -m ensurepip` away from being reinstalled. A cron watchdog read an absent metric as zero failures, so it would have reported healthy at the exact moment its own input disappeared. Each of those looks like a pass. None is evidence of the property you wanted.
+
+## The dynamic run, and what it does not prove
+
+So I brought the metrics path up locally with fake secrets and pushed one metric carrying identity with a valid token. The canary is deliberate: an email in `user.email`, an id in `organization.id`, and a hostile value inside `service.name` itself.
 
 ```text
 # auth first, before anything else gets a vote
@@ -98,23 +88,22 @@ Then read the exporter. Here is the single series it exposes, in full:
 claude_code_token_usage{job="claude-code",model="claude-opus-5",session_id="sess-canary",type="input"} 4242
 ```
 
-The email is gone. The organization id is gone. The hostile `service.name` did not become a label, it was pinned to `claude-code`. What stayed are the three keys I allowed. And the value, `4242`, propagated all the way to the public numbers. That last part is the honest tradeoff: the token authenticates the trusted producer, so it stops someone else writing to my pipeline, but it does not turn the producer's own values into something I can second-guess. Nine checks, all green: ingest auth, the allow-list on both paths, the status API contract, the log privacy proof on real images, retention, alerting.
+The email is gone, the organization id is gone, the hostile `service.name` was pinned instead of becoming a label. What stayed are the three keys I allowed.
 
-Two limits I will not paper over. The payload is synthetic, so it proves the allow-list discards what I hand it, not that the client only sends that. On this same project a synthetic payload has already confirmed a query and then lied to me. And a local run is not production. The real baseline still comes from running the actual client once and reading what lands.
+And the value, `4242`, went all the way to the public numbers, which is the honest half. An allow-list of names does not constrain values: whoever holds the ingest token can write `claude_code.token.usage` with any number in it, and the public queries read a counter with `max_over_time(…[25h])`, so an injected spike stays stuck for twenty-five hours and does not clear by waiting or restarting. Measured on a test stack: `1e12` tokens. That one does not close here, and the reason matters. The token identifies the trusted producer, which is the only source these numbers have, so filtering the values would be a second opinion with no second source. What the project can do is stop the number arriving from somebody else, and the three public queries now carry `{job="otel-collector"}` for that.
+
+The payload is also synthetic, so it proves the allow-list discards what I hand it, not that the client only sends that. On this same project a synthetic payload has already confirmed a query and then lied to me.
 
 ## What I did not publish, and why
 
-There is a version of this post that lists every residual weakness in the running system by name, with the exact route and the exact window. I wrote that report. It stays private.
+There is a version of this post that lists every residual weakness in the running system by name, with the exact route and the exact window. I wrote that report. It stays in the drawer.
 
-A penetration test of your own live infrastructure is, read the wrong way, a map. Every "accepted risk" is also a set of directions for someone who did not have them. So the report with the target in it goes in the drawer, and what ships is the method and the lessons, with the hostnames and the specific holes filed off. If you take security seriously enough to audit your own work, take it seriously enough not to hand the audit to everyone.
+The obvious objection is that the repository is public, so what am I withholding. The answer is the aggregation. Every defect above is closed, and closed in the open, with the measurement that found it sitting in the commit that fixed it. A list of what is still open, in one place, with routes and timings next to each other, is a different object. It is not a disclosure, it is directions.
 
-That is the last lesson, and the one I would keep if I lost the rest. The useful part of a security review was never the list of what is wrong with one system. It was the set of habits that would have caught it in any of them.
+## Worth checking on yours
 
-## The habits, in one place
+If you send telemetry from an AI coding client, read one raw record before you read your config. Identity ships by default in this class of product, the attribute set is beta, and every deny-list you write today is a list of the fields that existed this morning.
 
-- Assume identity ships by default. Check what the client sends before your config runs.
-- Allow-list at a privacy boundary. A deny-list fails open on the next release.
-- If you lean on two barriers, break each one and confirm the other holds.
-- A proof that executes is not a proof that exercises. Make the payload carry the thing.
-- Green is not absent. Make the system show you the property, do not accept silence.
-- Read the config last. Run it, and query it back.
+If you lean on two barriers, the useful question is not whether both are configured. It is which set of data only one of them is actually seeing. Break each on purpose and query the other back. The word "independent" in a design note is a claim, and mine survived two paths before a proof contradicted it.
+
+And if you have proofs, ask what your last three green runs actually ran against. Mine were pulling an image production had already left behind, and they told me so in the friendliest way available: by passing.
