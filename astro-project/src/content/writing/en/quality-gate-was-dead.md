@@ -3,7 +3,7 @@ lang: en
 title: "My quality gate wasn't strict. It was dead."
 date: 2026-08-11
 description: "An LLM-as-a-judge gate failed every content PR for weeks. It looked like a high bar. It was a 400 from the API, and the error message only named half the problem."
-tags: [testing, ai, devops, api]
+tags: [testing, ai, api]
 edicola: "The dead gate"
 ---
 

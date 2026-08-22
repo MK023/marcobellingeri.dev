@@ -3,7 +3,7 @@ lang: it
 title: "Il mio quality gate non era severo. Era morto."
 date: 2026-08-11
 description: "Un gate LLM-as-a-judge bocciava ogni PR di contenuto da settimane. Sembrava un'asticella alta. Era un 400 dell'API, e il messaggio d'errore nominava metà del problema."
-tags: [testing, ai, devops, api]
+tags: [testing, ai, api]
 edicola: "Il gate morto"
 ---
 

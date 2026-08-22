@@ -3,7 +3,7 @@ lang: it
 title: "Cross-posting su dev.to senza regalare la SEO"
 date: 2026-08-21
 description: "Il tag canonical non è la parte difficile. La parte difficile è che il tuo sito deve esistere, ed essere datato, prima della copia. Ho sbagliato quell'ordine una volta e lo specchio è finito sette giorni più vecchio dell'originale."
-tags: [seo, webdev, devops, writing]
+tags: [seo, webdev, writing]
 edicola: "Canonical-first su dev.to"
 ---
 
