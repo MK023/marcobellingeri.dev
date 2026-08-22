@@ -1,5 +1,17 @@
 [
   {
+    "slug": "method-not-the-map",
+    "label": {
+      "it": "Il metodo, non la mappa",
+      "en": "The method, not the map"
+    },
+    "sub": {
+      "it": "dev.to · 2026",
+      "en": "dev.to · 2026"
+    },
+    "href": "https://dev.to/mk023/i-pentested-my-own-ai-hub-and-shipped-the-method-not-the-map-4k3n"
+  },
+  {
     "slug": "canonical-first",
     "label": {
       "it": "Canonical-first su dev.to",
