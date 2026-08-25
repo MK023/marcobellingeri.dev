@@ -4,6 +4,14 @@ name: Edicola card
 # risulta PUBBLICATO su dev.to (il publish è il gesto umano di Marco, lì), questo
 # cron aggiunge la card a src/data/edicola.json e la porta fino in produzione.
 #
+# Lo stesso run cross-posta il pezzo su CoderLegion. Sta qui e non nel cron del
+# publish (07:00) perché CoderLegion non ha nessuna idempotenza interrogabile
+# (source_url è write-only, "i miei post" è riservato alla Master Key), quindi il
+# registro deve essere nostro — ed è edicola.json, che solo questo workflow
+# committa. Un pezzo entra in `nuove()` una volta sola: quella è la volta in cui
+# viene creato di là. Se la create fallisce il run muore prima di scrivere, e
+# domani riparte: nessuna card, nessun commit, nessun doppione.
+#
 # L'attesa prima del merge è in due tempi, e non è prudenza: i tre check richiesti
 # verdi e "la PR è mergiabile" sono due domande diverse, e la seconda arriva dopo.
 # Il 2026-08-21 il merge partiva un secondo dopo il terzo verde, quando GitHub non
@@ -43,16 +51,22 @@ concurrency:
 jobs:
   card:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 45 e non 30: i due loop d'attesa che seguono (fino a ~2 min di approvazione
+    # dei CI + fino a ~20 min di mergiabilita') impegnavano gia' quasi tutto il
+    # budget, e il passo nuovo puo' aggiungere fino a 3 min di backoff 429 piu' la
+    # scansione del feed. A 30 il timeout sarebbe scattato DOPO le create e PRIMA
+    # del merge — cioe' proprio nella finestra da cui nascono i doppioni.
+    timeout-minutes: 45
     steps:
       # pin per SHA (supply-chain): il tag e' mobile, il commit no
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
-      - name: Genera le card mancanti
+      - name: Genera le card mancanti e cross-posta su CoderLegion
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          CODERLEGION_API_KEY: ${{ secrets.CODERLEGION_API_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: node engine/edicola.mjs # zero dipendenze npm: nessun install
       - name: PR, attesa della mergiabilita', merge, deploy
@@ -68,10 +82,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git commit -am "feat(edicola): card automatica dagli articoli pubblicati su dev.to"
+          git commit -am "feat(edicola): card automatica dagli articoli pubblicati su dev.to e CoderLegion"
           git push -u origin "$branch"
-          pr=$(gh pr create --title "feat(edicola): card automatica da dev.to" \
-            --body "Card generate da engine/edicola.mjs (cron Edicola card): articoli pubblicati su dev.to con canonical sul sito. I CI di questa PR nascono parcheggiati (anti-ricorsione del GITHUB_TOKEN) e li sblocca il workflow. Merge automatico quando i tre check richiesti sono verdi E GitHub ha ricalcolato la mergiabilita'.")
+          pr=$(gh pr create --title "feat(edicola): card automatica da dev.to e CoderLegion" \
+            --body "Card generate da engine/edicola.mjs (cron Edicola card): articoli pubblicati su dev.to con canonical sul sito, cross-postati su CoderLegion nello stesso run (l'id del post e' nel campo \`coderlegion\` della card). I CI di questa PR nascono parcheggiati (anti-ricorsione del GITHUB_TOKEN) e li sblocca il workflow. Merge automatico quando i tre check richiesti sono verdi E GitHub ha ricalcolato la mergiabilita'.")
 
           # I CI della PR esistono gia' ma sono parcheggiati (vedi testata): si
           # approvano. GitHub li crea qualche secondo dopo la PR, quindi si
@@ -116,4 +130,4 @@ jobs:
         run: |
           gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "Edicola card fallita ($(date -u +%F))" \
-            --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID — la card resta in PR se creata."
+            --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID — la card resta in PR se creata. Se il run era arrivato al cross-post, il post su CoderLegion PUO' gia' esistere: il prossimo run lo ritrova da solo scandendo il feed recente, ma se rilanci a mano prima, controlla su coderlegion.com."

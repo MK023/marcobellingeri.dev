@@ -19,6 +19,14 @@ globalThis.fetch = async (url, init = {}) => {
     (x) => u.includes(x.match) && (x.method ?? "GET").toUpperCase() === method && (x.times === undefined || x.times > 0),
   );
   if (!r) throw new Error(`fetch non mockata: ${method} ${u}`);
+  // Con FETCH_LOG il figlio stampa cosa ha MANDATO, non solo cosa ha scritto:
+  // uno scambio EN/IT o un canonical sbagliato non si vedono guardando il
+  // risultato. Sta qui, nell'helper dei test, e non nel codice di produzione:
+  // un ramo che esiste solo per i test non deve vivere in ciò che va in
+  // produzione.
+  if (process.env.FETCH_LOG && init.body) {
+    console.log(`FETCH_LOG=${JSON.stringify({ method, url: u, body: init.body })}`);
+  }
   if (r.times !== undefined) r.times -= 1;
   let body = r.body;
   if (r.type === "voyage") {

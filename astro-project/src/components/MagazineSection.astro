@@ -56,6 +56,10 @@ type Card = {
   sub: Record<Lang, string>;
   href?: string;
   path?: string;
+  // Id del post CoderLegion, quando il pezzo è uscito anche là. Non si rende:
+  // `sub` lo dice già. Sta nel dato perché è il registro del cross-post — di là
+  // non c'è modo di chiedere "l'ho già pubblicato?" (engine/lib/coderlegion.mjs).
+  coderlegion?: number;
 };
 const bylines = (edicola as Card[]).map((c) => ({
   label: c.label[lang],

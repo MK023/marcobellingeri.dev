@@ -4,14 +4,32 @@
 // Il publish resta un gesto umano su dev.to: qui si fotografa l'esito.
 // L'etichetta viene dal frontmatter `edicola` (corta) o dal titolo.
 // Run: doppler run -- node engine/edicola.mjs
+//
+// Qui nasce anche il cross-post su CoderLegion, e non nel cron del publish, per
+// un motivo che e' di dato e non di comodita': CoderLegion non ha nessuna
+// idempotenza interrogabile (source_url e' write-only, "i miei post" e' riservato
+// alla Master Key — vedi lib/coderlegion.mjs), quindi il registro deve essere
+// nostro. Un registro c'e' gia' ed e' edicola.json, e questo e' l'unico workflow
+// che lo committa. Un pezzo entra in `nuove()` una volta sola nella sua vita:
+// quella e' la volta in cui viene creato di la'. Le card gia' in pila non si
+// toccano — altrimenti il primo run ripubblicherebbe mesi di archivio.
 import { readFile, writeFile } from "node:fs/promises";
-import { parseArticle, publishedArticles } from "./lib/devto.mjs";
-import { mergeCards, slugFromCanonical } from "./lib/edicola.mjs";
+import { parseArticle, publishedArticles, canonicalDi } from "./lib/devto.mjs";
+import { creaPost } from "./lib/coderlegion.mjs";
+import { mergeCards, slugFromCanonical, nuove, inEmbargo } from "./lib/edicola.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
 import { catchTopLevel } from "./lib/sentry.mjs";
 
 // Errore non gestito -> Sentry (fail-open) -> exit 1: vedi lib/sentry.mjs.
 catchTopLevel("edicola");
+
+// Controllo in testa e non dentro creaPost: la chiave serve solo quando c'e' una
+// card nuova, cioe' il giorno in cui un pezzo esce. Scoprire che manca proprio
+// quel giorno, dopo aver gia' letto dev.to, e' il momento peggiore.
+if (!process.env.CODERLEGION_API_KEY) {
+  console.error("missing env: CODERLEGION_API_KEY (usa `doppler run`)");
+  process.exit(1);
+}
 
 const FILE = new URL("../astro-project/src/data/edicola.json", import.meta.url);
 const cards = JSON.parse(await readFile(FILE, "utf8"));
@@ -21,19 +39,50 @@ for (const a of await publishedArticles()) {
   const slug = slugFromCanonical(a.canonical_url);
   if (!slug) continue;
   const label = {};
+  let en = null; // l'articolo EN serve intero: e' quello che va su CoderLegion
   for (const lang of ["it", "en"]) {
     const file = new URL(`../astro-project/src/content/writing/${lang}/${slug}.md`, import.meta.url);
     const md = await readFile(file, "utf8").catch(() => null);
     if (md === null) break; // canonical nostro ma file assente: card impossibile, salta
     const art = parseArticle(md);
     label[lang] = art.edicola ?? art.title;
+    if (lang === "en") en = art;
   }
   if (!label.it || !label.en) {
     console.error(`edicola: salto ${logsafe(slug)} — manca la coppia it/en nella writing collection`);
     continue;
   }
   const anno = (a.published_at ?? "").slice(0, 4) || String(new Date().getUTCFullYear());
-  pubblicati.push({ slug, url: a.url, anno, label });
+  pubblicati.push({ slug, url: a.url, anno, label, en });
+}
+
+// Cross-post su CoderLegion dei soli pezzi che stanno entrando in pila adesso.
+//
+// Se una create fallisce l'errore sale: niente scrittura, niente commit, e
+// domani si riparte. Questo ACCOPPIA la card dell'Edicola alla salute di
+// CoderLegion — un pezzo esce su dev.to e la sua card arriva un giorno dopo se
+// l'altro e' giu'. E' voluto, ed e' il male minore fra i due: sciogliere
+// l'accoppiamento (card scritta lo stesso, senza l'id) toglierebbe quel pezzo
+// da `nuove()` per sempre, e la sindacazione su CoderLegion sparirebbe in
+// silenzio. Un ritardo si vede (l'issue automatica); una perdita muta no.
+// Il doppione della riprova lo chiude la guardia in lib/coderlegion.mjs.
+const oggi = new Date().toISOString().slice(0, 10);
+for (const p of nuove(cards, pubblicati)) {
+  if (inEmbargo(p.en, oggi)) {
+    console.error(`edicola: ${logsafe(p.slug)} non cross-postato — data ${logsafe(p.en.date)} non ancora arrivata`);
+    continue;
+  }
+  const r = await creaPost({
+    title: p.en.title,
+    body: p.en.body,
+    tags: p.en.tags,
+    // Il canonical si ricostruisce da noi e non si rilegge da dev.to: e' la
+    // stessa URL che la pagina si dichiara, e non una stringa altrui.
+    canonicalUrl: canonicalDi(p.slug),
+  });
+  p.coderlegion = r.id;
+  const come = r.gia ? "gia' presente (ritrovato nel feed)" : "creato";
+  console.log(`coderlegion: ${come} ${logsafe(p.slug)} — ${logsafe(r.url)}${r.inCoda ? " (in coda di moderazione)" : ""}`);
 }
 
 const merged = mergeCards(cards, pubblicati);
