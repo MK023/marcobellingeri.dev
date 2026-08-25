@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { canonicalDi } from "../lib/devto.mjs";
-import { mergeCards, slugFromCanonical, nuove, inEmbargo } from "../lib/edicola.mjs";
+import { mergeCards, slugFromCanonical, nuove } from "../lib/edicola.mjs";
 import { runEngine } from "./helpers/spawn.mjs";
 
 const CARDS = [
@@ -182,7 +182,6 @@ test("mergeCards: card nuova senza id CoderLegion -> sub con la sola dev.to", ()
 // a dev.to esattamente il SEO che tutta la canonical-first esiste per tenere.
 // Questo test gira il CLI vero e le uccide tutte e quattro.
 const FILE_CARD = new URL("../../astro-project/src/data/edicola.json", import.meta.url);
-const feedVuoto = { match: "categories/articles/posts", body: { status: "success", data: [] } };
 
 test("CLI edicola: una card nuova -> POST su CoderLegion col pezzo EN e il nostro canonical", async () => {
   const { readFile, writeFile } = await import("node:fs/promises");
@@ -198,7 +197,6 @@ test("CLI edicola: una card nuova -> POST su CoderLegion col pezzo EN e il nostr
     await writeFile(FILE_CARD, JSON.stringify(senza, null, 2) + "\n");
 
     const r = runEngine(["engine/edicola.mjs"], [
-      feedVuoto,
       { match: "coderlegion.com/api/v1/posts", method: "POST", status: 201,
         body: { status: "success", queued: false, data: { id: 25431 } } },
       { match: "articles/me/published", body: [{
@@ -238,7 +236,6 @@ test("CLI edicola: alla POST vanno il corpo EN e il canonical costruito da noi",
   try {
     await writeFile(FILE_CARD, JSON.stringify(JSON.parse(originale).filter((c) => c.slug !== SLUG), null, 2) + "\n");
     const r = runEngine(["engine/edicola.mjs"], [
-      feedVuoto,
       { match: "coderlegion.com/api/v1/posts", method: "POST", status: 201,
         body: { status: "success", queued: false, data: { id: 25431 } } },
       { match: "articles/me/published", body: [{
@@ -260,20 +257,6 @@ test("CLI edicola: alla POST vanno il corpo EN e il canonical costruito da noi",
   } finally {
     await writeFile(FILE_CARD, originale);
   }
-});
-
-// Il cancello del rilascio e' la nostra `date`, non la risposta di dev.to: un
-// pezzo sotto embargo non parte verso un terzo neanche se dev.to lo dichiara
-// pubblicato. `oggi` e' iniettato, non letto dall'orologio: un test che dipende
-// dal giorno in cui gira comincia a mentire da solo il giorno dopo.
-test("inEmbargo: la data futura ferma il pezzo, quella arrivata lo lascia passare", () => {
-  assert.equal(inEmbargo({ date: "2026-08-28" }, "2026-08-25"), true);
-  assert.equal(inEmbargo({ date: "2026-08-25" }, "2026-08-25"), false, "il giorno dell'uscita esce");
-  assert.equal(inEmbargo({ date: "2026-04-15" }, "2026-08-25"), false);
-  // Un frontmatter senza data non deve diventare un lasciapassare per errore:
-  // parseArticle la pretende, ma questa funzione decide cosa esce verso terzi.
-  assert.equal(inEmbargo({}, "2026-08-25"), false);
-  assert.equal(inEmbargo(undefined, "2026-08-25"), false);
 });
 
 test("CLI edicola: senza CODERLEGION_API_KEY -> exit 1 e niente scrittura", () => {

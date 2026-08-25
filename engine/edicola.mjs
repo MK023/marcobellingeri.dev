@@ -16,7 +16,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { parseArticle, publishedArticles, canonicalDi } from "./lib/devto.mjs";
 import { creaPost } from "./lib/coderlegion.mjs";
-import { mergeCards, slugFromCanonical, nuove, inEmbargo } from "./lib/edicola.mjs";
+import { mergeCards, slugFromCanonical, nuove } from "./lib/edicola.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
 import { catchTopLevel } from "./lib/sentry.mjs";
 
@@ -56,22 +56,15 @@ for (const a of await publishedArticles()) {
   pubblicati.push({ slug, url: a.url, anno, label, en });
 }
 
-// Cross-post su CoderLegion dei soli pezzi che stanno entrando in pila adesso.
+// Cross-post su CoderLegion dei soli pezzi che stanno entrando in pila adesso:
+// pubblicato su dev.to con canonical nostro = deve stare anche di la'.
 //
 // Se una create fallisce l'errore sale: niente scrittura, niente commit, e
-// domani si riparte. Questo ACCOPPIA la card dell'Edicola alla salute di
-// CoderLegion — un pezzo esce su dev.to e la sua card arriva un giorno dopo se
-// l'altro e' giu'. E' voluto, ed e' il male minore fra i due: sciogliere
-// l'accoppiamento (card scritta lo stesso, senza l'id) toglierebbe quel pezzo
-// da `nuove()` per sempre, e la sindacazione su CoderLegion sparirebbe in
-// silenzio. Un ritardo si vede (l'issue automatica); una perdita muta no.
-// Il doppione della riprova lo chiude la guardia in lib/coderlegion.mjs.
-const oggi = new Date().toISOString().slice(0, 10);
+// domani si riparte da capo — la card mancante rimette il pezzo in `nuove()`.
+// La card e il cross-post si muovono insieme, sempre: una card scritta senza
+// l'id toglierebbe quel pezzo da `nuove()` per sempre, e la sindacazione
+// sparirebbe in silenzio. Un ritardo si vede, una perdita muta no.
 for (const p of nuove(cards, pubblicati)) {
-  if (inEmbargo(p.en, oggi)) {
-    console.error(`edicola: ${logsafe(p.slug)} non cross-postato — data ${logsafe(p.en.date)} non ancora arrivata`);
-    continue;
-  }
   const r = await creaPost({
     title: p.en.title,
     body: p.en.body,
@@ -81,8 +74,7 @@ for (const p of nuove(cards, pubblicati)) {
     canonicalUrl: canonicalDi(p.slug),
   });
   p.coderlegion = r.id;
-  const come = r.gia ? "gia' presente (ritrovato nel feed)" : "creato";
-  console.log(`coderlegion: ${come} ${logsafe(p.slug)} — ${logsafe(r.url)}${r.inCoda ? " (in coda di moderazione)" : ""}`);
+  console.log(`coderlegion: creato ${logsafe(p.slug)} — ${logsafe(r.url)}${r.inCoda ? " (in coda di moderazione)" : ""}`);
 }
 
 const merged = mergeCards(cards, pubblicati);

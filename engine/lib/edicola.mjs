@@ -44,26 +44,19 @@ export function nuove(cards, pubblicati) {
   });
 }
 
-// Il cancello del rilascio verso un terzo è la NOSTRA `date`, non la risposta di
-// dev.to. `publishedArticles()` decide quali pezzi esistono, e da lì parte il
-// corpo intero del file locale: chi controlla quell'account sceglierebbe quale
-// file del repo spedire fuori. Roba sotto embargo ce n'è davvero — al 25-08-2026
-// `csp-hash-no-highlighter` è datato 28/08 ed è già costruito in `dist/`.
-// Puro e con `oggi` iniettato: un test sull'embargo non deve dipendere dal
-// calendario del giorno in cui gira.
-export const inEmbargo = (art, oggi) => String(art?.date ?? "") > oggi;
-
 // cards = contenuto di edicola.json; pubblicati = [{slug, url, anno, label:{it,en},
 // coderlegion?}]. Ritorna le card con le nuove in testa (la pila è newest-first);
 // se non c'è niente da aggiungere ritorna lo STESSO array — il chiamante usa ===
 // per sapere se scrivere.
 //
-// `coderlegion` (l'id del post) è opzionale e arriva dal CLI dopo la create. Quando
-// c'è, entra nel `sub` come seconda fonte e resta nel dato: è il registro di cosa
-// è stato davvero creato. Quando manca — il pezzo risulta pubblicato su dev.to ma
-// la sua `date` non è ancora arrivata, quindi il CLI non lo cross-posta — la card
-// nasce lo stesso e dichiara la sola dev.to. Una card che nomina una fonte che non
-// esiste è una bugia che nessun test successivo vede.
+// `coderlegion` (l'id del post) è opzionale e arriva dal CLI dopo la create.
+// Quando c'è, entra nel `sub` come seconda fonte e resta nel dato: è il registro
+// di cosa è stato davvero creato. Quando manca, il `sub` dichiara la sola dev.to
+// — una card che nomina una fonte che non esiste è una bugia che nessun test
+// successivo vede. Dal CLI le due cose si muovono insieme (o la create riesce e
+// l'id c'è, o l'errore sale e non si scrive niente): il ramo senza id resta la
+// forma corretta per le card scritte a mano e per chi chiama questa funzione
+// senza passare dal cross-post.
 export function mergeCards(cards, pubblicati) {
   const aggiunte = nuove(cards, pubblicati).map((p) => {
     const sub = `${p.coderlegion ? "dev.to · coderlegion" : "dev.to"} · ${p.anno}`;
