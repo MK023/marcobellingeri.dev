@@ -25,7 +25,7 @@ successi, la regola sale.
 
 Questi commenti HTML sono gratis: rimossi prima dell'iniezione in contesto (garanzia
 valida SOLO per i file CLAUDE.md, non per rules/ o SKILL.md), leggibili da chi apre il
-file. 106 -> 91 righe iniettate.
+file. Misurato il 25/08: da 106 a 101 righe iniettate, 982 -> 900 parole.
 -->
 
 ## What this is
