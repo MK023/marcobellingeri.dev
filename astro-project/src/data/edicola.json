@@ -1,5 +1,17 @@
 [
   {
+    "slug": "csp-hash-no-highlighter",
+    "label": {
+      "it": "Una CSP che hasha i suoi stili",
+      "en": "A CSP that hashes itself"
+    },
+    "sub": {
+      "it": "dev.to · 2026",
+      "en": "dev.to · 2026"
+    },
+    "href": "https://dev.to/mk023/a-hash-based-csp-has-no-room-for-a-syntax-highlighter-54em"
+  },
+  {
     "slug": "method-not-the-map",
     "label": {
       "it": "Il metodo, non la mappa",
