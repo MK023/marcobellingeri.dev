@@ -563,10 +563,23 @@ const briefLabels = {
       inCorso = false;
       invia(token);
     };
+    // `return true`: la doc dice che con un ritorno non-falsy Turnstile considera
+    // l'errore gestito e non fa "additional error logging". Senza, la sua gestione
+    // resta accesa in parallelo alla nostra, e il 31-08-2026 e' arrivata a Sentry
+    // come eccezione NON gestita (300031, dal watchdog dentro setInterval, che
+    // l'integrazione browserApiErrors cattura).
+    //
+    // Misurato in locale con sitekey invalida, perche' la chiave di test "always
+    // fails" non serve: quella fallisce a siteverify, lato server. Cosa e' vero:
+    // il logging sparisce, e il RETRY resta vivo — la callback e' invocata due
+    // volte a 11s di distanza col `return true` gia' attivo. Cosa NON e' provato:
+    // il percorso che lancia non e' stato riprodotto qui, quindi che `return true`
+    // zittisca anche quello resta inferenza dalla doc, non misura.
     window.svcTurnstileErr = () => {
       inCorso = false;
       toast(S.failed, 'err');
       resetSendBtn();
+      return true;
     };
 
     // Errori inline al posto delle bolle native del browser (non stilizzabili,

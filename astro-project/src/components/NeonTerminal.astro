@@ -228,9 +228,12 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
       askResolve?.(token);
       askResolve = null; askReject = null;
     };
+    // `return true` come in Servizi.astro: l'errore è gestito qui, Turnstile non
+    // deve rilanciarlo per conto suo.
     window.askTurnstileErr = () => {
       askReject?.(new Error('turnstile-fallito'));
       askResolve = null; askReject = null;
+      return true;
     };
 
     // Una apertura del terminale = una conversazione = una session Langfuse.
