@@ -24,13 +24,15 @@ interface Window {
     reset?: (el?: HTMLElement) => void;
   };
   svcTurnstileOk?: (token: string) => void;
-  svcTurnstileErr?: () => void;
+  // Il ritorno non e' decorativo: Turnstile legge il valore e, se e' non-falsy,
+  // considera l'errore gestito e smette di rilanciarlo per conto suo.
+  svcTurnstileErr?: () => boolean;
 
   // Secondo widget Turnstile, dedicato al comando `ask` del terminale: stesso
   // script globale di Cloudflare, container e callback distinti da quelli del
   // form (Turnstile supporta più istanze in pagina via render espliciti).
   askTurnstileOk?: (token: string) => void;
-  askTurnstileErr?: () => void;
+  askTurnstileErr?: () => boolean;
 }
 
 interface Navigator {
