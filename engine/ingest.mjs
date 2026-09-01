@@ -44,8 +44,21 @@ export function buildAllowlist(registry, vertical) {
 // diverse: togliere insurance dalla rotazione (01/09/2026) non deve cancellare
 // le sue fonti, che restano curate per quando tornera'. Senza `_rotation` si
 // ricade sulle chiavi, che e' il comportamento di prima.
+// La validazione NON e' difensiva per abitudine: senza, una rotazione degenere
+// non fallisce, RIESCE MALE. `??` non copre `_rotation: []` (un array vuoto e'
+// truthy), e da li': `x % 0` = NaN, `[][NaN]` = undefined, che `console.log`
+// stampa come la STRINGA "undefined" — e la guardia `^[a-z0-9-]+$` del workflow
+// la accetta. Il cron mensile girerebbe su un verticale inesistente: ricerca
+// Valyu pagata, numero draft con `sector: "undefined"` a DB, issue aperta a
+// Marco, check-in Sentry `ok`, job verde. Su un cron non presidiato non se ne
+// accorgerebbe nessuno. Anche una stringa passa: `"security"` ha `.length` 8 e
+// l'indice ne pesca UN CARATTERE.
 export function rotazione(registry) {
-  return registry._rotation ?? Object.keys(registry).filter((k) => !k.startsWith("_") && k !== "core");
+  const r = registry._rotation ?? Object.keys(registry).filter((k) => !k.startsWith("_") && k !== "core");
+  if (!Array.isArray(r) || r.length === 0 || r.some((v) => typeof v !== "string" || !v)) {
+    throw new Error("primary-sources.json: `_rotation` deve essere una lista non vuota di nomi di verticali");
+  }
+  return r;
 }
 
 // Indice deterministico sul mese. NON e' stabile agli edit del registro: il

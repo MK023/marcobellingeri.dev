@@ -56,6 +56,10 @@ test("allowlist: chiavi maligne/riservate non inquinano", () => {
   // `_rotation` contiene NOMI DI VERTICALI, non domini: se finisse in allowlist
   // Valyu riceverebbe "security" al posto di un dominio.
   assert.deepEqual(buildAllowlist({ ...REG, _rotation: ["security"] }, "_rotation"), ["a.com", "b.gov"]);
+  // `__proto__` ora corto-circuita su startsWith("_") e non arriva piu' a
+  // Object.hasOwn: senza una chiave ereditata SENZA underscore, quella guardia
+  // resterebbe non coperta e toglierla passerebbe i test. "constructor" la copre.
+  assert.deepEqual(buildAllowlist(REG, "constructor"), ["a.com", "b.gov"]);
 });
 
 // ---- ingest: rotazione dei verticali ---------------------------------------
@@ -75,6 +79,25 @@ test("verticaleDelMese: deterministico sul mese UTC", () => {
   assert.equal(verticaleDelMese(reg, new Date(Date.UTC(2026, 8, 1))), "security");
   assert.equal(verticaleDelMese(reg, new Date(Date.UTC(2026, 9, 1))), "cloud");
   assert.equal(verticaleDelMese(reg, new Date(Date.UTC(2026, 10, 1))), "devsecops");
+  // I due istanti di confine: senza questi, sostituire getUTCMonth con getMonth
+  // resta VERDE in ogni fuso a offset positivo (Europe/Rome incluso). Il primo
+  // cade a offset negativo, il secondo a offset positivo; a offset zero le due
+  // funzioni coincidono davvero e non c'e' mutazione da uccidere.
+  assert.equal(verticaleDelMese(reg, new Date(Date.UTC(2026, 8, 1, 0, 30))), "security");
+  assert.equal(verticaleDelMese(reg, new Date(Date.UTC(2026, 8, 30, 23, 30))), "security");
+});
+
+test("rotazione: una lista degenere LANCIA invece di produrre un verticale finto", () => {
+  // Il caso che il revisore avversario ha trovato il 01/09 e che i test di prima
+  // NON vedevano: `??` non scatta su `[]`, e a valle "undefined" supera anche la
+  // guardia `^[a-z0-9-]+$` del workflow. Riprodotto prima di correggere.
+  assert.throws(() => rotazione({ _doc: "x", _rotation: [], core: [] }), /lista non vuota/);
+  assert.throws(() => rotazione({ _rotation: "security" }), /lista non vuota/);
+  assert.throws(() => rotazione({ _rotation: ["security", ""] }), /lista non vuota/);
+  assert.throws(() => rotazione({ _rotation: ["security", 42] }), /lista non vuota/);
+  // Anche il fallback puo' essere degenere: registro senza nessun verticale.
+  assert.throws(() => rotazione({ _doc: "x", core: ["a.com"] }), /lista non vuota/);
+  assert.throws(() => verticaleDelMese({ _rotation: [] }), /lista non vuota/);
 });
 
 test("verticaleDelMese: insurance e' fuori dalla rotazione ma le sue fonti restano", async () => {
