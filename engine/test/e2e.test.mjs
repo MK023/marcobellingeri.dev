@@ -23,7 +23,10 @@ test("e2e: il publish gate morde a ogni anello mancante, poi la catena passa", {
 
   try {
     // 1) numero draft sintetico
-    const [issue] = await insert("issues", [{ number: 999, period: PERIOD, sector: "__e2e__", status: "draft" }], { returning: true });
+    // `sector` non e' piu' una sentinella "__e2e__": dalla 0014 e' l'enum
+    // issue_sector. A marcare la riga come sintetica basta PERIOD (9999-01), che
+    // e' anche l'unico filtro del teardown — il settore non ci entra.
+    const [issue] = await insert("issues", [{ number: 999, period: PERIOD, sector: "security", status: "draft" }], { returning: true });
 
     // 2) publish SENZA prova -> il gate rifiuta
     await assert.rejects(

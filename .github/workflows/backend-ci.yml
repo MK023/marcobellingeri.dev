@@ -131,7 +131,12 @@ jobs:
             select count(*) into n from competitor_sources;
             if n <> 10 then raise exception 'seed non idempotente: % fonti', n; end if;
             -- il gate MORDE: publish senza prova deve fallire
-            insert into issues (number, period, sector) values (1, '2099-01', 'ci');
+            -- `sector` era 'ci' come sentinella, legale finche' la colonna era
+            -- testo libero; dalla 0014 e' l'enum issue_sector e 'ci' non esiste.
+            -- Il settore non entra in questa asserzione — serve solo una riga da
+            -- provare a pubblicare — e a marcarla come sintetica basta il
+            -- periodo '2099-01', che nessun numero vero avra' mai.
+            insert into issues (number, period, sector) values (1, '2099-01', 'security');
             begin
               update issues set status='published' where period='2099-01';
               raise exception 'il publish gate NON ha bloccato';
