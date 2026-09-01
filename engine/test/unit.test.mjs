@@ -54,12 +54,22 @@ test("registro fonti: shape valida, domini plausibili, niente vendor noti", () =
   const reg = JSON.parse(readFileSync(`${ROOT}/engine/primary-sources.json`, "utf8"));
   assert.ok(Array.isArray(reg.core) && reg.core.length > 0, "core presente");
   for (const [key, list] of Object.entries(reg)) {
-    if (key === "_doc") continue;
+    // Le chiavi di servizio `_*` non sono verticali e non contengono domini:
+    // `_doc` è prosa, `_rotation` è una lista di nomi di verticali.
+    if (key.startsWith("_")) continue;
     assert.ok(Array.isArray(list), `${key} è una lista`);
     for (const d of list) {
       assert.match(d, /^[a-z0-9.-]+\.[a-z]{2,}$/, `dominio plausibile: ${d}`);
       assert.ok(!/furtherai|waterstreet|livecompliance/.test(d), `vendor escluso: ${d}`);
     }
+  }
+});
+
+test("registro fonti: ogni verticale in `_rotation` ha una allowlist propria", () => {
+  const reg = JSON.parse(readFileSync(`${ROOT}/engine/primary-sources.json`, "utf8"));
+  for (const v of reg._rotation ?? []) {
+    assert.ok(Array.isArray(reg[v]) && reg[v].length > 0,
+      `il verticale "${v}" esce a turno ma non ha fonti proprie nel registro`);
   }
 });
 

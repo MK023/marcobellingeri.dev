@@ -28,12 +28,33 @@ catchTopLevel("ingest");
 export const DEFAULT_ANGLE = "how teams put AI to work in engineering practice: real use, patterns and measurable outcomes";
 
 // Allowlist = core cross-verticale + fonti del verticale. Solo chiavi proprie e
-// reali del registro (niente "_doc", "core" come verticale, o chiavi ereditate).
+// reali del registro (niente chiavi di servizio "_*", "core" come verticale, o
+// chiavi ereditate). Il prefisso `_` e' la convenzione: prima era il solo "_doc"
+// nominato a mano, e "_rotation" sarebbe passato per un verticale con dentro
+// nomi di verticali invece di domini.
 export function buildAllowlist(registry, vertical) {
-  const extra = vertical !== "core" && vertical !== "_doc" && Object.hasOwn(registry, vertical)
+  const extra = vertical !== "core" && !vertical.startsWith("_") && Object.hasOwn(registry, vertical)
     ? registry[vertical]
     : [];
   return [...(registry.core ?? []), ...extra];
+}
+
+// I verticali in rotazione. Sta nel registro e non nel workflow perche' la
+// domanda "quali verticali esistono" e "quali ne escono a turno" sono due cose
+// diverse: togliere insurance dalla rotazione (01/09/2026) non deve cancellare
+// le sue fonti, che restano curate per quando tornera'. Senza `_rotation` si
+// ricade sulle chiavi, che e' il comportamento di prima.
+export function rotazione(registry) {
+  return registry._rotation ?? Object.keys(registry).filter((k) => !k.startsWith("_") && k !== "core");
+}
+
+// Indice deterministico sul mese. NON e' stabile agli edit del registro: il
+// modulo e' sulla LUNGHEZZA, quindi aggiungere o togliere un verticale rimescola
+// anche i mesi degli altri. E' accettato — il calendario non e' un impegno — ma
+// va saputo prima di toccare `_rotation`, non dopo.
+export function verticaleDelMese(registry, now = new Date()) {
+  const r = rotazione(registry);
+  return r[(now.getUTCFullYear() * 12 + now.getUTCMonth()) % r.length];
 }
 
 export function buildQuery(vertical, angle = DEFAULT_ANGLE) {

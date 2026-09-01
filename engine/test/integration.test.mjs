@@ -3,6 +3,7 @@
 // (batching Voyage, request shape Supabase/Valyu, error paths).
 import { test, afterEach } from "node:test";
 import { strict as assert } from "node:assert";
+import { readFile } from "node:fs/promises";
 
 // Env fittizio PRIMA degli import (le lib leggono process.env a module-load).
 process.env.SUPABASE_URL = "https://fake.supabase.co";
@@ -14,7 +15,7 @@ process.env.LANGFUSE_PUBLIC_KEY = "pk_fake";
 process.env.LANGFUSE_SECRET_KEY = "sk_lf_fake";
 process.env.ANTHROPIC_API_KEY = "sk-ant_fake";
 
-const { buildAllowlist, buildQuery, mapResults, dedupFresh, DEFAULT_ANGLE } = await import("../ingest.mjs");
+const { buildAllowlist, buildQuery, mapResults, dedupFresh, DEFAULT_ANGLE, rotazione, verticaleDelMese } = await import("../ingest.mjs");
 const { embed } = await import("../lib/voyage.mjs");
 const { select, insert, rpc } = await import("../lib/supabase.mjs");
 const { search } = await import("../lib/valyu.mjs");
@@ -52,6 +53,35 @@ test("allowlist: chiavi maligne/riservate non inquinano", () => {
   assert.deepEqual(buildAllowlist(REG, "__proto__"), ["a.com", "b.gov"]);
   assert.deepEqual(buildAllowlist(REG, "core"), ["a.com", "b.gov"]);
   assert.deepEqual(buildAllowlist(REG, "_doc"), ["a.com", "b.gov"]);
+  // `_rotation` contiene NOMI DI VERTICALI, non domini: se finisse in allowlist
+  // Valyu riceverebbe "security" al posto di un dominio.
+  assert.deepEqual(buildAllowlist({ ...REG, _rotation: ["security"] }, "_rotation"), ["a.com", "b.gov"]);
+});
+
+// ---- ingest: rotazione dei verticali ---------------------------------------
+
+test("rotazione: `_rotation` vince sulle chiavi del registro", () => {
+  const reg = { _doc: "x", _rotation: ["security", "cloud"], core: [], insurance: [], security: [], cloud: [] };
+  assert.deepEqual(rotazione(reg), ["security", "cloud"]);
+});
+
+test("rotazione: senza `_rotation` si ricade sulle chiavi (comportamento di prima)", () => {
+  assert.deepEqual(rotazione({ _doc: "x", core: [], security: [], cloud: [] }), ["security", "cloud"]);
+});
+
+test("verticaleDelMese: deterministico sul mese UTC", () => {
+  const reg = { _rotation: ["security", "cloud", "devsecops", "software-engineering"] };
+  // (2026*12 + mese) % 4 — settembre e' mese 8, quindi indice 0.
+  assert.equal(verticaleDelMese(reg, new Date(Date.UTC(2026, 8, 1))), "security");
+  assert.equal(verticaleDelMese(reg, new Date(Date.UTC(2026, 9, 1))), "cloud");
+  assert.equal(verticaleDelMese(reg, new Date(Date.UTC(2026, 10, 1))), "devsecops");
+});
+
+test("verticaleDelMese: insurance e' fuori dalla rotazione ma le sue fonti restano", async () => {
+  const reg = JSON.parse(await readFile(new URL("../primary-sources.json", import.meta.url), "utf8"));
+  const mesi = Array.from({ length: 24 }, (_, i) => verticaleDelMese(reg, new Date(Date.UTC(2026, i, 1))));
+  assert.ok(!mesi.includes("insurance"), "insurance non deve piu' uscire a turno");
+  assert.ok(buildAllowlist(reg, "insurance").includes("eiopa.europa.eu"), "le fonti insurance restano curate");
 });
 
 // ---- ingest: query e mapping ----------------------------------------------

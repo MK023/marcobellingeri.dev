@@ -43,11 +43,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # La rotazione vive in engine/ingest.mjs (verticaleDelMese), non qui: qui
+          # non era testabile, e la copia nel workflow era la seconda definizione
+          # della stessa regola. Il registro resta la fonte dei dati.
           vertical=$(node -e '
-            const reg = Object.keys(require("./engine/primary-sources.json"))
-              .filter((k) => k !== "_doc" && k !== "core");
-            const now = new Date();
-            console.log(reg[(now.getUTCFullYear() * 12 + now.getUTCMonth()) % reg.length]);
+            Promise.all([
+              import("./engine/ingest.mjs"),
+              import("node:fs/promises").then((fs) => fs.readFile("./engine/primary-sources.json", "utf8")),
+            ]).then(([m, raw]) => console.log(m.verticaleDelMese(JSON.parse(raw))));
           ')
           [[ "$vertical" =~ ^[a-z0-9-]+$ ]] || { echo "verticale non valido: $vertical"; exit 1; }
           echo "verticale del mese: $vertical"
