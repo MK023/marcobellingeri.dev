@@ -1,5 +1,11 @@
 {
-  "_doc": "Registro fonti primarie per il PROOF PASS di ingest.mjs (Valyu included_sources). 'core' = fonti valide in ogni verticale; '<vertical>' = regolatori/analisti specifici. Derivato empiricamente (probe 2026-07-06: included_sources = 10/10 prova-grade, contro 0-3/10 senza). Curare a mano: aggiungere SOLO fonti primarie o analisti indipendenti (Tier-1/2), MAI blog vendor o content-marketing. E' l'equivalente editoriale del roster competitor.",
+  "_doc": "Registro fonti primarie per il PROOF PASS di ingest.mjs (Valyu included_sources). 'core' = fonti valide in ogni verticale; '<vertical>' = regolatori/analisti specifici. Derivato empiricamente (probe 2026-07-06: included_sources = 10/10 prova-grade, contro 0-3/10 senza). Curare a mano: aggiungere SOLO fonti primarie o analisti indipendenti (Tier-1/2), MAI blog vendor o content-marketing. E' l'equivalente editoriale del roster competitor. '_rotation' = i verticali che escono a turno, uno al mese: e' una lista a parte perche' 'quali verticali hanno fonti curate' e 'quali ne escono a turno' sono due domande diverse — insurance e' fuori dalla rotazione dall'01/09/2026 ma le sue fonti restano qui. Cambiare '_rotation' rimescola anche i mesi degli altri verticali (l'indice e' modulo la lunghezza).",
+  "_rotation": [
+    "security",
+    "cloud",
+    "devsecops",
+    "software-engineering"
+  ],
   "core": [
     "deloitte.com",
     "grantthornton.com",
