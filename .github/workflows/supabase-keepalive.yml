@@ -59,8 +59,14 @@ jobs:
             --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
       # Check-in del cron monitor. `monitor_config` fa l'upsert: il monitor nasce
-      # da solo al primo check-in, e la schedule resta qui accanto a quella vera —
-      # se un giorno cambia il cron, si cambiano insieme o Sentry grida "missed".
+      # da solo al primo check-in, e la sua config vive qui.
+      #
+      # NB: dal 02-09-2026 la schedule del monitor NON rispecchia piu' il `cron:`
+      # qui sopra, ed e' voluto (vedi il blocco sotto). Prima la regola era
+      # "si cambiano insieme"; ora sono due cose diverse — il `cron:` dice quando
+      # GitHub PROVA a partire, il monitor quanto tempo puo' passare fra due
+      # check-in. Cambiare la cadenza del cron significa toccare `value`/`unit`
+      # dell'intervallo, non ricopiare la stringa crontab.
       #
       # La chiave nell'URL e' la public key del DSN: e' pubblica per costruzione
       # (identifica il progetto, non autentica), la stessa gia' nel codice del sito.
@@ -88,6 +94,27 @@ jobs:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: node scripts/sentinella-cron.mjs
 
+      # Lo schedule del monitor e' `interval`, non `crontab`, e NON e' un dettaglio:
+      # con `crontab` Sentry aspetta il check-in a un ORARIO (le 05:00 + margine), e
+      # quello che misura diventa la puntualita' dello scheduler di GitHub, non la
+      # salute del keepalive. Misurato il 02-09-2026 sugli otto run precedenti: tutti
+      # `success`, ma le partenze sono passate da +33 min (16-25/08) a +12h16 il
+      # 28/08, +6h29 il 31/08, +4h52 il 01/09. Undici issue aperte dal 16/07, ognuna
+      # richiusa da sola appena il run arrivava davvero. Un allarme che dice il vero
+      # su un fatto senza conseguenze e' un allarme che si impara a ignorare.
+      #
+      # `interval` ancora l'attesa all'ULTIMO check-in ricevuto: un run in ritardo
+      # sposta in avanti anche il successivo, quindi il ritardo non si accumula in un
+      # allarme. Il margine passa a 720 min per assorbire il jitter osservato (max
+      # 12h16) restando molto sotto l'intervallo, come la doc raccomanda.
+      #
+      # Cosa si perde, dichiarato: un cron davvero morto ora si scopre entro
+      # 3 giorni + 12 ore invece di 05:00 + 2 ore. E' il prezzo, ed e' accettato
+      # perche' cio' che il keepalive protegge e' la sospensione del progetto free
+      # tier, che si misura in giorni e non in ore.
+      #
+      # Il ritardo di GitHub NON si corregge qui: e' scheduling best-effort
+      # dichiarato dal fornitore, verificato il 31/08 anche su un altro repo.
       - name: Check-in Sentry (il cron e' vivo)
         if: always()
         env:
@@ -98,7 +125,7 @@ jobs:
           curl -sS -m 10 -X POST \
             "https://o4511713634484224.ingest.de.sentry.io/api/4511714029273168/cron/supabase-keepalive/ffcac5d108001982eb70aa431c32af75/" \
             -H 'Content-Type: application/json' \
-            -d "{\"monitor_config\":{\"schedule\":{\"type\":\"crontab\",\"value\":\"0 5 */3 * *\"},\"timezone\":\"UTC\",\"checkin_margin\":120,\"max_runtime\":10},\"status\":\"$stato\"}" \
+            -d "{\"monitor_config\":{\"schedule\":{\"type\":\"interval\",\"value\":3,\"unit\":\"day\"},\"timezone\":\"UTC\",\"checkin_margin\":720,\"max_runtime\":10},\"status\":\"$stato\"}" \
             && echo "check-in Sentry: $stato" \
             || echo "check-in Sentry non riuscito — il keepalive resta valido"
           exit 0
