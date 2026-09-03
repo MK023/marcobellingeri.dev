@@ -320,6 +320,16 @@ This is the worst shape a control can take. A missing alarm gets noticed eventua
 that exists, receives its input and never fires gets trusted. It was found by listing the
 monitors through the API, never by reading a workflow.
 
+**Correction, 2026-09-03.** The *"were all receiving their check-ins"* clause above was wrong,
+and labelling it *"What the API said"* made a belief look like a measurement — the exact defect
+this addendum is about. Re-measured through the API: all three answer `status: disabled`, *"No
+check-ins found"* and `ok=0 error=0 missed=0`, with no monitor environment ever created; only
+`supabase-keepalive` is `active`. The check-in is sent and thrown away. The sharper half stands
+unchanged, and is the reason this went unseen for months: the workflow log prints a green
+`check-in Sentry: ok` either way, because the step runs `curl -sS` **without** `-f` and echoes
+the *job* status, not Sentry's answer. The shape of the defect was read correctly; one clause
+about the mechanism was not.
+
 Related: querying the alert rules through `/projects/{org}/{proj}/rules/` now answers **410
 Gone**. Sentry moved to `detectors` + `workflows` under `/organizations/{org}/`. The detectors
 for the three monitors read `enabled: true`, which is exactly the reading that makes everything

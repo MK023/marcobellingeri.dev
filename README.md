@@ -156,10 +156,18 @@ you would not have known otherwise.
   watchman that kills what it watches is worse than no watchman.
 - **An active watchdog for the other three schedules, because there is only one seat.**
   Sentry includes exactly **one** cron monitor per plan. `magazine-ingest`, `visibility` and
-  `llm-council-e2e` all register their monitors, all receive their check-ins, and all sit
-  `disabled` behind the quota — verified through the API on 2026-08-13, which is the only way
-  that fact ever surfaces. So the pattern is inverted for them: `scripts/sentinella-cron.mjs`
-  runs weekly, asks the GitHub API when each schedule last **fired** (only `schedule` runs
+  `llm-council-e2e` all register their monitors and all sit `disabled` behind the quota, held
+  by `supabase-keepalive` — the only way that fact ever surfaces is through the API.
+  **They receive nothing.** This line used to say they "receive their check-ins", read on
+  2026-08-13 and re-measured on 2026-08-31 over in `llm-council` — but never propagated back
+  here, which is the actual defect: the fact was corrected in one repo and left false in
+  another. Re-measured again on 2026-09-03, all three return `status: disabled`, *"No
+  check-ins found"* and `ok=0 error=0 missed=0`, with no monitor environment ever created,
+  while `supabase-keepalive` is `active` with its last check-in recorded. The check-in is sent
+  and thrown away. That does not change the choice — the reason is still the single seat — but
+  it removes the residual consolation that the disabled monitors were at least accumulating
+  history while waiting for one. So for them: `scripts/sentinella-cron.mjs` runs daily, asks
+  the GitHub API when each schedule last **fired** (only `schedule` runs
   count — a manual dispatch proves the workflow works, not that the cron does), and sends a
   `CronMuto` **error event** for any that has gone quiet, plus one deduplicated issue. Error
   quota is ample and nearly unused; cron seats are one. An error event alarms on something

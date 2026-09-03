@@ -58,7 +58,9 @@ not a watchman. The check-in cannot make the ping fail.
 
 That monitor is the only one this account has: Sentry includes one per plan, and the other
 three schedules had registered theirs and been left `disabled` behind the quota, receiving
-check-ins and alarming nobody. They are covered instead by `scripts/sentinella-cron.mjs`,
+**nothing at all** — re-measured on 2026-09-03, all three answer `status: disabled`, *"No
+check-ins found"* and `ok=0 error=0 missed=0`, with no monitor environment ever created. The
+check-in is sent and thrown away. They are covered instead by `scripts/sentinella-cron.mjs`,
 which runs daily, asks the GitHub API when each schedule last fired, and sends an error
 event for the ones that have gone quiet. The keepalive runs that same script, so the job
 holding the only live monitor is also the one watching the watchdog.
