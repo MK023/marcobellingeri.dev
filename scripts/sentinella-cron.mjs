@@ -7,8 +7,21 @@
 // sul repository, in silenzio. La strada canonica sarebbe un cron monitor Sentry,
 // che si allarma sull'ASSENZA di un check-in. Non e' percorribile: Sentry include
 // **un solo** cron monitor per piano e su account free il seggio e' occupato da
-// `supabase-keepalive` — verificato via API il 2026-08-13, gli altri tre monitor
-// esistono, ricevono i check-in e restano `disabled`.
+// `supabase-keepalive` — gli altri tre monitor esistono e restano `disabled`.
+//
+// CORREZIONE del 2026-09-03: la riga qui sopra diceva che gli altri tre "ricevono i
+// check-in". E' falso. Letta il 13-08 e ri-misurata il 31-08 in llm-council
+// (`.github/workflows/e2e.yml`, commit a169f22), ma mai propagata qui: il difetto non e'
+// stato non misurare, e' stato correggere il fatto in un repo e lasciarlo falso in un
+// altro. Interrogata l'API: `magazine-ingest`, `visibility` e `llm-council-e2e`
+// rispondono tutti e tre `status: disabled`, "No check-ins found",
+// `ok=0 error=0 missed=0`, senza nemmeno un monitor-environment creato; solo
+// `supabase-keepalive` e' `active` e ha un check-in registrato. Il check-in viene
+// spedito e buttato.
+//
+// Non cambia la scelta: la ragione resta il seggio unico, gia' occupato. Toglie pero'
+// l'ultima consolazione residua — quei monitor non stanno nemmeno accumulando storico
+// in attesa che il posto si liberi.
 //
 // Quindi il pattern qui e' rovesciato, e vale la pena dirlo perche' fra sei mesi
 // sembrerebbe un downgrade: **un guardiano ATTIVO che manda un evento**, invece di
