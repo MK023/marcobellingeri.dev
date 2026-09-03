@@ -3,3 +3,9 @@
 
 # Cache generata da Astro (schema delle collection, content.d.ts)
 astro-project/.astro/
+
+# CV in PDF: prodotti da Skia, senza layer testuale (pdftotext restituisce nulla).
+# Nel grafo entravano come due nodi col solo titolo dai metadati, zero contenuto.
+# I file restano: sono pubblicati e linkati da UtilityBar.astro e CommandPalette.astro.
+astro-project/public/cv-en.pdf
+astro-project/public/cv-it.pdf
