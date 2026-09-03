@@ -23,7 +23,7 @@
     "@sentry/astro": "^10.70.0",
     "@sentry/browser": "^10.69.0",
     "@sentry/cloudflare": "^10.70.0",
-    "astro": "^7.2.4"
+    "astro": "^7.2.9"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
