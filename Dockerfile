@@ -46,4 +46,10 @@ COPY . .
 
 # 8788 è la porta di `wrangler dev`, la stessa usata dalle verifiche.
 EXPOSE 8788
-CMD ["sh", "-c", "cd astro-project && npm run build && npx wrangler dev --ip 0.0.0.0 --port 8788"]
+# `SENTRY_ENVIRONMENT` dichiara che questo NON è produzione, così gli errori del
+# container non arrivano a Sentry travestiti da traffico vero. Il nome è quello
+# che @sentry/cloudflare legge da sé: nessuna riga di codice nel Worker.
+# È un flag e non un `.dev.vars` perché il repo è bind-montato, quindi scrivere
+# quel file da qui vuol dire scriverlo sul disco dell'host — e se lì ce n'è già
+# uno con i segreti veri, lo si sporca o lo si cancella.
+CMD ["sh", "-c", "cd astro-project && npm run build && npx wrangler dev --var SENTRY_ENVIRONMENT:development --ip 0.0.0.0 --port 8788"]

@@ -57,7 +57,8 @@ finishing touch.
 Site (`cd astro-project`): `npm run dev` · `npm run check` (astro/TS) · `npm run lint` (ESLint,
 the only eyes on the `.astro` files) · `npm run build` · `npm run test:csp` (tests run against
 `dist/`, **not** the source). Real headers (which `astro preview` does not give):
-`npx wrangler dev`.
+`npx wrangler dev --var SENTRY_ENVIRONMENT:development` — senza quel flag i tuoi errori locali
+arrivano a Sentry etichettati `production`.
 Engine (`cd engine`): `doppler run -- node <script>.mjs [--limit N]` · `npm test` (unit plus
 integration, **no network**).
 Always `lint` + `check` + `test` green before saying "done".
