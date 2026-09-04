@@ -1,0 +1,83 @@
+# Due servizi soli: il sito servito come in produzione, e il browser che lo
+# verifica. Vedi il Dockerfile per cosa questo ambiente allinea davvero e cosa no.
+#
+#   docker compose up sito            # il sito su http://localhost:8788
+#   docker compose run --rm verifica  # le prove nel browser contro quel sito
+#
+# I segreti NON stanno qui e non entrano nell'immagine: arrivano dall'ambiente di
+# chi lancia, che sul portatile di Marco è Doppler.
+#   doppler run -- docker compose up sito
+# Senza segreti il sito parte lo stesso: il Worker è fail-open sulla verifica
+# Turnstile quando manca TURNSTILE_SECRET_KEY, e lo segnala a Sentry. Le pagine
+# e il caricamento del widget si provano comunque.
+
+# I due servizi condividono UNA immagine e montano il repo dall'host. Non è un
+# dettaglio di comodo, è la condizione perché questo ambiente serva a qualcosa:
+# con il solo `COPY . .` dell'immagine, Compose non ricostruisce se l'immagine
+# esiste già, quindi dalla seconda esecuzione in poi si verificherebbe la build
+# PRECEDENTE e il risultato verde direbbe una cosa falsa — cioè esattamente
+# «un ambiente che non sa distinguere un difetto da una propria limitazione»,
+# che è il guasto per cui questo ambiente è nato. Con il bind mount il codice è
+# sempre quello sul disco, e l'immagine va ricostruita solo quando cambiano le
+# dipendenze.
+x-repo: &repo
+  build: .
+  image: marcobellingeridev-ambiente
+  volumes:
+    - .:/repo
+    # Volumi anonimi che SCHERMANO le node_modules dell'immagine: senza, il bind
+    # mount le coprirebbe con quelle dell'host — se ci sono, compilate per
+    # un'altra piattaforma; se non ci sono, con il vuoto. Qui dentro vivono
+    # playwright (in /repo) e le dipendenze del sito.
+    - /repo/node_modules
+    - /repo/astro-project/node_modules
+
+services:
+  sito:
+    <<: *repo
+    ports:
+      # Solo il localhost dell'host: il sito di sviluppo non deve affacciarsi
+      # sulla rete locale insieme ai segreti che gli sono stati passati.
+      - "127.0.0.1:8788:8788"
+    environment:
+      # Solo passaggio, mai valori: se la variabile non c'è sull'host, non c'è
+      # nemmeno nel container. L'elenco è quello che il Worker legge davvero,
+      # per intero — `grep -ohE 'env\.[A-Z_]+' worker/*.js`, tolte le tre
+      # binding di piattaforma (ASSETS, i limiter, CRAWLERS) che Cloudflare
+      # fornisce da sé. Una variabile che manca qui non è un dettaglio: è una
+      # rotta che in questo ambiente non si può provare.
+      - TURNSTILE_SECRET_KEY
+      - RESEND_API_KEY
+      - SUPABASE_URL
+      - SUPABASE_ANON_KEY
+      - ANTHROPIC_API_KEY
+      - EMBEDDING_API_KEY
+      - AGENTIC_OS_STATUS_URL
+      - AGENTIC_OS_STATUS_TOKEN
+      - AGENTIC_OS_ACCESS_CLIENT_ID
+      - AGENTIC_OS_ACCESS_CLIENT_SECRET
+    healthcheck:
+      # `wrangler dev` costruisce il sito prima di servire: senza questa attesa
+      # la verifica partirebbe contro una porta ancora chiusa e fallirebbe per
+      # il motivo sbagliato.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8788/it/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+
+  verifica:
+    <<: *repo
+    depends_on:
+      sito:
+        condition: service_healthy
+    # Condivide la rete di `sito`, quindi lo raggiunge su `localhost`. Non è un
+    # dettaglio di comodo: il loader sostituisce la sitekey con quella di test
+    # SOLO su hostname locale, e raggiungendolo come `http://sito:8788` il
+    # browser vedrebbe l'hostname `sito`, prenderebbe la sitekey di produzione e
+    # il widget non si renderebbe — cioè la verifica ricadrebbe esattamente nel
+    # difetto che questo ambiente esiste per non avere più.
+    network_mode: "service:sito"
+    environment:
+      - BASE_URL=http://localhost:8788
+    command: ["node", "scripts/verifica-browser.mjs"]

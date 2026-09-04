@@ -57,6 +57,49 @@ doppler run -- npm run ingest
 npm test             # unit + integration, no network
 ```
 
+### Checking it in a browser, reproducibly
+
+`npm run test:csp` reads `dist/` — built HTML and JS. That catches everything visible in the
+product of the build, and nothing about what happens when the code **runs**: a third-party script
+arriving late, a widget not yet rendered, a callback that never fires. On 2026-09-04 a regression
+on the contact form walked past 291 green tests and reached production for exactly that reason
+(PR #272, repaired by #273).
+
+```bash
+docker compose up sito              # the site on :8788, Node pinned to CI's version
+docker compose run --rm verifica    # the browser checks against it
+```
+
+The Worker runtime is **already** production-grade outside Docker — `wrangler dev` runs workerd,
+the same engine Cloudflare runs — so the image does not add fidelity there, and the `Dockerfile`
+says so. What it pins is the Node version and, the part that was missing, **the browser doing the
+checking**.
+
+The same script runs against a remote target, but it does **not** do the same work there:
+
+```bash
+docker compose run --rm -e BASE_URL=https://marcobellingeri.dev verifica
+```
+
+It runs from the container because Playwright lives only in the image — the repo has no root
+`package.json`, so the same command on the host would fail to resolve it.
+
+Against anything that is not localhost it runs the read-only checks only — no third party contacted
+on load, no static `api.js` tag — and **skips pressing Send and running `ask`**. It has to: the
+test-sitekey swap is local-only, so on the live site the token is genuine, passes `siteverify`, and
+each run would deliver real email and spend real model budget. The script prints which of the two
+modes it took.
+
+Secrets come from the environment of whoever starts it, never from the image: `doppler run --
+docker compose up sito`. Without them the site still serves — Turnstile verification is fail-open
+with a Sentry alert when `TURNSTILE_SECRET_KEY` is missing.
+
+One asymmetry is closed in code rather than here: the production Turnstile sitekey is bound to the
+real hostname, so on `localhost` the widget never rendered and a genuine fault looked exactly like
+"we are running locally". `src/lib/turnstile.ts` swaps in Cloudflare's test sitekey when the
+hostname is local. An environment that cannot tell a defect from its own limitation only ever
+confirms.
+
 ## Security
 
 The CSP allows no `unsafe-inline` on `script-src`: bundled scripts are authorised by hash,
