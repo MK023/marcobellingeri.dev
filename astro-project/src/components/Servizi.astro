@@ -668,7 +668,10 @@ const briefLabels = {
       const fallisci = () => { inCorso = false; toast(S.failed, 'err'); resetSendBtn(); };
       // Due rami separati, e non un `.catch` in coda: quello prenderebbe ANCHE
       // ciò che lancia il ramo di successo, e i due casi non si somigliano.
-      caricaTurnstile().then(
+      // Si aspetta che QUESTO widget sia reso, non solo che l'API sia carica:
+      // `execute()` su un widget non ancora reso lancia, ed è la regressione che
+      // il PR #272 ha mandato in produzione (vedi src/lib/turnstile.ts).
+      caricaTurnstile(tsEl).then(
         () => {
           try {
             // La presenza di `execute` va controllata, non data per scontata: un

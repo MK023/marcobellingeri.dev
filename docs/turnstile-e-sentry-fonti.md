@@ -403,3 +403,46 @@ pubblica una matrice per-piano degli inbound filter.
   *Filter by Error Message*. L'assenza di quella nota sul filtro localhost **suggerisce** che sia
   disponibile ovunque; non lo prova. Si verifica in un secondo aprendo Project Settings, e quella
   è una misura, non una lettura.
+
+---
+
+## Appendice — `?onload=` non dice quello che sembra dire (misura, 04-09-2026)
+
+Aggiunta dopo che questa nota ha accompagnato una **regressione in produzione**, il PR #272:
+merita di stare qui perché è il punto in cui la doc primaria non basta e conta solo la misura.
+
+La doc Turnstile offre due modi per sapere quando l'API è pronta, e **nessuno dei due dice quello
+che serve a chi sta per chiamare `execute()`**:
+
+- `turnstile.ready()` è inutilizzabile su uno script iniettato a runtime, che è `async` per forza.
+  Cloudflare lo rifiuta a parole: *«Remove async/defer from the Turnstile api.js script tag before
+  using turnstile.ready()»*. Misurato: la promise non si risolve mai.
+- `?onload=` risolve **troppo presto**. Misurato in produzione su `marcobellingeri.dev/it/`: la
+  callback viene invocata, `window.turnstile.execute` esiste, ma i widget `.cf-turnstile` **non
+  sono ancora resi** — nessun `input[name="cf-turnstile-response"]`, nessun `iframe` — perché
+  Turnstile scarica un secondo stadio (`/turnstile/v0/g/<hash>/api.js`) e li rende dopo. Un
+  `execute()` chiamato lì lancia `Please provide 2 parameters to execute: container and
+  parameters`, e il form contatti resta inutilizzabile.
+
+Contro-misura, stessa pagina, stesso momento, con `api.js` **semplice** (nessun parametro):
+entrambi i widget resi in **51 ms**, ed `execute()` non lancia.
+
+**Conclusione operativa**: il segnale di prontezza non è «l'API è caricata» ma «QUESTO widget è
+reso», e l'unico modo osservabile di saperlo è la presenza dell'input nascosto che Turnstile crea
+nel container. Nessuna delle due API documentate lo espone. Il *perché* (il secondo stadio) è
+inferenza; il *cosa* è misura, ripetuta su due pagine e due lingue.
+
+## Appendice — perché il difetto non è stato preso in locale
+
+La causa non è stata la disattenzione, è stata l'**asimmetria fra locale e produzione**: la sitekey
+di produzione è legata all'hostname vero, quindi su `localhost` il widget non si rende **mai**, e
+un guasto reale ha esattamente lo stesso sintomo di «siamo in locale». Un ambiente che non sa
+distinguere un difetto da una propria limitazione non è un ambiente di prova: lì una verifica può
+solo confermare, mai smentire.
+
+Rimedio adottato (`astro-project/src/lib/turnstile.ts`): in locale il loader sostituisce la sitekey
+con quella di test di Cloudflare `1x00000000000000000000AA`, valida su qualsiasi hostname. Da lì il
+percorso completo si prova sul portatile — misurato subito dopo il fix: widget resi, `POST
+/api/contact` e `POST /api/ask` partiti, zero errori non gestiti, zero violazioni CSP. Il gate vero
+resta comunque server-side nel Worker, che una chiave di test non supera: la sostituzione non
+indebolisce niente in produzione, dove non avviene.

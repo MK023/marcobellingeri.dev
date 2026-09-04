@@ -221,10 +221,11 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
       // Lo script si carica al PRIMO `ask`, non col resto della pagina: prima
       // stava statico in Servizi.astro e qui fuori dalla home non arrivava mai
       // (vedi il commento sul widget, e src/lib/turnstile.ts per il perché
-      // on-demand). Se non arriva nemmeno adesso — blocker, offline — il reject
-      // fa stampare l'errore riprovabile di runAsk, invece di restare appesi a
-      // una callback che non verrà.
-      await caricaTurnstile();
+      // on-demand). L'attesa è su QUESTO widget reso, non sullo script valutato:
+      // un execute() anticipato lancia — la regressione di #272. Se non arriva
+      // niente — blocker, offline — il reject fa stampare l'errore riprovabile
+      // di runAsk, invece di restare appesi a una callback che non verrà.
+      await caricaTurnstile(askTsEl);
       return new Promise((resolve, reject) => {
         if (!window.turnstile?.execute) {
           reject(new Error('turnstile-assente'));
