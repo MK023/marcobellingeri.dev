@@ -65,7 +65,41 @@ jobs:
         id: battito
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-        run: node scripts/sentinella-cron.mjs | tee battito.txt
+        run: |
+          # `set -o pipefail` NON e' rumore: senza, l'exit code di questa pipeline
+          # e' quello di `tee`, cioe' SEMPRE 0, e GitHub aggiunge pipefail solo se
+          # si dichiara `shell: bash`. Misurato: `bash -e -c 'node -e
+          # "process.exit(1)" | tee'` esce 0. Finche' e' mancato, `steps.battito`
+          # risultava riuscito anche con un cron muto, e la issue qui sotto non
+          # poteva aprirsi: la sentinella era essa stessa silenziosa, dello stesso
+          # male che sorveglia. `magazine-judge` e `devto-publish-due` lo mettono
+          # gia'; questo file era l'unico rimasto senza.
+          set -o pipefail
+          node scripts/sentinella-cron.mjs | tee battito.txt
+
+      # La sonda del canale commerciale, ospite di questa sentinella e non di un
+      # workflow suo: la tabella di `scripts/healthchecks.mjs` accetta solo finestre
+      # derivate da un `gap` MISURATO su run reali, e un workflow nuovo non ne ha.
+      # Qui eredita uno schedule quotidiano gia' misurato e un monitor gia' acceso,
+      # senza aggiungere stime a un file che dichiara di non averne.
+      #
+      # `always()`: se il battito e' rosso il canale contatti va controllato lo
+      # stesso. Due guasti diversi non devono nascondersi a vicenda, e senza questo
+      # la sonda non partirebbe proprio nel giorno in cui qualcosa gia' non va.
+      - name: Self-check della sonda contatto
+        if: always()
+        run: node scripts/sonda-contatto.mjs --self-check
+
+      # `continue-on-error` qui NON e' indulgenza: serve a far arrivare l'esecuzione
+      # al passo che apre la issue. Il rosso torna in fondo, nell'ultimo step, dove
+      # non puo' piu' impedire niente.
+      - name: Il form di contatto puo' ancora consegnare?
+        id: contatto
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          node scripts/sonda-contatto.mjs | tee contatto.txt
 
       # La issue si apre QUI anche per i cron di llm-council: il GITHUB_TOKEN vale solo
       # per il repo che lo emette, e un PAT cross-repo sarebbe una credenziale
@@ -101,3 +135,46 @@ jobs:
               "Lo stesso allarme e' arrivato su Sentry come evento CronMuto." \
               "" \
               "Run di questo controllo: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")"
+
+      # Una issue SUA, non un capitolo di quella dei cron: il titolo e' cio' che
+      # Marco legge per primo, e "un cron non spara piu'" manderebbe a cercare nel
+      # posto sbagliato un guasto che sta altrove.
+      - name: Apri una issue se il canale contatti e' chiuso
+        if: always() && steps.contatto.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITOLO: "Il canale contatti non risulta sano"
+        run: |
+          # Stessa deduplica del blocco sopra: un canale chiuso resta chiuso finche'
+          # qualcuno non rigenera la chiave, e una issue al giorno sarebbe rumore.
+          aperte=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$TITOLO" --json number --jq 'length')
+          if [ "$aperte" != "0" ]; then
+            echo "issue gia' aperta, non ne apro un'altra"
+            exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "$TITOLO" \
+            --body "$(printf '%s\n' \
+              "La sonda non ha dato via libera al canale che porta clienti." \
+              "La riga qui sotto dice se il verdetto e' CHIUSO (il Worker non si fa accettare da" \
+              "Resend) oppure INCERTO (la sonda non ha ottenuto risposta): sono cose diverse." \
+              "" \
+              '```' \
+              "$(cat contatto.txt)" \
+              '```' \
+              "" \
+              "Cosa fare: rigenerare la chiave su Resend, poi riscriverla nei DUE posti che la tengono," \
+              "il Worker (\`npx wrangler secret put RESEND_API_KEY\`) e Doppler. Sono copie separate:" \
+              "il deploy non le sincronizza, quindi allinearne una sola lascia il guasto in piedi." \
+              "" \
+              "Storia: dal 10-07 al 04-09-2026 questo e' rimasto rotto in silenzio, perche' il guasto" \
+              "si vedeva solo se qualcuno premeva Invia. Questa sonda esiste per non ripeterlo." \
+              "" \
+              "Run di questo controllo: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")"
+
+      # Il rosso arriva in fondo, dopo che la issue e' stata aperta. Un workflow verde
+      # con la rotta commerciale chiusa sarebbe esattamente il tipo di verde che
+      # questa giornata ha insegnato a non fidarsi.
+      - name: Verdetto sul canale contatti
+        if: always() && steps.contatto.outcome == 'failure'
+        run: exit 1

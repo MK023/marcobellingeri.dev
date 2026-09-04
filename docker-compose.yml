@@ -19,7 +19,11 @@
 # «un ambiente che non sa distinguere un difetto da una propria limitazione»,
 # che è il guasto per cui questo ambiente è nato. Con il bind mount il codice è
 # sempre quello sul disco, e l'immagine va ricostruita solo quando cambiano le
-# dipendenze.
+# dipendenze — e in QUEL caso serve anche `--renew-anon-volumes`, perche' Compose
+# riusa i volumi anonimi del container precedente e le node_modules appena
+# installate nell'immagine resterebbero coperte da quelle vecchie. E' l'unico
+# percorso in cui questo ambiente potrebbe mentire, quindi sta scritto qui e nel
+# README invece di essere scoperto un'altra volta.
 x-repo: &repo
   build: .
   image: marcobellingeridev-ambiente

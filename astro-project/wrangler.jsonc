@@ -54,7 +54,7 @@
     // lettura. Vedi il README per il tetto dichiarato e cosa fare se si avvicina.
     "run_worker_first": [
       "/", "/it/*", "/en/*",
-      "/api/contact", "/api/ask", "/api/radar", "/api/agentic-status",
+      "/api/contact", "/api/contact-health", "/api/ask", "/api/radar", "/api/agentic-status",
       "!/_astro/*", "!/fonts/*", "!/*.xml", "!/*.pdf", "!/*.txt", "!/*.json"
     ],
     // PERCHE' GLI URL DEL SITO FINISCONO CON LO SLASH. Non e' una scelta di Astro:

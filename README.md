@@ -70,6 +70,14 @@ docker compose up sito              # the site on :8788, Node pinned to CI's ver
 docker compose run --rm verifica    # the browser checks against it
 ```
 
+The repo is bind-mounted, so source edits need no rebuild. After changing
+`astro-project/package.json`, rebuild **and** renew the anonymous volumes, or the freshly
+installed `node_modules` stay masked by the previous container's:
+
+```bash
+docker compose up --build --renew-anon-volumes sito
+```
+
 The Worker runtime is **already** production-grade outside Docker — `wrangler dev` runs workerd,
 the same engine Cloudflare runs — so the image does not add fidelity there, and the `Dockerfile`
 says so. What it pins is the Node version and, the part that was missing, **the browser doing the
