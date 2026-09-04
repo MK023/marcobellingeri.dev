@@ -88,11 +88,13 @@ function elencoWorkflowRun() {
   return nomi;
 }
 
-// La soppressione zizmor su `workflow_run` vale solo finche' il job `battito` resta
-// innocuo: niente checkout, niente artefatti, nessun permesso, e il filtro sullo
-// schedule. Se qualcuno aggiunge uno di quei tre, il finding HIGH torna a essere
-// vero mentre il commento continua a negarlo — quindi la forma si verifica qui.
-function formaBattito() {
+// La soppressione zizmor su `workflow_run` vale solo finche' il WATCHER resta
+// innocuo, e il watcher non e' solo il job `battito`: niente checkout, niente
+// artefatti, nessun permesso, il filtro sullo schedule — e il job `config`, che
+// checkout e API key li ha, che deve restare fuori da `workflow_run`. Se uno di
+// quei vincoli cade, il finding HIGH torna vero mentre il commento continua a
+// negarlo: quindi la forma si verifica qui.
+function formaWatcher() {
   const testo = leggiWorkflowProprio();
   if (testo === null) return ["healthchecks.yml non trovato: il watcher e' stato rinominato o rimosso"];
   const righe = testo.split("\n");
@@ -125,6 +127,13 @@ function formaBattito() {
   }
   if (!/workflow_run\.event\s*==\s*'schedule'/.test(blocco)) {
     errori.push("battito: manca il filtro su workflow_run.event == 'schedule'");
+  }
+  // L'ALTRA META' DELLA GIUSTIFICAZIONE. Il job `config` ha il checkout e la API
+  // key, cioe' due dei tre ingredienti dell'exploit soppresso, e resta fuori da
+  // `workflow_run` per una riga sola. Togliendola, la forma che il commento sopra
+  // dichiara impossibile tornerebbe a esistere con `--self-check` ancora verde.
+  if (!/if:\s*github\.event_name\s*!=\s*'workflow_run'/.test(testo)) {
+    errori.push("config: manca il guard `if: github.event_name != 'workflow_run'`, il job con checkout e API key girerebbe sul trigger soppresso");
   }
   return errori;
 }
@@ -194,7 +203,7 @@ function verifica() {
     }
   }
 
-  errori.push(...formaBattito());
+  errori.push(...formaWatcher());
 
   for (const e of errori) console.error(`::error::${e}`);
   if (errori.length > 0) {
@@ -213,6 +222,24 @@ async function applica() {
     return;
   }
 
+  // `channels: "*"` assegna tutte le integrazioni esistenti — se non ne esiste
+  // nessuna, assegna il vuoto e ogni check nasce muto. Verificato il 2026-09-04:
+  // l'account NON ne aveva alcuna. Meglio fermarsi qui che creare otto sentinelle
+  // che non sanno chiamare nessuno, perche' dopo sembrano funzionare.
+  const canali = await fetch("https://healthchecks.io/api/v3/channels/", {
+    headers: { "X-Api-Key": chiave },
+  });
+  if (!canali.ok) {
+    console.error(`::error::elenco integrazioni: HTTP ${canali.status}`);
+    process.exitCode = 1;
+    return;
+  }
+  if (((await canali.json()).channels ?? []).length === 0) {
+    console.error("::error::nessuna integrazione su healthchecks.io: i check nascerebbero senza destinatario. Creane una (Email, Telegram, Slack) e rilancia");
+    process.exitCode = 1;
+    return;
+  }
+
   let falliti = 0;
   for (const c of CHECKS) {
     const risposta = await fetch(API, {
@@ -225,6 +252,18 @@ async function applica() {
         timeout: c.timeout,
         grace: c.grace,
         tags: "marcobellingeri-dev cron",
+        // SENZA `channels` IL DEAD-MAN'S SWITCH NON SVEGLIA NESSUNO. La doc della
+        // Management API: "By default, this API call assigns no integrations to the
+        // newly created check". Il check nascerebbe, i ping arriverebbero, la
+        // dashboard direbbe "down" al momento giusto — e l'allarme andrebbe a zero
+        // destinatari. E' il modo di fallire che questo intero cambio esiste per
+        // chiudere, e non lo vedresti da nessuna parte: ne' `--self-check`, che non
+        // tocca la rete, ne' il 404 nel workflow, perche' il check esiste davvero.
+        //
+        // `"*"` assegna TUTTE le integrazioni esistenti, e siccome la POST e' un
+        // upsert le riassegna a ogni `--apply`: e' la configurazione che si riallinea,
+        // non un valore impostato una volta a mano nella dashboard.
+        channels: "*",
         unique: ["slug"],
       }),
     });
