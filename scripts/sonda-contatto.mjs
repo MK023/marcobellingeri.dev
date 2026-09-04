@@ -29,6 +29,12 @@
 //
 //   node scripts/sonda-contatto.mjs              # esce 1 se il canale non è sano
 //   node scripts/sonda-contatto.mjs --self-check # verifica la logica, niente rete
+// S5145: `SONDA_URL` arriva dall'ambiente e `perche` puo' contenere il corpo di
+// una risposta. Nei log ci vanno solo passando da `logsafe`, che neutralizza i
+// caratteri di controllo: un newline nel dato fabbricherebbe righe di log false,
+// e chi legge una issue aperta da questo script si fida di quelle righe.
+import { logsafe } from '../engine/lib/logsafe.mjs';
+
 const URL_SONDA = process.env.SONDA_URL || 'https://marcobellingeri.dev/api/contact-health';
 const TENTATIVI = 2;
 
@@ -65,7 +71,7 @@ if (process.argv.includes('--self-check')) {
   for (const [status, corpo, atteso] of casi) {
     const { stato } = esitoDa(status, corpo);
     if (stato !== atteso) {
-      console.error(`self-check fallito: ${status} ${corpo} -> ${stato}, atteso ${atteso}`);
+      console.error(logsafe(`self-check fallito: ${status} ${corpo} -> ${stato}, atteso ${atteso}`));
       process.exit(1);
     }
   }
@@ -90,7 +96,7 @@ for (let i = 1; i < TENTATIVI && esito.stato === 'incerto'; i++) {
   esito = await interroga();
 }
 
-console.log(`${esito.stato.toUpperCase()}: ${esito.perche} (${URL_SONDA})`);
+console.log(logsafe(`${esito.stato.toUpperCase()}: ${esito.perche} (${URL_SONDA})`));
 if (esito.stato === 'aperto') process.exit(0);
 
 if (esito.stato === 'chiuso') {
