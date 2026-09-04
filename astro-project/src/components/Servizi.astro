@@ -19,6 +19,8 @@ const copy: Record<Lang, {
     contactStep: string; namePlaceholder: string; emailPlaceholder: string;
     briefHead: string; copyBtn: string; sendBtn: string;
     sending: string; sent: string; failed: string;
+    // Guasto NOSTRO, non del visitatore: vedi il commento su `invia()`.
+    failedOurs: string; failedOursLink: string;
   };
   prev: string; next: string;
 }> = {
@@ -84,6 +86,8 @@ const copy: Record<Lang, {
       copyBtn: '⧉ COPIA BRIEF',
       sendBtn: 'INVIA →',
       sending: 'INVIO…', sent: 'INVIATO ✓', failed: 'ERRORE — RIPROVA',
+      failedOurs: 'Il guasto è dalla mia parte: riprovare non serve.',
+      failedOursLink: 'Mandami il brief per email →',
     },
   },
   en: {
@@ -148,6 +152,8 @@ const copy: Record<Lang, {
       copyBtn: '⧉ COPY BRIEF',
       sendBtn: 'SEND →',
       sending: 'SENDING…', sent: 'SENT ✓', failed: 'ERROR — RETRY',
+      failedOurs: "The fault is on my side: retrying won't help.",
+      failedOursLink: 'Email me the brief →',
     },
   },
 };
@@ -260,6 +266,8 @@ const briefLabels = {
             data-sending={c.order.sending}
             data-sent={c.order.sent}
             data-failed={c.order.failed}
+            data-failed-ours={c.order.failedOurs}
+            data-failed-ours-link={c.order.failedOursLink}
           >{c.order.sendBtn}</button>
         </div>
         <div class="svc-toast mono" id="svc-toast" role="status" aria-live="polite"></div>
@@ -501,7 +509,17 @@ const briefLabels = {
       sending: sendEl.dataset.sending || '…',
       sent: sendEl.dataset.sent || '✓',
       failed: sendEl.dataset.failed || 'error',
+      failedOurs: sendEl.dataset.failedOurs || '',
+      failedOursLink: sendEl.dataset.failedOursLink || '',
+      // L'oggetto della mail di ripiego segue la lingua della pagina, come il
+      // resto: chi legge in inglese non deve ricevere un oggetto in italiano.
+      mailSubject: document.documentElement.lang === 'en'
+        ? 'Brief from the site (form error)'
+        : 'Brief dal sito (form in errore)',
     };
+    // Stesso indirizzo che il footer pubblica gia' in chiaro: non espone nulla
+    // di nuovo, ed e' la casella che il Worker usa come destinatario.
+    const EMAIL_RIPIEGO = 'mkdevpy@proton.me';
 
     // Popup di notifica al visitatore: senza, non saprebbe se è andata a buon fine.
     let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -512,6 +530,28 @@ const briefLabels = {
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => { toastEl.className = 'svc-toast mono ' + kind; }, 5000);
     }
+    // Il ripiego quando il guasto è nostro: invece del solito «riprova», la via
+    // che funziona comunque. Il corpo della mail è lo stesso brief che il
+    // bottone COPIA già mette negli appunti, quindi il visitatore non riscrive
+    // niente.
+    //
+    // `innerHTML` qui è sicuro e resta l'unico modo per dare un link: il testo
+    // sono due costanti nostre, e l'unico dato che arriva dall'utente (il brief,
+    // che contiene ciò che ha scritto lui) entra SOLO dentro l'href passando da
+    // encodeURIComponent, che non lascia uscire virgolette né `<`. Niente
+    // `style=` inline: la CSP lo bloccherebbe, il colore vive in global.css.
+    // Questo toast non si auto-nasconde dopo 5s come gli altri: c'è un link da
+    // leggere e cliccare, e farlo sparire da solo lo renderebbe inutile.
+    function toastRipiego() {
+      const oggetto = encodeURIComponent(S.mailSubject);
+      const corpo = encodeURIComponent(body?.textContent || '');
+      const href = `mailto:${EMAIL_RIPIEGO}?subject=${oggetto}&body=${corpo}`;
+      if (!toastEl) return;
+      clearTimeout(toastTimer);
+      toastEl.innerHTML = `${S.failedOurs} <a href="${href}">${S.failedOursLink}</a>`;
+      toastEl.className = 'svc-toast mono show err';
+    }
+
     // Arrow su `const`, non `function`: una dichiarazione viene issata, quindi per
     // TypeScript potrebbe girare PRIMA della guardia a inizio blocco e `sendEl`
     // tornerebbe nullable. Definita qui, la restrizione di tipo regge.
@@ -543,6 +583,14 @@ const briefLabels = {
             azienda: hpEl?.value || '',
           }),
         });
+        // 502 e 503 sono i due codici con cui il Worker dice «il guasto è
+        // NOSTRO»: Resend che rifiuta (send) o la chiave che manca
+        // (unconfigured). In quei casi «riprova» è un consiglio falso — il
+        // 04-09-2026 il form ha risposto così per due mesi con una chiave che
+        // Resend non riconosceva più, e ogni persona che ci ha provato se n'è
+        // andata credendo di aver sbagliato lei. Il brief è già composto in
+        // pagina: glielo diamo in un mailto invece di perderlo.
+        if (r.status === 502 || r.status === 503) { toastRipiego(); return; }
         if (!r.ok) throw new Error(String(r.status));
         toast(S.sent, 'ok');
         resetForm();
