@@ -192,7 +192,18 @@ export async function gestisciSaluteContatto(request, env, ctx) {
       // riconosciuto la chiave e le ha negato QUESTO endpoint, non l'invio.
       // Non esce da qui: la risposta resta `{ok}` e nient'altro.
       const dettaglio = await r.text().catch(() => '');
-      if (r.status === 401 && dettaglio.includes('restricted_api_key')) ok = true;
+      // Si cerca «restricted», non il codice `restricted_api_key`. Il 04-09-2026
+      // il ramo e' stato eseguito per la prima volta contro Resend vero, con una
+      // chiave sending-access usa-e-getta, e il corpo era:
+      //   {"statusCode":401,"message":"This API key is restricted to only send
+      //    emails","name":"restricted_api_key"}
+      // Il codice c'e', quindi cercarlo basterebbe — ma Resend documenta il
+      // codice e NON la forma del corpo, percio' cercare la parola regge anche se
+      // un domani resta solo il `message`. Allargare cosi' non copre nulla: sul
+      // 401 gli altri codici sono `missing_api_key` e `invalid_api_key`, che
+      // «restricted» non lo dicono. Il 403 resta fuori apposta: li'
+      // `restricted_api_key` significa «API key is not active», chiave morta.
+      if (r.status === 401 && /restricted/i.test(dettaglio)) ok = true;
       else segnala('contact-health: Resend ha risposto ' + r.status, { status: r.status });
     }
   } catch {

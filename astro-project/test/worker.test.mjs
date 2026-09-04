@@ -672,14 +672,64 @@ test('contact-health: chiave RISTRETTA di Resend = viva, non morta', async () =>
   // Una chiave «sending access» POSTa le mail ma e' respinta su /domains. Senza
   // questa distinzione la sonda direbbe «canale chiuso» ogni giorno su un canale
   // che funziona, e una issue falsa ripetuta zittisce quella vera.
+  // Corpo OSSERVATO il 04-09-2026 su una chiave sending-access usa-e-getta,
+  // `GET https://api.resend.com/domains`, non inventato: prima era uno stub che
+  // ripeteva l'ipotesi del codice che doveva mettere alla prova.
   const fetchPrima = globalThis.fetch;
   globalThis.fetch = async () =>
-    new Response('{"name":"restricted_api_key","message":"This API key is restricted"}', { status: 401 });
+    new Response('{"statusCode":401,"message":"This API key is restricted to only send emails","name":"restricted_api_key"}', { status: 401 });
   try {
     const r = await conCacheVuota(() => gestisciSaluteContatto(
       new Request('https://marcobellingeri.dev/api/contact-health'), { RESEND_API_KEY: 'ristretta' }, ctxFinto()));
     assert.equal(r.status, 200);
     assert.deepEqual(await r.json(), { ok: true });
+  } finally { globalThis.fetch = fetchPrima; }
+});
+
+test('contact-health: chiave ristretta riconosciuta anche senza il codice nel corpo', async () => {
+  // Resend documenta il codice `restricted_api_key` ma NON la forma del corpo, e
+  // questo ramo non e' mai stato eseguito contro Resend vero: la chiave in
+  // produzione e' full access. Se un giorno la si ruota come «sending» e il corpo
+  // porta solo il message, cercare il codice darebbe CHIUSO su un canale che
+  // invia — un allarme falso ogni mattina, che zittisce quello vero.
+  const fetchPrima = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response('{"statusCode":401,"message":"This API key is restricted to only send emails"}', { status: 401 });
+  try {
+    const r = await conCacheVuota(() => gestisciSaluteContatto(
+      new Request('https://marcobellingeri.dev/api/contact-health'), { RESEND_API_KEY: 'ristretta' }, ctxFinto()));
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { ok: true });
+  } finally { globalThis.fetch = fetchPrima; }
+});
+
+test('contact-health: il 403 «restricted» resta una chiave morta', async () => {
+  // Stesso codice, altro significato: sul 403 `restricted_api_key` vuol dire «API
+  // key is not active». Allargare la ricerca al corpo non deve allargarla allo
+  // status, o la sonda coprirebbe esattamente il guasto per cui esiste.
+  const fetchPrima = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response('{"statusCode":403,"name":"restricted_api_key","message":"API key is not active"}', { status: 403 });
+  try {
+    const r = await conCacheVuota(() => gestisciSaluteContatto(
+      new Request('https://marcobellingeri.dev/api/contact-health'), { RESEND_API_KEY: 'revocata' }, ctxFinto()));
+    assert.equal(r.status, 503);
+    assert.deepEqual(await r.json(), { ok: false });
+  } finally { globalThis.fetch = fetchPrima; }
+});
+
+test('contact-health: una chiave invalida da 400, non 401, e resta chiusa', async () => {
+  // Corpo OSSERVATO il 04-09-2026 mandando un token troncato: Resend non risponde
+  // 401 ma 400 `validation_error`. Il ramo «ristretta» guarda solo il 401, quindi
+  // una chiave rotta non puo' entrarci dalla porta di servizio del corpo.
+  const fetchPrima = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response('{"statusCode":400,"message":"API key is invalid","name":"validation_error"}', { status: 400 });
+  try {
+    const r = await conCacheVuota(() => gestisciSaluteContatto(
+      new Request('https://marcobellingeri.dev/api/contact-health'), { RESEND_API_KEY: 'rotta' }, ctxFinto()));
+    assert.equal(r.status, 503);
+    assert.deepEqual(await r.json(), { ok: false });
   } finally { globalThis.fetch = fetchPrima; }
 });
 
