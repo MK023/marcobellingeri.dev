@@ -50,8 +50,13 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
   {/* Turnstile invisibile per `ask`: stesso pattern e sitekey di Servizi.astro
       (data-execution="execute" → non parte al caricamento, solo al comando),
       ma container e callback dedicati — un secondo widget sulla stessa pagina,
-      non quello del form contatti. Lo script cf-turnstile/api.js è già caricato
-      da Servizi.astro (stessa pagina): duplicarlo qui non aggiungerebbe nulla. */}
+      non quello del form contatti.
+      Qui stava scritto che lo script api.js «è già caricato da Servizi.astro
+      (stessa pagina)»: vero quando il terminale stava solo in home, falso da
+      quando sta in BaseLayout, cioè ovunque. Su atlas, radar, ai, agentic-os,
+      magazine, writing e 404 il form non c'è, `window.turnstile` era undefined e
+      `ask` moriva prima di partire. Adesso lo script se lo carica chi lo usa, al
+      primo comando: src/lib/turnstile.ts. */}
   <div
     class="cf-turnstile"
     id="ask-turnstile"
@@ -64,6 +69,8 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
 </div>
 
 <script>
+  import { caricaTurnstile } from '../lib/turnstile';
+
   // ---- neon CRT terminal + konami trigger ----
   (function neonTerminal() {
     const overlay = document.getElementById('neon-terminal');
@@ -210,11 +217,16 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
     let askResolve: ((token: string) => void) | null = null;
     let askReject: ((err: Error) => void) | null = null;
 
-    function eseguiAskTurnstile(): Promise<string> {
+    async function eseguiAskTurnstile(): Promise<string> {
+      // Lo script si carica al PRIMO `ask`, non col resto della pagina: prima
+      // stava statico in Servizi.astro e qui fuori dalla home non arrivava mai
+      // (vedi il commento sul widget, e src/lib/turnstile.ts per il perché
+      // on-demand). Se non arriva nemmeno adesso — blocker, offline — il reject
+      // fa stampare l'errore riprovabile di runAsk, invece di restare appesi a
+      // una callback che non verrà.
+      await caricaTurnstile();
       return new Promise((resolve, reject) => {
         if (!window.turnstile?.execute) {
-          // Script Turnstile non ancora arrivato (async) o bloccato: niente
-          // callback in arrivo, quindi non resto in attesa all'infinito.
           reject(new Error('turnstile-assente'));
           return;
         }
@@ -233,6 +245,19 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
     window.askTurnstileErr = () => {
       askReject?.(new Error('turnstile-fallito'));
       askResolve = null; askReject = null;
+      // Solo il fallimento di una domanda VERA vale un evento. Il `finally` di
+      // runAsk resetta il widget, e su un guasto persistente quel reset lo fa
+      // rifallire: senza la guardia ogni `ask` ne manderebbe due, e la replica
+      // non aggiunge niente a quello che il primo ha già detto. Stessa guardia,
+      // stesso motivo, di svcTurnstileErr in Servizi.astro — dove senza costava
+      // 470 eventi in 9 secondi.
+      if (!askAttivo) return true;
+      // Con `return true` Turnstile non logga più niente per conto suo (PR #261):
+      // il guasto arriva a Sentry solo se lo mandiamo noi. `throw` in un task a
+      // parte e non captureException, perché il client Sentry fa init pigro e non
+      // espone niente di chiamabile: l'eccezione non gestita la raccolgono la sua
+      // coda pre-init e poi il SDK.
+      setTimeout(() => { throw new Error('turnstile: error-callback (ask)'); });
       return true;
     };
 
