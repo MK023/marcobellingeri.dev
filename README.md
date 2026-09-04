@@ -46,8 +46,16 @@ To serve the site **with the real headers**, the ones from `public/_headers` tha
 `astro preview` does not apply:
 
 ```bash
-npx wrangler dev
+npx wrangler dev --var AMBIENTE:development
 ```
+
+The flag is not decoration. Without it the Worker reports its Sentry events with the SDK's default
+environment, `production`, and a crash from your own laptop lands in the same pile as a visitor's:
+14% of one month's volume arrived that way. Sentry's inbound filter drops what comes from
+`127.0.0.1`, which is not the same thing — an event carrying the production hostname from a
+pre-merge test passes that filter untouched, and one did, reading as a live outage for half an hour.
+`docker compose up sito` passes the flag for you. Production sets nothing and keeps the default, so
+a missing declaration costs noise, never a swallowed fault.
 
 The pipeline needs its secrets from Doppler:
 
