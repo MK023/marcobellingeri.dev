@@ -35,7 +35,17 @@ async function avvia() {
     // locale e quello in produzione sono lo STESSO artefatto (`wrangler dev`
     // serve la build, non i sorgenti), quindi `import.meta.env.PROD` e' vero in
     // entrambi e non distingue niente. L'hostname invece cambia sempre.
-    environment: location.hostname === 'marcobellingeri.dev' ? 'production' : 'development',
+    //
+    // Si elencano gli host LOCALI, non quello di produzione, e il verso conta:
+    // con l'elenco al contrario basterebbe rispondere un giorno da
+    // `www.marcobellingeri.dev` o da un dominio in piu' perche' gli errori dei
+    // visitatori veri finissero etichettati `development` e sparissero dietro il
+    // filtro — in silenzio. Cosi' invece un host di sviluppo che qui non c'e'
+    // costa del rumore, che si vede. `sito` e' il nome del servizio in
+    // docker-compose, da cui le verifiche raggiungono il sito.
+    environment: ['localhost', '127.0.0.1', '[::1]', 'sito'].includes(location.hostname)
+      ? 'development'
+      : 'production',
     // Niente IP/PII di default: coerente con la privacy dichiarata dal sito.
     sendDefaultPii: false,
   });

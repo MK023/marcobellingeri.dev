@@ -11,7 +11,7 @@ npm install
 npm run dev        # local development, http://localhost:4321
 npm run build      # production build into ./dist
 npm run test:csp   # tests run against dist/, not the source: build first
-npx wrangler dev   # serves dist/ WITH the real headers from public/_headers
+npx wrangler dev --var SENTRY_ENVIRONMENT:development   # dist/ WITH the real headers from public/_headers
 ```
 
 `astro preview` **does not apply `public/_headers`**: the CSP and the security headers only
