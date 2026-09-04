@@ -1,0 +1,182 @@
+name: Healthchecks
+
+# Il dead-man's switch dei cron, e la sua configurazione come codice.
+#
+# PERCHE' UN WATCHER INVECE DI OTTO MODIFICHE. La doc di healthchecks propone due
+# pattern: uno step di ping dentro ogni workflow, oppure un workflow separato su
+# `workflow_run`. Qui vale il secondo, per due motivi misurati. Primo: ognuno degli
+# otto workflow ha due o tre job, quindi un ping dentro un job direbbe "quel job e'
+# andato", non "il cron e' andato" — l'esito che serve e' quello del workflow, e
+# `workflow_run` e' l'unico posto dove esiste. Secondo: gli otto workflow non si
+# toccano, quindi questa integrazione non puo' fare regredire cio' che gia' funziona.
+#
+# `workflow_run` scatta per OGNI trigger, non solo per lo schedule: senza il filtro
+# su `workflow_run.event == 'schedule'` un `workflow_dispatch` manuale manderebbe un
+# battito e il monitor direbbe "vivo" per un cron che invece non parte piu' da solo.
+# E' il modo di fallire piu' insidioso di questo disegno, perche' lascia il verde.
+#
+# LO SLUG E' IL NOME DEL FILE senza estensione. La convenzione e' verificata da
+# `scripts/healthchecks.mjs --self-check`, che fallisce se i due divergono: senza quel
+# controllo il ping finirebbe su un check che non esiste, e healthchecks
+# risponderebbe 404 senza che nessuno guardi.
+#
+# LE DUE CHIAVI NON SONO INTERCAMBIABILI. Qui vive solo la *ping key*, che sa dire
+# "sono vivo" e nient'altro. La *API key*, che puo' allungare un `grace` fino a
+# rendere cieco l'allarme, sta solo in Doppler: la CI sorvegliata da questi check non
+# deve poterli riconfigurare, e `--apply` lo lancia un umano dalla VM.
+#
+# Lo step `Applica` qui sotto resta inerte finche' quel secret non esiste. Aggiungerlo
+# renderebbe l'apply automatico E chiuderebbe questa separazione di poteri: e' un
+# compromesso legittimo, non un miglioramento gratuito, e va scelto sapendolo.
+
+# PRIMA SOPPRESSIONE ZIZMOR DI QUESTO REPO, e va giustificata perche' resta.
+#
+# `workflow_run` e' segnalato HIGH per categoria (confidence Medium, non e' una prova):
+# gira nel contesto del repo base CON i segreti, ed e' innescato da workflow che
+# possono essere partiti da una PR di un fork. L'exploit noto e' in tre passi: la PR
+# del fork produce un artefatto, il workflow `workflow_run` lo scarica, lo esegue con
+# i segreti in mano.
+#
+# Nessuno dei tre passi esiste nel job `battito`, ed e' cio' che rende sopprimibile
+# il finding: niente `checkout`, niente download di artefatti, `permissions: {}`, e il
+# filtro `workflow_run.event == 'schedule'` esclude per costruzione tutto cio' che
+# nasce da una PR. L'unico segreto presente e' la ping key, che sa solo dire "vivo".
+#
+# LA SOPPRESSIONE COPRE QUESTA FORMA, NON IL TRIGGER. Se un domani quel job
+# acquisisse un checkout, dei permessi o un artefatto, questa riga continuerebbe a
+# tacere su un rischio diventato reale. Per questo `scripts/healthchecks.mjs --self-check`
+# verifica la forma a ogni PR e fallisce se cambia: la giustificazione e' eseguibile,
+# non solo scritta.
+#
+# E la verifica copre il FILE, non solo `battito`. Il job `config` qui sotto ha il
+# checkout e la API key — due dei tre ingredienti dell'exploit — e resta fuori da
+# `workflow_run` grazie a una riga sola, il suo `if:`. Anche quella e' sotto tripwire.
+on: # zizmor: ignore[dangerous-triggers]
+  workflow_run:
+    workflows:
+      - Magazine advance
+      - Devto publish due
+      - Edicola card
+      - Sentinella cron
+      - Supabase keepalive
+      - Visibility monitor
+      - Magazine ingest
+      - Radar competitor (Canale 2)
+    types: [completed]
+  # Nessun filtro `paths:`, ed e' deliberato: e' la regola gia' scritta in
+  # CONTRIBUTING.md e ripetuta in backend-ci.yml e site-ci.yml. Qui pero' non e' solo
+  # coerenza — con un filtro su `scripts/healthchecks.mjs` la validazione NON sarebbe
+  # girata sulle PR che la rompono davvero: rinominare il `name:` di un workflow
+  # sorvegliato, o aggiungerne uno schedulato nuovo, non tocca nessuno dei due file
+  # filtrati. Il guard sarebbe esistito senza mai scattare.
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  # Per-workflow sul battito, per-ref sulla config: due battiti di cron diversi non
+  # devono annullarsi a vicenda.
+  group: healthchecks-${{ github.event.workflow_run.name || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  battito:
+    name: Battito del cron
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Dati dell'evento SOLO via env, mai interpolati dentro `run:`: il path arriva
+      # dall'evento e in uno script diventerebbe iniezione (stesso pattern degli altri
+      # workflow di questo repo).
+      - name: Ping
+        env:
+          PERCORSO: ${{ github.event.workflow_run.path }}
+          ESITO: ${{ github.event.workflow_run.conclusion }}
+          PING_KEY: ${{ secrets.HEALTHCHECKS_PING_KEY }}
+        run: |
+          set -euo pipefail
+          slug=$(basename "$PERCORSO" .yml)
+
+          # `set -u` non intercetta una variabile DEFINITA MA VUOTA, ed e' proprio il
+          # caso di un secret assente: l'URL diventerebbe `hc-ping.com//<slug>` e
+          # healthchecks risponderebbe 404 — lo stesso codice che sotto significa "il
+          # check non esiste", con una diagnosi che manda a lanciare `--apply`, cosa
+          # che non risolverebbe nulla. Un guardiano senza chiave non e' un guardiano.
+          if [ -z "$PING_KEY" ]; then
+            echo "::error::HEALTHCHECKS_PING_KEY assente o vuoto: nessun battito puo' partire"
+            exit 1
+          fi
+
+          # IL BATTITO DICE "LO SCHEDULE E' PARTITO", non "la run e' andata bene": e'
+          # un dead-man's switch, e cio' che sorveglia e' l'ASSENZA di run. Quindi ogni
+          # esito manda un battito, e solo un guasto vero lo manda su /fail.
+          #
+          # `cancelled`, `skipped`, `neutral`, `stale` prendevano il ramo "niente
+          # battito", ed era un difetto: healthchecks misura il divario fra due PING,
+          # mentre le finestre in `healthchecks.mjs` sono dimensionate sul divario fra
+          # due RUN. Un solo battito saltato raddoppia il divario e fa suonare un
+          # allarme falso — su `edicola-card` da 34h a ~58h contro una finestra di 42h.
+          # E la cancellazione e' raggiungibile: con `cancel-in-progress: false` GitHub
+          # cancella comunque la run IN CODA quando ne arriva una piu' recente, e
+          # quattro dei workflow sorvegliati hanno un gruppo di concorrenza.
+          case "$ESITO" in
+            failure|timed_out|startup_failure) coda="/fail" ;;
+            *) coda="" ;;
+          esac
+
+          # `|| true`: questo step SORVEGLIA i cron, non li esegue. Se healthchecks
+          # e' giu' il battito si perde, ma un guardiano che colora di rosso una run
+          # riuscita e' peggio di nessun guardiano. Il codice `000` lo scrive gia'
+          # `-w '%{http_code}'` da solo: un `|| echo 000` ne stamperebbe un secondo,
+          # e la riga letta alle 3 di notte direbbe `HTTP 000000`.
+          codice=$(curl -m 10 --retry 5 -sS -o /dev/null -w '%{http_code}' \
+            "https://hc-ping.com/${PING_KEY}/${slug}${coda}" || true)
+          echo "$slug$coda -> HTTP $codice"
+
+          # Il 404 va detto. Significa che il check non esiste ancora, cioe' che
+          # `--apply` non e' mai stato lanciato: senza questo avviso ogni battito
+          # cadrebbe nel vuoto e il sistema resterebbe verde e inerte — il modo di
+          # fallire peggiore per un dead-man's switch, perche' non si vede.
+          case "$codice" in
+            2*) ;;
+            404) echo "::warning::$slug: il check non esiste su healthchecks, lancia scripts/healthchecks.mjs --apply" ;;
+            *) echo "::warning::$slug: battito non recapitato (HTTP $codice)" ;;
+          esac
+
+  config:
+    name: Config dei check
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Un BOOLEANO, non la chiave: `secrets` non e' disponibile in un `if:` di step,
+      # `env` si'. Cosi' il gate funziona e il segreto resta fuori dall'ambiente di
+      # checkout, setup-node e della validazione, che deve girare senza segreti.
+      APPLY_ABILITATO: ${{ secrets.HEALTHCHECKS_API_KEY != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      # Nessun segreto: questa e' la parte che intercetta gli errori veri (un cron
+      # nuovo senza check, una finestra piu' stretta del ritardo gia' misurato) ed e'
+      # anche l'unica che gira sulle PR da fork.
+      - name: Valida
+        run: node scripts/healthchecks.mjs --self-check
+
+      # Si salta finche' il secret non esiste (stesso pattern del workflow Checkly in
+      # MK023/vetreriamonferrina.com): la CI resta verde e la postura si cambia senza
+      # toccare YAML. La chiave sta sullo STEP, non sul job: cosi' non finisce
+      # nell'ambiente di checkout, setup-node e della validazione senza segreti.
+      - name: Applica
+        if: ${{ github.event_name == 'push' && env.APPLY_ABILITATO == 'true' }}
+        env:
+          HEALTHCHECKS_API_KEY: ${{ secrets.HEALTHCHECKS_API_KEY }}
+        run: node scripts/healthchecks.mjs --apply

@@ -33,7 +33,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -106,13 +105,25 @@ jobs:
       #
       # `interval` ancora l'attesa all'ULTIMO check-in ricevuto: un run in ritardo
       # sposta in avanti anche il successivo, quindi il ritardo non si accumula in un
-      # allarme. Il margine passa a 720 min per assorbire il jitter osservato (max
-      # 12h16) restando molto sotto l'intervallo, come la doc raccomanda.
+      # allarme.
+      #
+      # MARGINE ALZATO A 1080 MIN (18h) il 2026-09-04. I 720 erano dimensionati sugli
+      # otto run allora disponibili; rimisurato sui venti divari successivi, il
+      # peggiore e' 83h42 contro una finestra di 84h esatte — diciotto minuti di
+      # margine. Non e' mai scattato, ma era un falso allarme in attesa, cioe'
+      # esattamente cio' da cui il passaggio a `interval` voleva uscire. A 18h il
+      # margine torna a 6h18. La lezione e' sul metodo, non sul numero: un margine
+      # dimensionato su otto campioni va rimisurato quando i campioni diventano venti.
       #
       # Cosa si perde, dichiarato: un cron davvero morto ora si scopre entro
-      # 3 giorni + 12 ore invece di 05:00 + 2 ore. E' il prezzo, ed e' accettato
+      # 3 giorni + 18 ore invece di 05:00 + 2 ore. E' il prezzo, ed e' accettato
       # perche' cio' che il keepalive protegge e' la sospensione del progetto free
       # tier, che si misura in giorni e non in ore.
+      #
+      # Questo check-in Sentry resta ACCESO in parallelo a healthchecks per il primo
+      # ciclo completo (~4 giorni): se il ping healthchecks fosse cablato male non lo
+      # scopriresti da un allarme mancato, lo scopriresti dal database in pausa.
+      # Va rimosso dopo la verifica, e con lui si libera l'unico seggio cron di Sentry.
       #
       # Il ritardo di GitHub NON si corregge qui: e' scheduling best-effort
       # dichiarato dal fornitore, verificato il 31/08 anche su un altro repo.
@@ -126,7 +137,7 @@ jobs:
           curl -sS -m 10 -X POST \
             "https://o4511713634484224.ingest.de.sentry.io/api/4511714029273168/cron/supabase-keepalive/ffcac5d108001982eb70aa431c32af75/" \
             -H 'Content-Type: application/json' \
-            -d "{\"monitor_config\":{\"schedule\":{\"type\":\"interval\",\"value\":3,\"unit\":\"day\"},\"timezone\":\"UTC\",\"checkin_margin\":720,\"max_runtime\":10},\"status\":\"$stato\"}" \
+            -d "{\"monitor_config\":{\"schedule\":{\"type\":\"interval\",\"value\":3,\"unit\":\"day\"},\"timezone\":\"UTC\",\"checkin_margin\":1080,\"max_runtime\":10},\"status\":\"$stato\"}" \
             && echo "check-in Sentry: $stato" \
             || echo "check-in Sentry non riuscito — il keepalive resta valido"
           exit 0
