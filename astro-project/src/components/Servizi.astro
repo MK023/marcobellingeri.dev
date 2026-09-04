@@ -575,12 +575,21 @@ const briefLabels = {
     // fails" non serve: quella fallisce a siteverify, lato server. Cosa e' vero:
     // il logging sparisce, e il RETRY resta vivo — la callback e' invocata due
     // volte a 11s di distanza col `return true` gia' attivo.
-    // Aggiornamento del 04-09-2026: il pezzo che allora restava inferenza dalla
-    // doc adesso e' misura. Il percorso e' stato riprodotto (Playwright, sitekey
-    // invalida, la stessa via che il commento sopra indicava) e sotto 470
-    // invocazioni della callback non e' arrivata a `window` UNA eccezione di
-    // Turnstile: le sole non gestite erano le nostre, nominate qui sotto. Cioe'
-    // `return true` zittisce davvero anche il percorso che lancia.
+    //
+    // Aggiornamento del 04-09-2026, e la conclusione e' l'OPPOSTA di quella che
+    // veniva naturale. Riprodotto il percorso in locale (Playwright, sitekey
+    // invalida): sotto 470 invocazioni della callback non e' arrivata a `window`
+    // una sola eccezione di Turnstile. Sembrava la prova che `return true`
+    // zittisce anche il percorso che lancia. Non lo e': Sentry, in PRODUZIONE e
+    // su una release successiva a #261, registra ancora il 300031
+    // (MARCOBELLINGERI-DEV-F, ultimo il 03-09 da un utente vero, `regressed`).
+    // Lo stack dice perche': quel throw non esce dalla error-callback, esce dal
+    // watchdog interno di Turnstile dentro un setInterval, che l'integrazione
+    // browserApiErrors di Sentry avvolge. `return true` governa il logging della
+    // CALLBACK e non puo' fermare un'eccezione lanciata dentro un intervallo suo.
+    // La misura locale era vera ma copriva un guasto diverso: la sitekey invalida
+    // fallisce al render e al watchdog non ci arriva mai. Morale, per chi legge:
+    // l'errore nominato qui sotto si AGGIUNGE al 300031, non lo sostituisce.
     window.svcTurnstileErr = () => {
       // Due guardie, e nessuna delle due è una finezza.
       //
