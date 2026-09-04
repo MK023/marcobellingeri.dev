@@ -31,6 +31,11 @@ async function avvia() {
   init({
     dsn: 'https://ffcac5d108001982eb70aa431c32af75@o4511713634484224.ingest.de.sentry.io/4511714029273168',
     tracesSampleRate: 0,
+    // Qui il segnale e' l'hostname, non una variabile: il bundle servito in
+    // locale e quello in produzione sono lo STESSO artefatto (`wrangler dev`
+    // serve la build, non i sorgenti), quindi `import.meta.env.PROD` e' vero in
+    // entrambi e non distingue niente. L'hostname invece cambia sempre.
+    environment: location.hostname === 'marcobellingeri.dev' ? 'production' : 'development',
     // Niente IP/PII di default: coerente con la privacy dichiarata dal sito.
     sendDefaultPii: false,
   });
