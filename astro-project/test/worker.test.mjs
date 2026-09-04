@@ -5,7 +5,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { scegliLingua, gestisciContatto, gestisciAsk } from '../worker/index.js';
+import worker, { scegliLingua, gestisciContatto, gestisciAsk, gestisciSaluteContatto } from '../worker/index.js';
 
 const asset = { ASSETS: { fetch: async () => new Response('asset') } };
 const richiesta = (url, paese) => Object.assign(new Request(url), { cf: { country: paese } });
@@ -602,4 +602,91 @@ test('ask: il 405 dice quale metodo usare', async () => {
   const r = await gestisciAsk(new Request('https://marcobellingeri.dev/api/ask'), {}, { waitUntil: () => {} });
   assert.equal(r.status, 405);
   assert.equal(r.headers.get('Allow'), 'POST');
+});
+
+// ---- sonda del canale contatti (/api/contact-health) ----
+// La rotta esiste perche' dal 10-07 al 04-09-2026 il form non ha consegnato una
+// sola mail e nessuno l'ha saputo: il 401 di Resend si vedeva solo se qualcuno
+// premeva Invia. Questi test presidiano le due proprieta' che la rendono utile
+// invece che decorativa — dire il vero sul 401, e non dire nient'altro.
+const ctxFinto = () => ({ waitUntil: () => {} });
+
+// `caches.default` non esiste in Node: senza questo stub i test girerebbero su un
+// percorso diverso da quello di produzione, che e' il modo piu' rapido di scrivere
+// una suite che conferma e basta.
+function conCacheVuota(fn) {
+  const prima = globalThis.caches;
+  globalThis.caches = { default: { match: async () => undefined, put: async () => {} } };
+  return fn().finally(() => { globalThis.caches = prima; });
+}
+
+test('contact-health: chiave accettata da Resend = ok', async () => {
+  const fetchPrima = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{}', { status: 200 });
+  try {
+    const r = await conCacheVuota(() => gestisciSaluteContatto(
+      new Request('https://marcobellingeri.dev/api/contact-health'), { RESEND_API_KEY: 'k' }, ctxFinto()));
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { ok: true });
+  } finally { globalThis.fetch = fetchPrima; }
+});
+
+test('contact-health: chiave rifiutata = 503, e non dice perche"', async () => {
+  const fetchPrima = globalThis.fetch;
+  globalThis.fetch = async () => new Response('non autorizzato', { status: 401 });
+  try {
+    const r = await conCacheVuota(() => gestisciSaluteContatto(
+      new Request('https://marcobellingeri.dev/api/contact-health'), { RESEND_API_KEY: 'morta' }, ctxFinto()));
+    assert.equal(r.status, 503);
+    const corpo = await r.text();
+    assert.equal(corpo, '{"ok":false}');
+    // Il 401, il nome della chiave e il messaggio di Resend non escono di qui: la
+    // rotta e' pubblica, e deve rivelare solo cio' che si deduce gia' dal form.
+    assert.ok(!corpo.includes('401') && !corpo.includes('morta'));
+  } finally { globalThis.fetch = fetchPrima; }
+});
+
+test('contact-health: Resend irraggiungibile = 503, non un\'eccezione', async () => {
+  const fetchPrima = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error('rete giu'); };
+  try {
+    const r = await conCacheVuota(() => gestisciSaluteContatto(
+      new Request('https://marcobellingeri.dev/api/contact-health'), { RESEND_API_KEY: 'k' }, ctxFinto()));
+    assert.equal(r.status, 503);
+  } finally { globalThis.fetch = fetchPrima; }
+});
+
+test('contact-health: senza chiave configurata = 503, senza chiamare Resend', async () => {
+  const fetchPrima = globalThis.fetch;
+  let chiamate = 0;
+  globalThis.fetch = async () => { chiamate++; return new Response('{}'); };
+  try {
+    const r = await gestisciSaluteContatto(
+      new Request('https://marcobellingeri.dev/api/contact-health'), {}, ctxFinto());
+    assert.equal(r.status, 503);
+    assert.equal(chiamate, 0);
+  } finally { globalThis.fetch = fetchPrima; }
+});
+
+test('contact-health: chiave RISTRETTA di Resend = viva, non morta', async () => {
+  // Una chiave «sending access» POSTa le mail ma e' respinta su /domains. Senza
+  // questa distinzione la sonda direbbe «canale chiuso» ogni giorno su un canale
+  // che funziona, e una issue falsa ripetuta zittisce quella vera.
+  const fetchPrima = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response('{"name":"restricted_api_key","message":"This API key is restricted"}', { status: 401 });
+  try {
+    const r = await conCacheVuota(() => gestisciSaluteContatto(
+      new Request('https://marcobellingeri.dev/api/contact-health'), { RESEND_API_KEY: 'ristretta' }, ctxFinto()));
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { ok: true });
+  } finally { globalThis.fetch = fetchPrima; }
+});
+
+test('contact-health: il rate limit risponde 429, che la sonda legge come incerto', async () => {
+  const r = await gestisciSaluteContatto(
+    new Request('https://marcobellingeri.dev/api/contact-health'),
+    { RESEND_API_KEY: 'k', STATUS_LIMITER: { limit: async () => ({ success: false }) } },
+    ctxFinto());
+  assert.equal(r.status, 429);
 });

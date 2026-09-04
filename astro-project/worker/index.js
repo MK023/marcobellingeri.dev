@@ -110,6 +110,108 @@ async function verificaTurnstile(env, token, prefisso) {
 }
 
 /**
+ * GET /api/contact-health — la credenziale Resend di QUESTO Worker è ancora viva?
+ *
+ * PERCHE' ESISTE. Dal 10-07 al 04-09-2026 il form non ha consegnato una sola mail:
+ * la chiave qui dentro non era piu' valida e Resend rispondeva 401. Il guasto era
+ * visibile a Sentry, ma SOLO se qualcuno premeva Invia — e per due mesi nessuno
+ * l'ha fatto. Un controllo che parte solo quando un umano lo attiva non e' un
+ * controllo: e' una coincidenza. Qui la domanda se la fa un cron ogni giorno.
+ *
+ * PERCHE' NEL WORKER e non in CI. Le copie della chiave sono due e separate: una
+ * su Doppler (serve al `wrangler dev` locale) e una nei secret del Worker, che e'
+ * quella che il form usa davvero. Una sonda in CI leggerebbe la prima e sarebbe
+ * rimasta verde per tutti e due i mesi. L'unico modo onesto di verificare una
+ * credenziale e' interrogarla da dove vive.
+ *
+ * PERCHE' MUTA E SENZA AUTENTICAZIONE. Risponde `{ok:true}` o `{ok:false}` e
+ * nient'altro: non dice quale chiave, ne' che errore ha dato Resend. Non rivela
+ * niente che non si deduca gia' premendo Invia sul form, quindi non vale un
+ * segreto in piu' da custodire. In cambio la risposta e' in CACHE: senza, una
+ * rotta pubblica che chiama un servizio esterno a ogni richiesta sarebbe un
+ * piccolo amplificatore. Con la cache, Resend vede al massimo una chiamata ogni
+ * cinque minuti per colo.
+ *
+ * ATTENZIONE ALLE CHIAVI RISTRETTE. Resend distingue le chiavi «full access» da
+ * quelle «sending access», ed e' la seconda che si consiglia per un form. Una
+ * chiave sending POSTa le mail benissimo ma viene respinta su `GET /domains`:
+ * una sonda ingenua la leggerebbe come morta e accenderebbe un allarme ogni
+ * giorno su un canale sano — il rumore che riproduce il silenzio. Percio' un 401
+ * viene LETTO, non solo contato: se Resend dice che la chiave e' ristretta, la
+ * chiave ha AUTENTICATO, e per noi e' viva.
+ * @param {Request} request
+ * @param {Record<string, any>} env
+ * @param {{ waitUntil: (p: Promise<any>) => void }} ctx
+ * @returns {Promise<Response>}
+ */
+export async function gestisciSaluteContatto(request, env, ctx) {
+  if (!env.RESEND_API_KEY) {
+    segnala('contact-health: RESEND_API_KEY mancante in produzione');
+    return rispostaJson({ ok: false }, 503);
+  }
+
+  // `globalThis.caches?.default` e non `caches.default`: stessa forma di
+  // radar.js e agentic-status.js, e regge dove la cache non c'e'.
+  const cache = globalThis.caches?.default;
+  const chiave = new Request(new URL('/api/contact-health', request.url).toString());
+  const inCache = await cache?.match(chiave);
+  if (inCache) return inCache;
+
+  // Il limite sta DOPO la lettura dalla cache, e l'ordine e' tutto: un chiamante
+  // frenato riceve comunque il verdetto gia' calcolato, quindi la sonda non puo'
+  // scambiare la nostra difesa per un guasto — che e' l'obiezione per cui
+  // /api/agentic-status il limite ce l'ha sul confine HTTP e non dentro.
+  //
+  // Serve perche' l'argomento «questa rotta non rivela niente di piu' del form»
+  // vale sull'informazione e NON sul costo. /api/contact esige un token Turnstile
+  // verificato lato server; qui non si esige nulla, e ogni miss brucia una
+  // chiamata autenticata sull'account Resend. La cache dei Worker e' PER COLO:
+  // con 330+ colo, traffico distribuito significa ~330 chiamate per TTL, contro
+  // un limite Resend di 2 al secondo. Senza questa riga un estraneo puo' saturare
+  // l'account e spegnere il form vero, facendo anche suonare questo allarme.
+  if (env.STATUS_LIMITER) {
+    const ip = request.headers.get('CF-Connecting-IP') || 'sconosciuto';
+    const { success } = await env.STATUS_LIMITER.limit({ key: ip });
+    // La sonda gira una volta al giorno da un runner: un secchio al minuto non
+    // puo' toccarla nemmeno per sbaglio.
+    if (!success) return rispostaJson({ ok: false }, 429, { 'Retry-After': '60' });
+  }
+
+  let ok = false;
+  try {
+    // `GET /domains` e' la chiamata piu' innocua che richieda comunque di essere
+    // autenticati: non manda niente, non cambia niente, e un 401 qui e' lo stesso
+    // 401 che il form riceverebbe.
+    const r = await fetch('https://api.resend.com/domains', {
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` },
+    });
+    ok = r.ok;
+    if (!ok) {
+      // Il corpo si legge solo per distinguere «chiave ristretta» da «chiave
+      // morta»: entrambe rispondono 401, ma la prima significa che Resend ha
+      // riconosciuto la chiave e le ha negato QUESTO endpoint, non l'invio.
+      // Non esce da qui: la risposta resta `{ok}` e nient'altro.
+      const dettaglio = await r.text().catch(() => '');
+      if (r.status === 401 && dettaglio.includes('restricted_api_key')) ok = true;
+      else segnala('contact-health: Resend ha risposto ' + r.status, { status: r.status });
+    }
+  } catch {
+    // Rete che cade o Resend irraggiungibile: non e' la stessa cosa di una chiave
+    // morta, ma per chi vuole scriverci il risultato non cambia.
+    segnala('contact-health: Resend irraggiungibile');
+  }
+
+  // Stesso TTL per l'esito buono e per quello cattivo. Prima il fallimento
+  // durava 60s «per accorgersi prima della ripresa»: era un difetto travestito da
+  // premura, perche' quintuplicava le chiamate a Resend proprio nello stato che
+  // dura di piu'. Chi deve accorgersene e' un cron quotidiano: cinque minuti o
+  // uno gli sono indifferenti.
+  const risposta = rispostaJson({ ok }, ok ? 200 : 503, { 'Cache-Control': 'public, max-age=300' });
+  if (cache) ctx.waitUntil(cache.put(chiave, risposta.clone()));
+  return risposta;
+}
+
+/**
  * Endpoint del form di contatto (POST /api/contact): valida, filtra i bot con
  * honeypot e inoltra via Resend alla casella di Marco. Il `from` è il sottodominio
  * verificato in Resend (l'apex resta -all, non fa posta); `reply_to` è l'email del
@@ -356,6 +458,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/contact') return gestisciContatto(request, env);
+    if (url.pathname === '/api/contact-health') return gestisciSaluteContatto(request, env, ctx);
     if (url.pathname === '/api/ask') return gestisciAsk(request, env, ctx);
     if (url.pathname === '/api/radar') return gestisciRadar(request, env, ctx);
     // Il limite sta QUI e non dentro `gestisciAgenticStatus` — a differenza di
