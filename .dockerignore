@@ -1,0 +1,28 @@
+# Fuori dal contesto di build tutto ciò che l'immagine ricostruisce o non deve
+# vedere. Senza questo file `COPY . .` spedirebbe al demone anche le node_modules
+# dell'host — centinaia di MB, per poi sovrascrivere quelle installate
+# dall'immagine con binari compilati per un'altra macchina.
+node_modules
+**/node_modules
+**/dist
+.git
+.github
+**/graphify-out
+**/.astro
+**/coverage
+**/.scannerwork
+**/.wrangler
+*.log
+
+# I SEGRETI, e col `**/` che serve. Docker confronta questi schemi con percorsi
+# relativi alla radice del contesto: un `.env` scritto senza prefisso escluderebbe
+# SOLO `./.env`, lasciando entrare `astro-project/.env`. Vale soprattutto per
+# `.dev.vars`, che non è un file ipotetico — il .gitignore lo nomina come il
+# posto da cui `wrangler dev` legge i secret locali, e `wrangler dev` è proprio
+# ciò che questa immagine esegue. Finirebbe in un layer, cioè leggibile da
+# chiunque abbia l'immagine, e sopravvivrebbe alla vita del container.
+**/.env
+**/.env.*
+**/.dev.vars
+**/.dev.vars.*
+.claude
