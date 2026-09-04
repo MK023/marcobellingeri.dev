@@ -277,10 +277,6 @@ const briefLabels = {
   <p class="svc-note">{c.note}</p>
 </section>
 
-<!-- Turnstile: carica il widget del form. Script esterno di Cloudflare, permesso in
-     CSP (script-src challenges.cloudflare.com). is:inline così Astro non lo bundla. -->
-<script is:inline async defer src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>
-
 <style>
   /* La garanzia è l'unica cosa in pagina che sposta il rischio sul venditore:
      ha il peso tipografico dell'inchiostro pieno, non di una nota a piè di pagina. */
@@ -314,6 +310,8 @@ const briefLabels = {
 </style>
 
 <script>
+  import { caricaTurnstile } from '../lib/turnstile';
+
   // ---- carosello servizi: scorrimento continuo, in pausa quando lo guardi ----
   (function svcCarousel() {
     const carousel = document.getElementById('svc-carousel');
@@ -558,6 +556,10 @@ const briefLabels = {
 
     // Turnstile richiama questi globali (data-callback / data-error-callback del widget).
     let inCorso = false;
+    // Alza la mano prima di provocare noi stessi un errore Turnstile (il reset
+    // nella error-callback), così la callback che ne segue sa di non doverlo
+    // raccontare a nessuno. Vedi svcTurnstileErr per la misura che l'ha imposto.
+    let erroreNostro = false;
     window.svcTurnstileOk = (token: string) => {
       if (!inCorso) return;
       inCorso = false;
@@ -572,13 +574,52 @@ const briefLabels = {
     // Misurato in locale con sitekey invalida, perche' la chiave di test "always
     // fails" non serve: quella fallisce a siteverify, lato server. Cosa e' vero:
     // il logging sparisce, e il RETRY resta vivo — la callback e' invocata due
-    // volte a 11s di distanza col `return true` gia' attivo. Cosa NON e' provato:
-    // il percorso che lancia non e' stato riprodotto qui, quindi che `return true`
-    // zittisca anche quello resta inferenza dalla doc, non misura.
+    // volte a 11s di distanza col `return true` gia' attivo.
+    // Aggiornamento del 04-09-2026: il pezzo che allora restava inferenza dalla
+    // doc adesso e' misura. Il percorso e' stato riprodotto (Playwright, sitekey
+    // invalida, la stessa via che il commento sopra indicava) e sotto 470
+    // invocazioni della callback non e' arrivata a `window` UNA eccezione di
+    // Turnstile: le sole non gestite erano le nostre, nominate qui sotto. Cioe'
+    // `return true` zittisce davvero anche il percorso che lancia.
     window.svcTurnstileErr = () => {
+      // Due guardie, e nessuna delle due è una finezza.
+      //
+      // La prima: il reset qui sotto ri-arma il widget, che sulla stessa causa
+      // rifallisce e richiama questa callback. Misurato in locale con una sitekey
+      // invalida: 470 invocazioni in 9 secondi, contro 1 senza reset. Quell'errore
+      // lo abbiamo causato noi e lo sappiamo già, quindi lo consumiamo in silenzio
+      // — senza, sarebbe un anello chiuso, e durante un guasto Turnstile ogni
+      // visitatore scaricherebbe centinaia di eventi su un Sentry free. Il flag
+      // deve stare PRIMA di tutto il resto: è anche ciò che impedisce all'errore
+      // del nostro reset di smontare un secondo invio nel frattempo partito
+      // (toast, bottone riabilitato a metà di "INVIO…", execute annullato).
+      if (erroreNostro) { erroreNostro = false; return true; }
+      // La seconda: una callback che arriva senza un invio in corso è in ritardo
+      // su un tentativo già chiuso. Non ha nessuno da avvisare — segnalarla
+      // vorrebbe dire un secondo toast d'errore per un'azione mai fatta.
+      if (!inCorso) return true;
       inCorso = false;
       toast(S.failed, 'err');
       resetSendBtn();
+      erroreNostro = true;
+      // RESET, e non solo `inCorso = false`. Turnstile ritenta da solo dopo il
+      // fallimento (misurato: la callback torna una seconda volta a 11s), e se
+      // quel retry riesce chiama svcTurnstileOk con un token BUONO — che finiva
+      // nel cestino alla guardia `if (!inCorso) return`. Incassarlo era peggio:
+      // avrebbe fatto partire un invio che l'utente non ha chiesto, 11s dopo
+      // aver letto "errore", su un form che manda mail vere. Il reset spegne il
+      // retry, così non resta in volo nessuna callback fantasma e il click
+      // successivo riparte da un widget pulito.
+      window.turnstile?.reset?.(tsEl ?? undefined);
+      // A Sentry ci arriva SOLO da qui. Con `return true` Turnstile considera
+      // l'errore gestito e smette di loggarlo per conto suo (PR #261, che tolse
+      // il rumore del 300031): da allora un guasto sul gate dell'unica rotta che
+      // porta clienti era cieco — il toast lo vede il visitatore, non noi.
+      // `throw` dentro setTimeout e non captureException: il client Sentry fa
+      // init pigro e non esporta niente di chiamabile, ma tiene una coda sui
+      // listener window 'error'. Un'eccezione davvero non gestita in un task a
+      // parte la prendono sia quella coda (prima dell'init) sia il SDK (dopo).
+      setTimeout(() => { throw new Error('turnstile: error-callback (contact)'); });
       return true;
     };
 
@@ -609,15 +650,36 @@ const briefLabels = {
       }
       // Il brief deve avere sostanza: almeno un servizio o una nota.
       if (services.size === 0 && !(noteEl.value || '').trim()) { toast(L.needBrief || '', 'err'); return; }
-      // Turnstile assente (script async non ancora arrivato, o filtrato da un
-      // blocker): execute?.() sarebbe un no-op senza callback e il bottone
-      // resterebbe inchiodato su "INVIO…". Errore visibile e riprovabile, invece.
-      if (!window.turnstile?.execute) { toast(S.failed, 'err'); return; }
       sendEl.disabled = true;
       sendEl.textContent = S.sending;
       inCorso = true;
-      // Turnstile parte ORA, al click (data-execution="execute"): niente badge fermo lì.
-      window.turnstile.execute(tsEl ?? undefined);
+      // Lo script Turnstile si carica ORA, al primo invio, non col resto della
+      // pagina (src/lib/turnstile.ts spiega perché): il bottone resta disabilitato
+      // per tutta l'attesa, così un doppio click non apre due challenge.
+      const fallisci = () => { inCorso = false; toast(S.failed, 'err'); resetSendBtn(); };
+      // Due rami separati, e non un `.catch` in coda: quello prenderebbe ANCHE
+      // ciò che lancia il ramo di successo, e i due casi non si somigliano.
+      caricaTurnstile().then(
+        () => {
+          try {
+            // La presenza di `execute` va controllata, non data per scontata: un
+            // `?.()` che non trova il metodo non fa niente in silenzio, e il
+            // bottone resterebbe inchiodato su "INVIO…" senza scampo. Turnstile
+            // parte al click (data-execution="execute"): niente badge fermo lì.
+            if (!window.turnstile?.execute) throw new Error('turnstile: execute assente dopo il caricamento');
+            window.turnstile.execute(tsEl ?? undefined);
+          } catch (e) {
+            // Qui siamo dopo un caricamento RIUSCITO: se parte comunque qualcosa,
+            // è un guasto vero e va visto — è l'unica rotta che porta clienti.
+            fallisci();
+            setTimeout(() => { throw e; });
+          }
+        },
+        // Script non arrivato: blocker, offline, rete caduta. Esito ATTESO, non un
+        // guasto — errore visibile e riprovabile, e niente Sentry, che altrimenti
+        // collezionerebbe gli ad-blocker del mondo.
+        fallisci,
+      );
     });
 
     build();

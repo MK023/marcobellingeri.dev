@@ -23,6 +23,12 @@ interface Window {
     execute?: (el?: HTMLElement) => void;
     reset?: (el?: HTMLElement) => void;
   };
+  // Lo script Turnstile si carica ON-DEMAND (src/lib/turnstile.ts) e avvisa che
+  // la sua API è pronta chiamando questa callback PER NOME, dalla query
+  // `?onload=`: stesso tipo di contratto dei data-callback dei widget qui sopra,
+  // e sta qui per lo stesso motivo — altrimenti esisterebbe solo dentro una
+  // stringa. Opzionale e cancellata dopo l'uso: vive quanto il caricamento.
+  turnstilePronto?: () => void;
   svcTurnstileOk?: (token: string) => void;
   // Il ritorno non e' decorativo: Turnstile legge il valore e, se e' non-falsy,
   // considera l'errore gestito e smette di rilanciarlo per conto suo.

@@ -142,7 +142,11 @@ you would not have known otherwise.
   They are `return`s, not `throw`s. On the client the SDK loads **lazily** (first interaction
   or first idle): its whole cost sat on the critical path and it was the last reason mobile
   TBT was not zero. Errors raised before it loads land in a buffer and leave as soon as the
-  SDK arrives (`sentry.client.config.js`).
+  SDK arrives (`sentry.client.config.js`). The client has the same blind spot as the Worker,
+  and the same kind of hook for it: a Turnstile failure is *handled* — the callbacks return
+  `true`, so Turnstile stops logging it — and would reach nobody but the visitor reading the
+  toast. Both error callbacks therefore raise a named exception of their own, once per
+  attempt, which the buffer and then the SDK pick up.
 - **Tracing on `/api/contact` only.** `run_worker_first` sends the APIs and every HTML page
   through the Worker, so a global sample rate would trace a page being handed back from the
   edge cache, spending quota to learn that the CDN is fast. The one route whose latency can
