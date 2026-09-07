@@ -446,3 +446,50 @@ percorso completo si prova sul portatile — misurato subito dopo il fix: widget
 /api/contact` e `POST /api/ask` partiti, zero errori non gestiti, zero violazioni CSP. Il gate vero
 resta comunque server-side nel Worker, che una chiave di test non supera: la sostituzione non
 indebolisce niente in produzione, dove non avviene.
+
+## Appendice — un `import()` fallito non si ritenta (fonti, 07-09-2026)
+
+Aggiunta per la stessa ragione delle due sopra: ha accompagnato **una PR intera scritta e poi
+buttata**. La prima versione del fix all'init pigro di Sentry rimetteva `avviato = false` nel
+`catch` e concedeva tre tentativi, sul presupposto che ritentare l'import servisse a qualcosa.
+Non serve, e le fonti lo dicono senza ambiguità.
+
+### Cosa dice la specifica
+
+Un modulo il cui fetch fallisce viene registrato **come fallito** nella module map del realm, e
+ogni `import()` successivo dello stesso specificatore risolve contro quella voce e rifiuta —
+senza toccare la rete. Non è una politica di cache che scade: è lo stato del grafo dei moduli
+per la vita del documento. Quindi un contatore di tentativi attorno allo stesso `import()`
+produce N rifiuti immediati, non N richieste.
+
+### Cosa dice Vite
+
+La doc di Vite non promette nessun ritentativo automatico, e per il caso che ci interessa —
+*«hosting services may delete previous assets»* dopo un deploy, con la pagina del visitatore
+già aperta e i suoi chunk spariti — documenta un evento e un rimedio che **non è una seconda
+import**
+([Build / preload error](https://vite.dev/guide/build.html)):
+
+```js
+window.addEventListener('vite:preloadError', (event) => {
+  window.location.reload() // for example, refresh the page
+})
+```
+
+La stessa pagina consiglia `Cache-Control: no-cache` sull'HTML, così che il documento non
+continui a puntare a chunk che non esistono più.
+
+### La conseguenza per questo repo, che è una decisione e non un fatto
+
+Il reload **non** è stato adottato, e la ragione sta nel prodotto e non nella doc: la pagina che
+più probabilmente è aperta da un po' su questo sito è quella col form di contatto, e ricaricarla
+butterebbe via il brief appena composto. Un errore di telemetria non può costare un cliente.
+Quello che il codice fa invece è smettere di raccogliere: stacca i listener, svuota le code e
+rende il canale un no-op, perché accumulare prove che nessuno leggerà tiene in memoria un
+oggetto `Error` con il suo stack per ogni evento, e su una pagina con un guasto ripetuto quella
+coda non ha nessuno che la dreni.
+
+**Cosa è fonte e cosa è nostro**: che l'import non si ritenti è la specifica; che Vite
+raccomandi il reload è la sua doc; che *qui* il reload non si faccia è una scelta, ed è scritta
+accanto al `catch` in `astro-project/sentry.client.config.js`.
+
