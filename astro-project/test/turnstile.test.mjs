@@ -62,3 +62,72 @@ test('nessuna pagina carica lo script Turnstile da sola', () => {
   const eager = pagine.filter((f) => readFileSync(f, 'utf8').includes(API));
   assert.deepEqual(eager, [], "api.js in un tag statico: si carica su richiesta, non all'apertura della pagina");
 });
+
+// I due test qui sotto presidiano il percorso d'ERRORE del widget, che i primi due
+// non guardano: quelli verificano che il codice per caricare Turnstile arrivi in
+// pagina, non cosa succede quando la challenge fallisce.
+//
+// IL CASO CHE ESISTONO PER PRENDERE. Per far arrivare a Sentry un fallimento
+// gestito, le callback lanciavano `throw` dentro un setTimeout: l'unica presa
+// disponibile, perché l'init pigro del SDK non esportava niente di chiamabile. Un
+// fallimento previsto arrivava così come eccezione NON gestita — `handled: no`,
+// con lo stack del setTimeout al posto della riga vera — e si mescolava ai crash
+// dei visitatori. La presa esplicita ora c'è (`window.__SEGNALA_SENTRY__`, in
+// sentry.client.config.js); questi test impediscono che il vecchio giro torni,
+// perché tornerebbe verde: `throw` in un task a parte non rompe nessun test.
+
+const CANALE = '__SEGNALA_SENTRY__';
+
+test('il fallimento di Turnstile si segnala, non si lancia', () => {
+  const conWidget = pagine.filter((f) => readFileSync(f, 'utf8').includes('class="cf-turnstile"'));
+  assert.ok(conWidget.length > 0, 'nessuna pagina con un widget: selettore da aggiornare');
+
+  // Il messaggio sopravvive alla minificazione (è una stringa letterale); il
+  // `throw` che lo portava no, se non c'è più. Si cerca la coppia, non il verbo:
+  // `throw` da solo è ovunque, il messaggio da solo è legittimo.
+  const lanciate = conWidget.filter((f) =>
+    jsRaggiungibile(f).some((js) => /throw[^;]{0,60}turnstile: error-callback/.test(js)),
+  );
+  assert.deepEqual(lanciate, [], 'il fallimento Turnstile torna a viaggiare come eccezione non gestita');
+
+  const mute = conWidget.filter((f) => !jsRaggiungibile(f).some((js) => js.includes(CANALE)));
+  assert.deepEqual(mute, [], `widget Turnstile senza ${CANALE}: un guasto sul gate non arriverebbe a nessuno`);
+});
+
+// L'invariante e' quella che una svista rimuoverebbe per prima, ed e' la piu' cara:
+// il form tace il PRIMO fallimento per lasciar lavorare il ritentativo automatico
+// di Turnstile (`retry: auto`, `retry-interval` 8000 ms). Ma solo sui codici che
+// la doc marca `Retry: Yes`: su un `110200` (dominio non consentito) o un `400070`
+// (sitekey disabilitata) il secondo colpo non arriva MAI, e tacere il primo
+// lascerebbe il bottone su «INVIO…» per sempre.
+//
+// LA PRIMA VERSIONE DI QUESTO TEST BLOCCAVA LA RISPOSTA SBAGLIATA, ed e' il motivo
+// per cui ora elenca i codici invece di cercare una regex a memoria: cercava
+// `/^(300|600)/`, cioe' esattamente il filtro troppo stretto che il codice aveva.
+// La tabella ufficiale marca `Retry: Yes` anche su 110600 (challenge scaduta),
+// 110620 (interazione scaduta) e 200500 (iframe non caricato) — le condizioni di
+// una rete ballerina, cioe' il visitatore che il ritentativo esiste per non
+// perdere. Un test che ricopia l'assunzione del codice non la verifica: la
+// cementa.
+test('il ritentativo silenzioso copre tutti i codici che la doc dichiara ritentabili', () => {
+  const conForm = pagine.filter((f) => readFileSync(f, 'utf8').includes('id="svc-turnstile"'));
+  assert.ok(conForm.length > 0, 'nessuna pagina col form contatti: selettore da aggiornare');
+
+  // developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/
+  // (pagina aggiornata al 05-05-2026). Le due famiglie generiche stanno nel
+  // bundle come prefissi, i tre codici pieni come letterali.
+  const RITENTABILI = ['300', '600', '110600', '110620', '200500'];
+  for (const codice of RITENTABILI) {
+    const senza = conForm.filter((f) => !jsRaggiungibile(f).some((js) => js.includes(codice)));
+    assert.deepEqual(senza, [], `il filtro dei ritentabili non nomina ${codice}: un guasto transiente fallisce al primo colpo`);
+  }
+
+  // E il verso opposto, che e' quello che il test vecchio non guardava: un codice
+  // di CONFIGURAZIONE non deve entrare nell'elenco, o un guasto nostro resterebbe
+  // ad aspettare un ritentativo che non arriva.
+  const NON_RITENTABILI = ['110100', '110110', '110200', '200100', '400020', '400070'];
+  for (const codice of NON_RITENTABILI) {
+    const conCodice = conForm.filter((f) => jsRaggiungibile(f).some((js) => js.includes(`|${codice}`)));
+    assert.deepEqual(conCodice, [], `${codice} e' entrato fra i ritentabili: un guasto di configurazione aspetterebbe invano`);
+  }
+});

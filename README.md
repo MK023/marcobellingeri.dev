@@ -204,8 +204,18 @@ you would not have known otherwise.
   SDK arrives (`sentry.client.config.js`). The client has the same blind spot as the Worker,
   and the same kind of hook for it: a Turnstile failure is *handled* — the callbacks return
   `true`, so Turnstile stops logging it — and would reach nobody but the visitor reading the
-  toast. Both error callbacks therefore raise a named exception of their own, once per
-  attempt, which the buffer and then the SDK pick up.
+  toast. Both error callbacks therefore report explicitly, through a client-side
+  `__SEGNALA_SENTRY__` of its own that the lazy loader exposes, and they report a `warning`:
+  a failure the page has already handled is not a crash. They used to raise a named exception
+  instead, because the lazy init exported nothing callable — which filed a handled failure as
+  `handled: no`, carrying the stack of the `setTimeout` that threw it rather than the line
+  that meant it. **The name is shared with the Worker's hook, the contract is not**: there the
+  second argument is an `extra` and the level is fixed at `error`, here it is the level itself.
+  A call moved across that boundary passes an object where Sentry reads a `CaptureContext`, and
+  the event is silently reshaped.
+  The contact form also reports **once per failed send, not once per attempt**: the first
+  retryable failure is swallowed on purpose, to let Turnstile's own automatic retry work
+  (`Servizi.astro` carries the reasoning and the Cloudflare error-code table it rests on).
 - **Tracing on `/api/contact` only.** `run_worker_first` sends the APIs and every HTML page
   through the Worker, so a global sample rate would trace a page being handed back from the
   edge cache, spending quota to learn that the CDN is fast. The one route whose latency can
