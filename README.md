@@ -201,7 +201,10 @@ you would not have known otherwise.
   They are `return`s, not `throw`s. On the client the SDK loads **lazily** (first interaction
   or first idle): its whole cost sat on the critical path and it was the last reason mobile
   TBT was not zero. Errors raised before it loads land in a buffer and leave as soon as the
-  SDK arrives (`sentry.client.config.js`). The client has the same blind spot as the Worker,
+  SDK arrives (`sentry.client.config.js`) — and if it never arrives, the buffer is dropped and
+  the listeners come off, rather than collecting for the life of the page something nobody will
+  read. There is nothing to wait for: a failed module fetch is memoised by the browser, so
+  retrying the same import cannot succeed (`docs/turnstile-e-sentry-fonti.md`). The client has the same blind spot as the Worker,
   and the same kind of hook for it: a Turnstile failure is *handled* — the callbacks return
   `true`, so Turnstile stops logging it — and would reach nobody but the visitor reading the
   toast. Both error callbacks therefore report explicitly, through a client-side

@@ -53,18 +53,70 @@ window.__SEGNALA_SENTRY__ = (messaggio, livello = 'warning') => {
   // gestita partita dal percorso di SEGNALAZIONE di un errore diventerebbe un
   // secondo errore. Si ingoia: chi segnala non deve poter rompere la pagina.
   //
-  // Resta scoperto, e non lo tocco qui perché precede questa riga: dopo un
-  // import fallito `avviato` è già `true`, quindi nessuno ci riprova e la coda
-  // resta ferma per tutta la vita della pagina. Vale per tutti e tre i punti da
-  // cui si chiama `avvia()`, non solo per questo.
+  // Non c'è niente da recuperare dopo quel fallimento e non ci si riprova: la
+  // module map del browser registra il modulo come fallito, quindi una seconda
+  // import rifiuta senza toccare la rete (le fonti stanno in
+  // docs/turnstile-e-sentry-fonti.md). Ma la coda non resta lì a crescere:
+  // `rinuncia()` stacca i listener e la svuota.
   avvia().catch(() => {});
 };
+
+// Le due mani che raccolgono in attesa del SDK. Staccarle è l'unica cosa sensata
+// da fare quando il SDK non arriverà mai: vedi `rinuncia()`.
+function staccaCoda() {
+  window.removeEventListener('error', inCoda);
+  window.removeEventListener('unhandledrejection', inCoda);
+}
+
+// Il SDK non è arrivato e non arriverà. Si smette di raccogliere.
+//
+// NON si ritenta, e la ragione è che non funzionerebbe: un modulo il cui fetch
+// fallisce resta registrato come fallito nel module map del browser, e ogni
+// `import()` successivo dello stesso specificatore ricade su quella voce e
+// rifiuta senza toccare la rete. Vite lo dice a modo suo — per il caso «chunk
+// cancellato da un deploy mentre la pagina è aperta» documenta l'evento
+// `vite:preloadError` e come rimedio un `window.location.reload()`, non una
+// seconda import. Un contatore di tentativi qui sarebbe stato scenografia.
+//
+// Il reload NON si fa da qui, ed è una scelta da lasciare a chi conosce il
+// prodotto: su questo sito la pagina che più probabilmente è aperta da un po' è
+// quella col form di contatto, e ricaricarla butterebbe via il brief che il
+// visitatore ha appena composto. Un errore di telemetria non può costare un
+// cliente. Se un giorno si vorrà quel comportamento, il posto è un listener su
+// `vite:preloadError`, non questo catch.
+//
+// Cosa cambia allora, se non si recupera niente: si smette di FINGERE. Prima la
+// pagina restava agganciata ai due listener e continuava ad accodare per tutta la
+// sua vita, tenendo in memoria ogni ErrorEvent con il suo oggetto Error e il suo
+// stack — su una pagina con un guasto ripetuto (un intervallo che lancia, un
+// ciclo di rejection) la coda cresceva senza che nulla potesse mai drenarla.
+// Raccogliere prove che nessuno leggerà non è prudenza, è una perdita.
+function rinuncia() {
+  staccaCoda();
+  coda.length = 0;
+  messaggi.length = 0;
+  // Il canale resta chiamabile e diventa un no-op esplicito: chi segnala non
+  // deve sapere che il SDK non c'è, e soprattutto non deve tornare ad accodare.
+  inoltra = () => {};
+}
 
 let avviato = false;
 async function avvia() {
   if (avviato) return;
   avviato = true;
-  const { init, captureException, captureMessage } = await import('@sentry/browser');
+  let sdk;
+  try {
+    sdk = await import('@sentry/browser');
+  } catch {
+    // Solo l'import sta nel `try`: qui il guasto è «la rete non ha consegnato»,
+    // previsto, e si rinuncia. Un errore di `init()` o del drenaggio è un difetto
+    // NOSTRO e resta fuori, quindi diventa una rejection non gestita e si vede —
+    // che è l'unico modo di vederlo quando il canale per segnalarlo è proprio
+    // quello che non è partito.
+    rinuncia();
+    return;
+  }
+  const { init, captureException, captureMessage } = sdk;
   init({
     dsn: 'https://ffcac5d108001982eb70aa431c32af75@o4511713634484224.ingest.de.sentry.io/4511714029273168',
     tracesSampleRate: 0,
@@ -86,8 +138,7 @@ async function avvia() {
     // Niente IP/PII di default: coerente con la privacy dichiarata dal sito.
     sendDefaultPii: false,
   });
-  window.removeEventListener('error', inCoda);
-  window.removeEventListener('unhandledrejection', inCoda);
+  staccaCoda();
   for (const e of coda) {
     // ErrorEvent porta `error` (o solo `message`), PromiseRejectionEvent `reason`.
     captureException('reason' in e ? e.reason : (e.error ?? e.message));
