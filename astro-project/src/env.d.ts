@@ -38,12 +38,18 @@ interface Window {
   // `Retry: Yes` solo per le famiglie `300*` e `600*`, e Servizi.astro ci decide
   // se abbia senso aspettare il ritentativo automatico di Turnstile.
   svcTurnstileErr?: (codice?: string) => boolean;
+  // Percorso separato dalla error-callback: Turnstile la invoca quando una
+  // challenge interattiva non viene risolta in tempo. Il valore di ritorno non ha
+  // un contratto documentato (la doc lo definisce per la sola error-callback):
+  // e' `boolean` per coerenza con le sorelle, non per un comportamento atteso.
+  svcTurnstileTimeout?: () => boolean;
 
   // Secondo widget Turnstile, dedicato al comando `ask` del terminale: stesso
   // script globale di Cloudflare, container e callback distinti da quelli del
   // form (Turnstile supporta più istanze in pagina via render espliciti).
   askTurnstileOk?: (token: string) => void;
   askTurnstileErr?: () => boolean;
+  askTurnstileTimeout?: () => boolean;
 }
 
 interface Navigator {
