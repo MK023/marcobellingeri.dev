@@ -131,3 +131,42 @@ test('il ritentativo silenzioso copre tutti i codici che la doc dichiara ritenta
     assert.deepEqual(conCodice, [], `${codice} e' entrato fra i ritentabili: un guasto di configurazione aspetterebbe invano`);
   }
 });
+
+// `data-timeout-callback` e' il percorso che Turnstile usa per dire «la challenge
+// interattiva non e' stata risolta», ed e' SEPARATO da `data-error-callback`: un
+// widget che dichiara solo la seconda non viene avvisato del primo caso, e il
+// bottone resta su «INVIO…» senza che nessuno chiuda la pratica.
+test('ogni widget Turnstile dichiara anche la timeout-callback', () => {
+  const conWidget = pagine.filter((f) => readFileSync(f, 'utf8').includes('class="cf-turnstile"'));
+  assert.ok(conWidget.length > 0, 'nessuna pagina con un widget: selettore da aggiornare');
+
+  // Per WIDGET, non per pagina: NeonTerminal sta in BaseLayout e Servizi solo su
+  // alcune, quindi contare le pagine nasconderebbe il widget scoperto dietro
+  // quello sano.
+  const scoperte = conWidget.filter((f) => {
+    const html = readFileSync(f, 'utf8');
+    return (html.match(/class="cf-turnstile"/g) || []).length
+      !== (html.match(/data-timeout-callback=/g) || []).length;
+  });
+  assert.deepEqual(scoperte, [], 'widget Turnstile senza data-timeout-callback: la challenge non risolta non avvisa nessuno');
+});
+
+// I modi di morire sono problemi diversi con risposte diverse, quindi devono
+// essere issue diverse. Con un messaggio unico una challenge abbandonata finiva
+// sotto un'issue intitolata a una error-callback che non era scattata.
+test('i modi di fallire arrivano a Sentry distinti', () => {
+  const conForm = pagine.filter((f) => readFileSync(f, 'utf8').includes('id="svc-turnstile"'));
+  assert.ok(conForm.length > 0, 'nessuna pagina col form contatti: selettore da aggiornare');
+
+  const attesi = [
+    'turnstile: error-callback (contact)',
+    'turnstile: timeout-callback (contact)',
+    'turnstile: ritentativo mai arrivato (contact)',
+    'turnstile: timeout-callback (ask)',
+  ];
+  for (const messaggio of attesi) {
+    const senza = conForm.filter((f) => !jsRaggiungibile(f).some((js) => js.includes(messaggio)));
+    assert.deepEqual(senza, [], `manca la segnalazione «${messaggio}»`);
+  }
+});
+

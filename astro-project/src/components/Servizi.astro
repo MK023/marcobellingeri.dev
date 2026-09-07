@@ -254,6 +254,7 @@ const briefLabels = {
           data-execution="execute"
           data-callback="svcTurnstileOk"
           data-error-callback="svcTurnstileErr"
+          data-timeout-callback="svcTurnstileTimeout"
           data-action="turnstile-spin-v1"
         ></div>
         <div class="svc-brief-actions">
@@ -633,7 +634,7 @@ const briefLabels = {
     //
     // L'ordine interno è quello di prima e non è libero — `erroreNostro` va alzato
     // PRIMA del reset, che è esattamente ciò che quel flag serve a coprire.
-    const fallimentoDefinitivo = () => {
+    const fallimentoDefinitivo = (segnalazione: string) => {
       clearTimeout(attesaRitentativo);
       attesaRitentativo = 0;
       if (!inCorso) return;
@@ -660,7 +661,7 @@ const briefLabels = {
       // gestito — toast mostrato, widget resettato — non è un'eccezione non
       // gestita, e spacciarlo per tale costava un `handled: no` con lo stack del
       // setTimeout al posto di questa riga.
-      window.__SEGNALA_SENTRY__?.('turnstile: error-callback (contact)');
+      window.__SEGNALA_SENTRY__?.(segnalazione);
     };
 
     window.svcTurnstileOk = (token: string) => {
@@ -698,6 +699,18 @@ const briefLabels = {
     // La misura locale era vera ma copriva un guasto diverso: la sitekey invalida
     // fallisce al render e al watchdog non ci arriva mai. Morale, per chi legge:
     // l'errore nominato qui sotto si AGGIUNGE al 300031, non lo sostituisce.
+    // La challenge interattiva e' comparsa e il visitatore non l'ha risolta in
+    // tempo. Turnstile lo dice QUI, non dalla error-callback: e' un percorso
+    // separato, e un widget che dichiara solo l'altra non viene avvisato — il
+    // bottone resterebbe su «INVIO…» senza che nessuno chiuda la pratica.
+    //
+    // `return true` per coerenza con le callback sorelle, non perche' serva: la
+    // doc definisce il contratto del valore di ritorno per la sola error-callback.
+    window.svcTurnstileTimeout = () => {
+      fallimentoDefinitivo('turnstile: timeout-callback (contact)');
+      return true;
+    };
+
     window.svcTurnstileErr = (codice?: string) => {
       // Due guardie, e nessuna delle due è una finezza.
       //
@@ -756,10 +769,13 @@ const briefLabels = {
       //
       // Tabella: developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/
       if (/^(?:(?:300|600)\d*|110600|110620|200500)$/.test(String(codice ?? ''))) {
-        attesaRitentativo = window.setTimeout(fallimentoDefinitivo, MS_ATTESA_RITENTATIVO);
+        attesaRitentativo = window.setTimeout(
+          () => { fallimentoDefinitivo('turnstile: ritentativo mai arrivato (contact)'); },
+          MS_ATTESA_RITENTATIVO,
+        );
         return true;
       }
-      fallimentoDefinitivo();
+      fallimentoDefinitivo('turnstile: error-callback (contact)');
       return true;
     };
 
