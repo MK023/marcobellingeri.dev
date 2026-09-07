@@ -64,6 +64,7 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
     data-execution="execute"
     data-callback="askTurnstileOk"
     data-error-callback="askTurnstileErr"
+    data-timeout-callback="askTurnstileTimeout"
     data-action="turnstile-spin-v1"
   ></div>
 </div>
@@ -243,6 +244,17 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
     };
     // `return true` come in Servizi.astro: l'errore è gestito qui, Turnstile non
     // deve rilanciarlo per conto suo.
+    // Stesso percorso separato del form: senza questa callback una challenge
+    // interattiva abbandonata lascia `runAsk` appeso all'await, e da li' in poi
+    // ogni `ask` risponde «c'e' gia' una domanda in corso» per il resto della
+    // visita.
+    window.askTurnstileTimeout = () => {
+      if (askAttivo) window.__SEGNALA_SENTRY__?.('turnstile: timeout-callback (ask)');
+      askReject?.(new Error('turnstile-timeout'));
+      askResolve = null; askReject = null;
+      return true;
+    };
+
     window.askTurnstileErr = () => {
       askReject?.(new Error('turnstile-fallito'));
       askResolve = null; askReject = null;
