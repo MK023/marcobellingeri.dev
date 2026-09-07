@@ -23,11 +23,48 @@ const inCoda = (e) => { coda.push(e); };
 window.addEventListener('error', inCoda);
 window.addEventListener('unhandledrejection', inCoda);
 
+// Via ESPLICITA per segnalare un guasto che il codice di pagina ha già gestito.
+// Prima non c'era, e chi doveva segnalare aveva una strada sola: lanciare dentro
+// un setTimeout perché la coda qui sopra ne raccogliesse l'eccezione. Costava tre
+// difetti — l'evento arrivava `handled: no`, con lo stack del setTimeout al posto
+// del punto vero, e finiva mescolato ai crash dei visitatori nella stessa lista.
+// Un fallimento previsto e gestito è un `warning`, non un crash.
+//
+// Il nome è lo stesso del Worker (`worker/sentry.js`), il CONTRATTO no, e vale
+// la pena dirlo qui perché la somiglianza invita a spostare una chiamata da una
+// parte all'altra: di là la firma è `(messaggio, extra)` e il livello è fissato a
+// `error`, di qua è `(messaggio, livello)` e il default è `warning`. Il secondo
+// parametro significa due cose diverse. Un `__SEGNALA_SENTRY__('x', { id })`
+// copiato qui dal Worker non passerebbe un extra: passerebbe un oggetto dove
+// Sentry si aspetta un livello, e lo leggerebbe come CaptureContext rimodellando
+// l'evento in silenzio. Due canali con lo stesso nome, non uno solo.
+const messaggi = [];
+let inoltra = null;
+window.__SEGNALA_SENTRY__ = (messaggio, livello = 'warning') => {
+  if (inoltra) { inoltra(messaggio, livello); return; }
+  messaggi.push([messaggio, livello]);
+  // Il primo segnale è anche una ragione per svegliare il SDK. Senza, un guasto
+  // sul gate dell'unica rotta che porta clienti resterebbe in coda fino alla
+  // prima interazione o al primo idle — e dopo un errore quel momento può non
+  // arrivare mai, perché il visitatore se ne va.
+  //
+  // `.catch()` obbligatorio: `avvia()` è async, e se l'import dinamico del SDK
+  // fallisce (chunk 404 dopo un deploy, blocker, offline) una rejection non
+  // gestita partita dal percorso di SEGNALAZIONE di un errore diventerebbe un
+  // secondo errore. Si ingoia: chi segnala non deve poter rompere la pagina.
+  //
+  // Resta scoperto, e non lo tocco qui perché precede questa riga: dopo un
+  // import fallito `avviato` è già `true`, quindi nessuno ci riprova e la coda
+  // resta ferma per tutta la vita della pagina. Vale per tutti e tre i punti da
+  // cui si chiama `avvia()`, non solo per questo.
+  avvia().catch(() => {});
+};
+
 let avviato = false;
 async function avvia() {
   if (avviato) return;
   avviato = true;
-  const { init, captureException } = await import('@sentry/browser');
+  const { init, captureException, captureMessage } = await import('@sentry/browser');
   init({
     dsn: 'https://ffcac5d108001982eb70aa431c32af75@o4511713634484224.ingest.de.sentry.io/4511714029273168',
     tracesSampleRate: 0,
@@ -56,6 +93,9 @@ async function avvia() {
     captureException('reason' in e ? e.reason : (e.error ?? e.message));
   }
   coda.length = 0;
+  inoltra = captureMessage;
+  for (const [messaggio, livello] of messaggi) captureMessage(messaggio, livello);
+  messaggi.length = 0;
 }
 
 // Prima interazione o primo idle, chi arriva prima. Niente timer fisso di

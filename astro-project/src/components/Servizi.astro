@@ -608,8 +608,68 @@ const briefLabels = {
     // nella error-callback), così la callback che ne segue sa di non doverlo
     // raccontare a nessuno. Vedi svcTurnstileErr per la misura che l'ha imposto.
     let erroreNostro = false;
+    // Quanto si aspetta il ritentativo automatico di Turnstile prima di dire al
+    // visitatore che è andata male. NON è `retry-interval` (8000 ms di default,
+    // Widget configurations): quella è l'attesa PRIMA del nuovo tentativo, a cui
+    // va sommata la challenge. La misura registrata in questo file è una callback
+    // di ritorno a 11s, quindi 15s davano 4s di margine su una singola
+    // osservazione — troppo pochi: su una rete lenta il timer scatterebbe mentre
+    // il token buono sta arrivando, e `fallimentoDefinitivo` lo butterebbe via.
+    // Un falso «errore» qui costa un cliente; 9s di margine costano un'attesa.
+    const MS_ATTESA_RITENTATIVO = 20000;
+
+    // Handle del timer di cui sopra, e insieme LO STATO «ritentativo in volo».
+    // Vedi svcTurnstileErr: mentre è armato, il verdetto non lo danno le callback.
+    let attesaRitentativo = 0;
+
+    // La strada di quando è andata male davvero. Estratta perché ora ci si arriva
+    // da DUE parti, e vale la pena nominarle giuste: un codice NON ritentabile, e
+    // il timer. La «seconda error-callback» non è una di queste — mentre il timer
+    // è armato la guardia in svcTurnstileErr ingoia ogni callback successiva, e
+    // dopo che è scattato `inCorso` è falso, quindi una callback in ritardo esce
+    // dalla guardia precedente. Chi togliesse quella guardia fidandosi di una
+    // descrizione sbagliata rimetterebbe il difetto che la guardia esiste per
+    // chiudere.
+    //
+    // L'ordine interno è quello di prima e non è libero — `erroreNostro` va alzato
+    // PRIMA del reset, che è esattamente ciò che quel flag serve a coprire.
+    const fallimentoDefinitivo = () => {
+      clearTimeout(attesaRitentativo);
+      attesaRitentativo = 0;
+      if (!inCorso) return;
+      inCorso = false;
+      toast(S.failed, 'err');
+      resetSendBtn();
+      erroreNostro = true;
+      // RESET, e non solo `inCorso = false`. Turnstile ritenta da solo dopo il
+      // fallimento (misurato: la callback torna una seconda volta a 11s), e se
+      // quel retry riesce chiama svcTurnstileOk con un token BUONO — che finiva
+      // nel cestino alla guardia `if (!inCorso) return`. A questo punto del
+      // percorso incassarlo sarebbe peggio: l'utente ha appena letto «errore» e
+      // partirebbe un invio che non ha chiesto, su un form che manda mail vere.
+      // Il primo fallimento invece quel retry lo aspetta apposta — vedi sotto.
+      window.turnstile?.reset?.(tsEl ?? undefined);
+      // A Sentry ci arriva SOLO da qui, cioè in entrambi i modi in cui l'invio
+      // muore davvero: un codice non ritentabile, o un ritentativo promesso e mai
+      // arrivato. Prima la segnalazione stava dentro la callback, e il percorso
+      // del timer sarebbe stato muto.
+      //
+      // Non più `throw` dentro setTimeout. Quel giro serviva perché l'init pigro
+      // di Sentry non esponeva niente di chiamabile e l'unica presa era la sua
+      // coda sui listener window 'error'; ora la presa c'è. Un fallimento appena
+      // gestito — toast mostrato, widget resettato — non è un'eccezione non
+      // gestita, e spacciarlo per tale costava un `handled: no` con lo stack del
+      // setTimeout al posto di questa riga.
+      window.__SEGNALA_SENTRY__?.('turnstile: error-callback (contact)');
+    };
+
     window.svcTurnstileOk = (token: string) => {
       if (!inCorso) return;
+      // Il token è arrivato: se stavamo aspettando un ritentativo, la rete di
+      // sicurezza non serve più e va disarmata PRIMA di `invia`, altrimenti
+      // scatterebbe a metà di un invio riuscito e mostrerebbe «errore».
+      clearTimeout(attesaRitentativo);
+      attesaRitentativo = 0;
       inCorso = false;
       invia(token);
     };
@@ -638,7 +698,7 @@ const briefLabels = {
     // La misura locale era vera ma copriva un guasto diverso: la sitekey invalida
     // fallisce al render e al watchdog non ci arriva mai. Morale, per chi legge:
     // l'errore nominato qui sotto si AGGIUNGE al 300031, non lo sostituisce.
-    window.svcTurnstileErr = () => {
+    window.svcTurnstileErr = (codice?: string) => {
       // Due guardie, e nessuna delle due è una finezza.
       //
       // La prima: il reset qui sotto ri-arma il widget, che sulla stessa causa
@@ -655,28 +715,51 @@ const briefLabels = {
       // su un tentativo già chiuso. Non ha nessuno da avvisare — segnalarla
       // vorrebbe dire un secondo toast d'errore per un'azione mai fatta.
       if (!inCorso) return true;
-      inCorso = false;
-      toast(S.failed, 'err');
-      resetSendBtn();
-      erroreNostro = true;
-      // RESET, e non solo `inCorso = false`. Turnstile ritenta da solo dopo il
-      // fallimento (misurato: la callback torna una seconda volta a 11s), e se
-      // quel retry riesce chiama svcTurnstileOk con un token BUONO — che finiva
-      // nel cestino alla guardia `if (!inCorso) return`. Incassarlo era peggio:
-      // avrebbe fatto partire un invio che l'utente non ha chiesto, 11s dopo
-      // aver letto "errore", su un form che manda mail vere. Il reset spegne il
-      // retry, così non resta in volo nessuna callback fantasma e il click
-      // successivo riparte da un widget pulito.
-      window.turnstile?.reset?.(tsEl ?? undefined);
-      // A Sentry ci arriva SOLO da qui. Con `return true` Turnstile considera
-      // l'errore gestito e smette di loggarlo per conto suo (PR #261, che tolse
-      // il rumore del 300031): da allora un guasto sul gate dell'unica rotta che
-      // porta clienti era cieco — il toast lo vede il visitatore, non noi.
-      // `throw` dentro setTimeout e non captureException: il client Sentry fa
-      // init pigro e non esporta niente di chiamabile, ma tiene una coda sui
-      // listener window 'error'. Un'eccezione davvero non gestita in un task a
-      // parte la prendono sia quella coda (prima dell'init) sia il SDK (dopo).
-      setTimeout(() => { throw new Error('turnstile: error-callback (contact)'); });
+      // RITENTATIVO GIÀ IN VOLO: si tace e basta. La doc avverte che «the error
+      // callback can be invoked multiple times for the same underlying issue»
+      // (Client-side errors), quindi contare le callback per contare i tentativi
+      // è sbagliato: due callback ravvicinate per lo STESSO guasto chiuderebbero
+      // subito la pratica e il `reset()` ucciderebbe proprio il ritentativo che
+      // stiamo aspettando. Finché il timer è armato l'esito lo decidono solo
+      // svcTurnstileOk (il retry è riuscito) o il timer stesso (non è arrivato).
+      if (attesaRitentativo) return true;
+      // Primo fallimento su un codice ritentabile: si tace e si aspetta.
+      // Turnstile ritenta da sé (`retry: auto`, `retry-interval` 8000 ms) e la
+      // callback torna — misurato: a 11s. È il retry che il `reset()` in
+      // fallimentoDefinitivo serve a SPEGNERE, e spegnerlo è giusto solo DOPO che
+      // il visitatore ha letto «errore»: lì un token buono farebbe partire un
+      // invio che nessuno ha chiesto. Qui invece non gli abbiamo ancora detto
+      // niente, il bottone è ancora su «INVIO…», e quel token è esattamente ciò
+      // che ha chiesto — entra da svcTurnstileOk perché `inCorso` resta vero.
+      //
+      // SOLO i codici che la doc marca `Retry: Yes`, e l'elenco è quello vero,
+      // non quello che verrebbe da indovinare. Le due famiglie generiche `300*` e
+      // `600*` (le ultime cifre sono dichiarate «for internal use», quindi si
+      // confronta il prefisso) PIÙ tre codici pieni che è facile dimenticare:
+      //
+      //   110600  challenge scaduta — l'orologio del visitatore, o una challenge
+      //           troppo lenta
+      //   110620  interazione scaduta — la doc dice testualmente «Reset with
+      //           turnstile.reset()»
+      //   200500  iframe non caricato — challenges.cloudflare.com irraggiungibile
+      //
+      // Sono le condizioni di una rete ballerina, cioè esattamente il visitatore
+      // che questa PR vuole non perdere. Escluderle voleva dire dirgli «errore»
+      // al primo colpo proprio quando ritentare avrebbe funzionato.
+      //
+      // Il resto NON si ritenta, e neanche questo è prudenza: `110100`/`400020`
+      // sitekey non valida, `110110` sitekey inesistente, `110200` dominio non
+      // consentito, `400070` sitekey disabilitata, `200100` clock o cache. Su
+      // quelli un secondo colpo non arriva MAI, e tacere il primo lascerebbe il
+      // bottone inchiodato su «INVIO…». Un guasto di configurazione è nostro e
+      // deve fallire subito.
+      //
+      // Tabella: developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/
+      if (/^(?:(?:300|600)\d*|110600|110620|200500)$/.test(String(codice ?? ''))) {
+        attesaRitentativo = window.setTimeout(fallimentoDefinitivo, MS_ATTESA_RITENTATIVO);
+        return true;
+      }
+      fallimentoDefinitivo();
       return true;
     };
 
@@ -710,6 +793,27 @@ const briefLabels = {
       sendEl.disabled = true;
       sendEl.textContent = S.sending;
       inCorso = true;
+      // Un ritentativo A INVIO, non uno per visita: senza l'azzeramento il secondo
+      // invio della stessa sessione perderebbe la rete e fallirebbe al primo colpo.
+      // `erroreNostro` si azzera QUI e non si spera che lo faccia la callback del
+      // reset. Chi lo alza è fallimentoDefinitivo, che poi chiama `reset()` dando
+      // per scontato che ne segua una callback da consumare: sul percorso del
+      // timer quell'assunzione salta — Turnstile è muto, e un reset su un widget
+      // `data-execution="execute"` torna a riposo senza far partire nessuna
+      // challenge. Il flag resterebbe alzato e si mangerebbe la PRIMA callback
+      // dell'invio successivo: nessun timer armato, bottone su «INVIO…» per
+      // sempre. Cioè esattamente il guasto che il timer è venuto a impedire.
+      //
+      // Lo scambio è dichiarato, non gratuito: azzerare qui lascia aperta una
+      // finestra stretta nell'altro verso. Se il visitatore riclicca PRIMA che
+      // Turnstile consegni la callback del nostro reset, quella callback passa
+      // entrambe le guardie e viene attribuita al nuovo invio. Costa poco — una
+      // challenge nuova che riesce disarma il timer, e un codice non ritentabile
+      // sarebbe fallito comunque — mentre il caso che chiude è il bottone bloccato
+      // per sempre. Perché la finestra è stretta: la callback del reset arriva
+      // subito (misurato in questo file: una ogni ~19 ms), un secondo click
+      // richiede una persona che legge il toast.
+      erroreNostro = false;
       // Lo script Turnstile si carica ORA, al primo invio, non col resto della
       // pagina (src/lib/turnstile.ts spiega perché): il bottone resta disabilitato
       // per tutta l'attesa, così un doppio click non apre due challenge.

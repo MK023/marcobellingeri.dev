@@ -254,11 +254,17 @@ const lsLine = lsEntries.map((e) => e + '/').join('  ');
       // 470 eventi in 9 secondi.
       if (!askAttivo) return true;
       // Con `return true` Turnstile non logga più niente per conto suo (PR #261):
-      // il guasto arriva a Sentry solo se lo mandiamo noi. `throw` in un task a
-      // parte e non captureException, perché il client Sentry fa init pigro e non
-      // espone niente di chiamabile: l'eccezione non gestita la raccolgono la sua
-      // coda pre-init e poi il SDK.
-      setTimeout(() => { throw new Error('turnstile: error-callback (ask)'); });
+      // il guasto arriva a Sentry solo se lo mandiamo noi. Non più con un `throw`
+      // in un task a parte: quel giro esisteva perché l'init pigro di Sentry non
+      // esponeva niente di chiamabile, e ora lo espone (sentry.client.config.js).
+      // Un fallimento gestito è un `warning`, non un'eccezione non gestita.
+      //
+      // Qui NON c'è il ritentativo silenzioso che ha preso Servizi.astro, ed è una
+      // scelta: `ask` è il terminale, l'errore si stampa e ripetere la domanda
+      // costa un tasto — mentre un brief compilato, perso, non si riscrive. Se un
+      // giorno anche questa diventa una porta d'ingresso vera, la misura da
+      // copiare è scritta lì.
+      window.__SEGNALA_SENTRY__?.('turnstile: error-callback (ask)');
       return true;
     };
 
