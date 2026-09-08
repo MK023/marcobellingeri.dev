@@ -9,9 +9,9 @@ problem: >
   sulle metriche: un indice TTL su MongoDB, creato da uno script apposta, che
   dovrebbe cancellare da solo i documenti più vecchi. Rileggendo il codice prima di
   toccarlo, quella retention non poteva avere mai funzionato. Il consumer scrive il
-  campo `timestamp` come intero Unix (`consumer/metrics_consumer_mongo.py:67`), e
-  l'indice TTL è creato su quello stesso campo
-  (`consumer/setup_ttl_indexes.py:23`).
+  campo timestamp come intero Unix, alla riga 67 di
+  consumer/metrics_consumer_mongo.py, e l'indice TTL è creato su quello stesso
+  campo, alla riga 23 di consumer/setup_ttl_indexes.py.
 approach: >
   La documentazione MongoDB è esplicita, e l'ho letta invece di dedurla: il campo
   indicizzato deve contenere valori di tipo data BSON, e se non li contiene il
@@ -24,8 +24,8 @@ result: >
   trova un numero e passa oltre. Non un errore, non un'eccezione, non una riga di
   log: il numero di documenti che quell'indice può far scadere è zero per
   costruzione. Nello stesso giro è saltato fuori che i due script non sono
-  d'accordo su come si chiama la configurazione, `config_consumer.yaml` contro
-  `consumer_config.yaml`, e che nel repository non è versionato nessun file YAML da
+  d'accordo su come si chiama la configurazione, config_consumer.yaml contro
+  consumer_config.yaml, e che nel repository non è versionato nessun file YAML da
   cui partire. Il progetto non è mai andato in produzione, quindi finora non l'ha
   pagato nessuno.
 lesson: >
