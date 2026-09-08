@@ -70,7 +70,18 @@ jobs:
           # nella vita del repo. Dal secondo blocco in poi il cron ne modificherebbe
           # il corpo, e una modifica di corpo non manda nessuna notifica; nel mezzo
           # resterebbe aperta a dire "fermo da 9 giorni" mentre la pipeline gira.
-          giorni=$(grep '^ATTESA=' /tmp/advance.err | cut -d= -f2)
+          # Anche questa schermata: sotto `set -o pipefail` un grep che non trova
+          # niente fa fallire l'assegnazione e ferma lo step PRIMA del case, cioe'
+          # il notificatore fermerebbe la pipeline. Il contratto ATTESA= e' provato
+          # da un test dell'engine, ma se i due divergono deve tacere l'allarme,
+          # non saltare l'avanzamento del giorno.
+          giorni=$(grep '^ATTESA=' /tmp/advance.err | cut -d= -f2 || true)
+          # Il `|| true` sopra e' l'unico fallimento soppresso di questo blocco, e
+          # anche lui deve dire qualcosa. Ma il discrimine non e' il VALORE: vuoto
+          # e' il caso normale, nessuno sta aspettando. E' la RIGA assente a voler
+          # dire che il contratto con l'engine si e' rotto e il contatore e' cieco.
+          grep -q '^ATTESA=' /tmp/advance.err \
+            || echo "::warning::advance non ha stampato la riga ATTESA=, il contatore di attesa e' cieco"
           motivo=$(sed -n 's/^advance: //p' /tmp/advance.err | head -1)
           titolo="Magazine fermo a un gate umano"
           # --author: il titolo da solo non basta a riconoscere la propria issue.
@@ -89,18 +100,29 @@ jobs:
           else
             notifica=0
             aperta=""
-            echo "avviso: lettura della issue di attesa fallita, ciclo di vita saltato per oggi" >&2
+            echo "::warning::lettura della issue di attesa fallita, ciclo di vita saltato per oggi"
           fi
           if [ "$notifica" = 1 ] && [ -n "$giorni" ] && [ "$giorni" -ge 2 ]; then
             corpo=$(printf '%s\n\n%s\n\n%s' \
               "La pipeline risponde \`niente\` da **$giorni giorni**: $motivo" \
               "I due gate sono in Supabase Studio: il verify dei signal (tier) e l'approvazione del numero. Finche' non li apri, il cron gira verde senza avere niente da fare." \
               "Ultima run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+            # `|| true` da solo era il difetto che questa feature esiste per
+            # togliere, rimesso dentro l'allarme: su un 5xx la issue non nasceva,
+            # non si stampava niente e la run restava verde. Ogni esito ha una
+            # riga, e nessun log dichiara un successo che non c'e' stato.
             if [ -n "$aperta" ]; then
-              gh issue edit "$aperta" --repo "$GITHUB_REPOSITORY" --body "$corpo" || true
-              echo "attesa da $giorni giorni: issue #$aperta aggiornata"
+              if gh issue edit "$aperta" --repo "$GITHUB_REPOSITORY" --body "$corpo"; then
+                echo "attesa da $giorni giorni: issue #$aperta aggiornata"
+              else
+                echo "::warning::aggiornamento della issue di attesa fallito (attesa da $giorni giorni)"
+              fi
             else
-              gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$corpo" || true
+              if gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$corpo"; then
+                echo "attesa da $giorni giorni: issue di attesa aperta"
+              else
+                echo "::warning::apertura della issue di attesa fallita (attesa da $giorni giorni)"
+              fi
             fi
           elif [ "$notifica" = 1 ] && [ -n "$aperta" ] && { [ "$stage" != "niente" ] || [ "$motivo" = "nessun numero in lavorazione" ]; }; then
             # Chiusa alla ripartenza, cosi' il blocco successivo apre una issue
@@ -113,16 +135,23 @@ jobs:
             # finito per davvero, e lasciare la issue aperta renderebbe muto
             # l'allarme del blocco dopo, che diventerebbe una modifica di corpo.
             #
-            # ponytail: due tetti dichiarati. (1) Chiudere la issue a mano senza
+            # ponytail: tre tetti dichiarati. (0) Una chiusura fallita lascia la
+            # issue aperta, e il blocco successivo la aggiorna invece di aprirne
+            # una nuova: quel blocco non notifica nessuno. E' l'unico fallimento di
+            # questo ciclo che non si ripara da solo al giro dopo, ed e' scritto
+            # nell'annotazione perche' si legga senza aprire il log. (1) Chiudere la issue a mano senza
             # sbloccare ne fa nascere una nuova ogni 24h: manca uno snooze, si
             # aggiunge cercando anche fra le chiuse di recente. (2) La PR di
             # contenuto non mergiata e' un quarto gate umano senza contatore, e il
             # giorno dell'export questo ramo annuncia "ripartita" mentre la
             # pipeline si ferma li': si copre quando il conteggio sapra' leggere
             # anche lo stato delle PR aperte.
-            gh issue close "$aperta" --repo "$GITHUB_REPOSITORY" \
-              --comment "Sbloccato: la pipeline e' ripartita (stadio: $stage)." || true
-            echo "attesa finita: issue #$aperta chiusa"
+            if gh issue close "$aperta" --repo "$GITHUB_REPOSITORY" \
+              --comment "Sbloccato: la pipeline e' ripartita (stadio: $stage)."; then
+              echo "attesa finita: issue #$aperta chiusa"
+            else
+              echo "::warning::chiusura della issue di attesa fallita: la #$aperta resta aperta, e il blocco successivo la aggiornera' invece di aprirne una nuova, quindi non notifichera' nessuno"
+            fi
           fi
           case "$stage" in
             niente)

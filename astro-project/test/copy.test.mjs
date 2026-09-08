@@ -174,6 +174,11 @@ const feed = () =>
   ['en', 'it'].map((l) => join(DIST, l, 'rss.xml')).filter((f) => existsSync(f));
 
 test('nessun backtick nella prosa resa, fuori dai blocchi di codice', () => {
+  // Se un domani i feed cambiano percorso (basta un html_handling diverso e
+  // diventano dist/it/rss.xml/index.html), existsSync li scarterebbe e mezzo gate
+  // resterebbe verde sorvegliando il nulla. Stessa guardia che il test in fondo a
+  // questo file mette sulle pagine.
+  assert.equal(feed().length, 2, 'i due rss.xml non sono dove il gate li cerca: meta controllo e cieco');
   const colpevoli = [];
   for (const file of [...paginePubblicate(), ...feed()]) {
     const prosa = prosaSenzaCodice(readFileSync(file, 'utf8'));

@@ -59,7 +59,10 @@ const copy = {
 
 <script>
   // Count-up per ogni statistica in evidenza, appena entra in viewport.
-  // Nuovo caso al mese = aggiungi la coppia it/ + en/ in src/content/cases/, nient'altro.
+  // Nuovo caso al mese = aggiungi la coppia it/ + en/ in src/content/cases/ E TOGLI
+  // la precedente: qui vive un caso alla volta, come promette la copy qui sopra.
+  // Non e' piu' una convenzione: test/sections.test.mjs conta le card rese e
+  // fallisce se ne trova due.
   document.querySelectorAll<HTMLElement>('.big-stat[data-target]').forEach((el) => {
     const target = parseInt(el.dataset.target || '0', 10);
     const suffix = el.dataset.suffix || '';
