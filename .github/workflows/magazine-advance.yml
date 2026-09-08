@@ -53,10 +53,35 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          stage=$(node engine/advance.mjs)
+          # stdout = lo stadio, stderr = il motivo e il contatore di attesa.
+          stage=$(node engine/advance.mjs 2>/tmp/advance.err)
+          cat /tmp/advance.err >&2
           echo "advance dice: $stage"
           case "$stage" in
             niente)
+              # Il verde da solo non distingue "non c'era lavoro" da "aspetta te da
+              # una settimana": il 2026-09 il numero e' uscito con sette giorni di
+              # ritardo dietro otto run verdi. Il motivo era gia' nel log ogni
+              # mattina, mancava da quanto.
+              giorni=$(grep '^ATTESA=' /tmp/advance.err | cut -d= -f2)
+              motivo=$(sed -n 's/^advance: //p' /tmp/advance.err | head -1)
+              if [ -n "$giorni" ] && [ "$giorni" -ge 2 ]; then
+                titolo="Magazine fermo a un gate umano"
+                corpo=$(printf '%s\n\n%s\n\n%s' \
+                  "La pipeline risponde \`niente\` da **$giorni giorni**: $motivo" \
+                  "I due gate sono in Supabase Studio: il verify dei signal (tier) e l'approvazione del numero. Finche' non li apri, il cron gira verde senza avere niente da fare." \
+                  "Ultima run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+                # Una issue aperta alla volta, aggiornata: il conteggio deve salire
+                # sotto gli occhi, non moltiplicare le notifiche.
+                aperta=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+                  --search "\"$titolo\" in:title" --json number --jq '.[0].number // empty')
+                if [ -n "$aperta" ]; then
+                  gh issue edit "$aperta" --repo "$GITHUB_REPOSITORY" --body "$corpo"
+                  echo "attesa da $giorni giorni: issue #$aperta aggiornata"
+                else
+                  gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$corpo"
+                fi
+              fi
               exit 0
               ;;
             embed)

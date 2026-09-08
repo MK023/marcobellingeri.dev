@@ -2,7 +2,7 @@
 // con REST Supabase mockata. La decisione è pura; l'esecuzione sta nel workflow.
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { decidi } from "../lib/advance.mjs";
+import { decidi, giorniDa } from "../lib/advance.mjs";
 import { runEngine } from "./helpers/spawn.mjs";
 
 test("decidi: numero approvato ed embeddato -> export del period", () => {
@@ -80,4 +80,63 @@ test("CLI advance: DB fermo -> stampa 'niente' e motivo su stderr", () => {
   assert.equal(r.code, 0);
   assert.equal(r.stdout.trim(), "niente");
   assert.match(r.stderr, /nessun numero/);
+});
+
+// --- Il contatore di attesa (2026-09) ---------------------------------------
+// Il numero 3 e' uscito con sette giorni di ritardo dietro otto run verdi: il
+// motivo era scritto ogni mattina, la durata no. Queste sono le asserzioni che
+// falliscono se il conteggio smette di uscire.
+
+test("giorniDa: conta i giorni interi trascorsi", () => {
+  const ora = new Date("2026-09-08T10:00:00Z");
+  assert.equal(giorniDa("2026-09-01T10:57:00Z", ora), 6);
+  assert.equal(giorniDa("2026-09-08T09:00:00Z", ora), 0);
+});
+
+test("giorniDa: senza data, o con data illeggibile, non inventa un numero", () => {
+  assert.equal(giorniDa(null), null);
+  assert.equal(giorniDa(undefined), null);
+  assert.equal(giorniDa("non una data"), null);
+});
+
+test("giorniDa: una data futura non produce giorni negativi", () => {
+  assert.equal(giorniDa("2026-09-20T00:00:00Z", new Date("2026-09-08T00:00:00Z")), 0);
+});
+
+test("decidi: l'attesa del verify porta con se' da quanto dura", () => {
+  const d = decidi(
+    { approvato: null, bozza: { sector: "insurance", conArticolo: false, conSegnaliVerificati: false, attesaDa: "2026-09-01T10:57:00Z" } },
+    new Date("2026-09-08T11:38:00Z"),
+  );
+  assert.equal(d.stage, "niente");
+  assert.match(d.motivo, /verifica/);
+  assert.equal(d.giorni, 7);
+});
+
+test("decidi: anche l'attesa dell'approvazione e' datata", () => {
+  const d = decidi(
+    { approvato: null, bozza: { sector: "cloud", conArticolo: true, conSegnaliVerificati: true, attesaDa: "2026-09-05T09:00:00Z" } },
+    new Date("2026-09-08T09:00:00Z"),
+  );
+  assert.equal(d.stage, "niente");
+  assert.match(d.motivo, /approvazione/);
+  assert.equal(d.giorni, 3);
+});
+
+test("decidi: uno stadio che avanza da solo non porta un contatore", () => {
+  const d = decidi(
+    { approvato: null, bozza: { sector: "cloud", conArticolo: false, conSegnaliVerificati: true, attesaDa: "2026-09-01T00:00:00Z" } },
+    new Date("2026-09-08T00:00:00Z"),
+  );
+  assert.equal(d.stage, "generate");
+  assert.equal(d.giorni, undefined);
+});
+
+test("CLI advance: la riga ATTESA= c'e' sempre, anche quando non si aspetta nessuno", () => {
+  const r = runEngine(["engine/advance.mjs"], [
+    { match: "status=eq.approved", body: [] },
+    { match: "status=eq.draft", body: [] },
+  ]);
+  assert.equal(r.code, 0);
+  assert.match(r.stderr, /^ATTESA=$/m);
 });
