@@ -13,7 +13,7 @@
 // tornare e' il trattino usato come pausa dentro una frase.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DIST = new URL('../dist/', import.meta.url).pathname;
@@ -145,15 +145,20 @@ const BLOCCHI_DI_CODICE = /<(pre|code)\b[\s\S]*?<\/\1(?:\s[^>]*)?>/gi;
 
 const prosaSenzaCodice = (html) =>
   html
+    // I commenti PRIMA di script e style, non solo prima dei tag: un commento che
+    // cita un `<script>` (abitudine di questo repo, vedi BaseLayout.astro:118)
+    // aprirebbe altrimenti un match che corre fino al `</script>` vero e si
+    // mangia tutta la prosa in mezzo, lasciando il gate verde su testo che ha
+    // smesso di leggere.
+    .replace(/<!--[\s\S]*?-->/g, ' ')
     .replace(/<script[\s\S]*?<\/script(?:\s[^>]*)?>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style(?:\s[^>]*)?>/gi, ' ')
-    // I commenti HTML PRIMA dei tag, e non per eleganza: i commenti di questo
+    // (i commenti erano qui, e qui era troppo tardi: i commenti di questo
     // repo citano gli identificatori fra backtick (BaseLayout.astro:154 nomina
     // proprio `bellingeri-edition`) e usano le frecce `=>`. Finche' un commento
     // non contiene un `>`, lo strip generico dei tag se lo mangia per caso e il
-    // gate passa per fortuna; il primo commento con una freccia dentro farebbe
-    // fallire la CI su testo che nessun visitatore vede.
-    .replace(/<!--[\s\S]*?-->/g, ' ')
+    // il gate passava per fortuna, e il primo commento con una freccia dentro
+    // avrebbe fatto fallire la CI su testo che nessun visitatore vede.)
     .replace(BLOCCHI_DI_CODICE, ' ')
     .replace(/<[^>]+>/g, ' ');
 
@@ -162,9 +167,15 @@ const prosaSenzaCodice = (html) =>
 // del mouse e invisibile qui, e lo stesso vale per un `&#96;` mai decodificato.
 // Si estende quando servira', leggendo anche i valori degli attributi visibili.
 
+// I feed non sono pagine, ma portano titoli e descrizioni delle STESSE collection
+// da cui e' arrivato il difetto dell'8 settembre: un backtick in un titolo del
+// magazine raggiungerebbe i lettori RSS con il gate verde.
+const feed = () =>
+  ['en', 'it'].map((l) => join(DIST, l, 'rss.xml')).filter((f) => existsSync(f));
+
 test('nessun backtick nella prosa resa, fuori dai blocchi di codice', () => {
   const colpevoli = [];
-  for (const file of paginePubblicate()) {
+  for (const file of [...paginePubblicate(), ...feed()]) {
     const prosa = prosaSenzaCodice(readFileSync(file, 'utf8'));
     // Tutti, non solo il primo: una pagina con tre backtick va sistemata in un
     // giro, non in tre cicli di build.
