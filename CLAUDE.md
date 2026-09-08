@@ -13,7 +13,7 @@ stanno nei suoi commenti in testa.
 
 Tre caselle, ogni riga sta in una sola:
   su Marco .................... ~/.claude/CLAUDE.md
-  su come si fa un progetto ... ~/.claude/rules/lavorare-su-un-progetto.md
+  su come si fa un progetto ... ~/.claude/rules/*.md
   su QUESTO repo .............. questo file
 
 Tagliato il 25/08 perche' gia' nel globale dei progetti, non perche' smesso di valere:
