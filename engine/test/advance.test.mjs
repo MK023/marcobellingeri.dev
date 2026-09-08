@@ -140,3 +140,13 @@ test("CLI advance: la riga ATTESA= c'e' sempre, anche quando non si aspetta ness
   assert.equal(r.code, 0);
   assert.match(r.stderr, /^ATTESA=$/m);
 });
+
+test("decidi: lo stato anomalo porta il contatore, perche' e' quello che aspetta un umano", () => {
+  const d = decidi(
+    { approvato: { period: "2026-09", conArticolo: false, embedded: false, attesaDa: "2026-09-01T00:00:00Z" }, bozza: null },
+    new Date("2026-09-08T00:00:00Z"),
+  );
+  assert.equal(d.stage, "niente");
+  assert.match(d.motivo, /anomal/);
+  assert.equal(d.giorni, 7);
+});

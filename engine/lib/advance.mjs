@@ -18,7 +18,15 @@ export function giorniDa(da, ora = new Date()) {
 export function decidi({ approvato, bozza }, ora = new Date()) {
   if (approvato) {
     if (!approvato.conArticolo) {
-      return { stage: "niente", motivo: `numero ${approvato.period} approvato ma senza articolo: stato anomalo, serve un occhio umano` };
+      // Lo stato che chiede un occhio umano e' anche quello che ne resterebbe
+      // senza: prima non portava contatore, quindi il workflow non lo segnalava
+      // mai. E' raggiungibile davvero (generate cancella l'articolo su fallimento
+      // parziale, e un numero puo' essere approvato in mezzo).
+      return {
+        stage: "niente",
+        motivo: `numero ${approvato.period} approvato ma senza articolo: stato anomalo, serve un occhio umano`,
+        giorni: giorniDa(approvato.attesaDa, ora),
+      };
     }
     return approvato.embedded
       ? { stage: "export", arg: approvato.period }
