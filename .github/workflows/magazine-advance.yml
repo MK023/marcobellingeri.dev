@@ -77,32 +77,51 @@ jobs:
           # Il repo e' pubblico, chiunque puo' aprirne una con lo stesso titolo, e
           # il cron finirebbe per aggiornare quella invece di aprire la sua:
           # l'allarme resterebbe muto proprio nel caso che deve coprire.
-          # `|| true`: questa lettura gira PRIMA del case, quindi un 5xx dell'API
-          # fermerebbe lo step sotto `set -e` e farebbe saltare l'avanzamento del
-          # giorno. Il notificatore non deve poter bloccare la pipeline che sorveglia.
-          aperta=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+          # Tutto il ciclo di vita gira PRIMA del case: se fallisce non deve fermare
+          # lo step, o il notificatore bloccherebbe la pipeline che sorveglia. Ma
+          # "la chiamata e' fallita" e "non c'e' nessuna issue aperta" non sono la
+          # stessa cosa: confonderle aprirebbe una seconda issue per lo stesso
+          # blocco. Quindi si distingue l'esito, e su fallimento si salta il giro.
+          if aperta=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
             --author app/github-actions \
-            --search "\"$titolo\" in:title" --json number --jq '.[0].number // empty' || true)
-          if [ -n "$giorni" ] && [ "$giorni" -ge 2 ]; then
+            --search "\"$titolo\" in:title" --json number --jq '.[0].number // empty'); then
+            notifica=1
+          else
+            notifica=0
+            aperta=""
+            echo "avviso: lettura della issue di attesa fallita, ciclo di vita saltato per oggi" >&2
+          fi
+          if [ "$notifica" = 1 ] && [ -n "$giorni" ] && [ "$giorni" -ge 2 ]; then
             corpo=$(printf '%s\n\n%s\n\n%s' \
               "La pipeline risponde \`niente\` da **$giorni giorni**: $motivo" \
               "I due gate sono in Supabase Studio: il verify dei signal (tier) e l'approvazione del numero. Finche' non li apri, il cron gira verde senza avere niente da fare." \
               "Ultima run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
             if [ -n "$aperta" ]; then
-              gh issue edit "$aperta" --repo "$GITHUB_REPOSITORY" --body "$corpo"
+              gh issue edit "$aperta" --repo "$GITHUB_REPOSITORY" --body "$corpo" || true
               echo "attesa da $giorni giorni: issue #$aperta aggiornata"
             else
-              gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$corpo"
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$corpo" || true
             fi
-          elif [ -n "$aperta" ] && [ "$stage" != "niente" ]; then
+          elif [ "$notifica" = 1 ] && [ -n "$aperta" ] && { [ "$stage" != "niente" ] || [ "$motivo" = "nessun numero in lavorazione" ]; }; then
             # Chiusa alla ripartenza, cosi' il blocco successivo apre una issue
             # NUOVA, che notifica. Una per blocco, non una per sempre. La chiusura
             # vuole uno stadio che avanza davvero: con `niente` e ATTESA vuota il
             # numero puo' essere sparito da sotto (pubblicato o cancellato a mano),
             # e annunciare una ripartenza che non c'e' stata spegnerebbe l'allarme
-            # per un blocco ancora aperto.
+            # per un blocco ancora aperto. Si chiude anche quando il numero non
+            # c'e' piu' (motivo "nessun numero in lavorazione"): li' il blocco e'
+            # finito per davvero, e lasciare la issue aperta renderebbe muto
+            # l'allarme del blocco dopo, che diventerebbe una modifica di corpo.
+            #
+            # ponytail: due tetti dichiarati. (1) Chiudere la issue a mano senza
+            # sbloccare ne fa nascere una nuova ogni 24h: manca uno snooze, si
+            # aggiunge cercando anche fra le chiuse di recente. (2) La PR di
+            # contenuto non mergiata e' un quarto gate umano senza contatore, e il
+            # giorno dell'export questo ramo annuncia "ripartita" mentre la
+            # pipeline si ferma li': si copre quando il conteggio sapra' leggere
+            # anche lo stato delle PR aperte.
             gh issue close "$aperta" --repo "$GITHUB_REPOSITORY" \
-              --comment "Sbloccato: la pipeline e' ripartita (stadio: $stage)."
+              --comment "Sbloccato: la pipeline e' ripartita (stadio: $stage)." || true
             echo "attesa finita: issue #$aperta chiusa"
           fi
           case "$stage" in
