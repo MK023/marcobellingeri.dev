@@ -57,4 +57,4 @@ Dopo di che la pipeline ha fatto il resto in pochi minuti. Generate ha scritto i
 
 Il numero di settembre è uscito con una settimana di ritardo. Non si era rotto niente, e tutte le run erano verdi.
 
-La prossima cosa che costruisco non è un altro allarme. È un contatore: il job giornaliero sa già di essere bloccato, quindi può anche sapere da quando, e dirlo dove guardo davvero.
+Quindi non mi serve un quarto allarme. Mi serve che il job giornaliero conti le mattine passate a rispondere `niente`, e che quel numero lo dica dove guardo davvero.

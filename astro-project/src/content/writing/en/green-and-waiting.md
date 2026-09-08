@@ -57,4 +57,4 @@ After that the pipeline did the rest in a few minutes. Generate wrote the piece 
 
 The September issue went out a week late. Nothing had broken, and every run had been green.
 
-The next thing I build is not another alarm. It is a counter: the daily job already knows it is blocked, so it can also know since when, and say it where I actually look.
+So I do not need a fourth alarm. I need the daily job to count the mornings it has spent answering `niente`, and to say that number where I actually look.
