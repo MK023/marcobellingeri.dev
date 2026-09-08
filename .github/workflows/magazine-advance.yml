@@ -76,6 +76,12 @@ jobs:
           # da un test dell'engine, ma se i due divergono deve tacere l'allarme,
           # non saltare l'avanzamento del giorno.
           giorni=$(grep '^ATTESA=' /tmp/advance.err | cut -d= -f2 || true)
+          # Il `|| true` sopra e' l'unico fallimento soppresso di questo blocco, e
+          # anche lui deve dire qualcosa. Ma il discrimine non e' il VALORE: vuoto
+          # e' il caso normale, nessuno sta aspettando. E' la RIGA assente a voler
+          # dire che il contratto con l'engine si e' rotto e il contatore e' cieco.
+          grep -q '^ATTESA=' /tmp/advance.err \
+            || echo "::warning::advance non ha stampato la riga ATTESA=, il contatore di attesa e' cieco"
           motivo=$(sed -n 's/^advance: //p' /tmp/advance.err | head -1)
           titolo="Magazine fermo a un gate umano"
           # --author: il titolo da solo non basta a riconoscere la propria issue.
@@ -94,7 +100,7 @@ jobs:
           else
             notifica=0
             aperta=""
-            echo "avviso: lettura della issue di attesa fallita, ciclo di vita saltato per oggi" >&2
+            echo "::warning::lettura della issue di attesa fallita, ciclo di vita saltato per oggi"
           fi
           if [ "$notifica" = 1 ] && [ -n "$giorni" ] && [ "$giorni" -ge 2 ]; then
             corpo=$(printf '%s\n\n%s\n\n%s' \
@@ -109,13 +115,13 @@ jobs:
               if gh issue edit "$aperta" --repo "$GITHUB_REPOSITORY" --body "$corpo"; then
                 echo "attesa da $giorni giorni: issue #$aperta aggiornata"
               else
-                echo "avviso: aggiornamento della issue di attesa fallito (attesa da $giorni giorni)" >&2
+                echo "::warning::aggiornamento della issue di attesa fallito (attesa da $giorni giorni)"
               fi
             else
               if gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$corpo"; then
                 echo "attesa da $giorni giorni: issue di attesa aperta"
               else
-                echo "avviso: apertura della issue di attesa fallita (attesa da $giorni giorni)" >&2
+                echo "::warning::apertura della issue di attesa fallita (attesa da $giorni giorni)"
               fi
             fi
           elif [ "$notifica" = 1 ] && [ -n "$aperta" ] && { [ "$stage" != "niente" ] || [ "$motivo" = "nessun numero in lavorazione" ]; }; then
@@ -129,7 +135,11 @@ jobs:
             # finito per davvero, e lasciare la issue aperta renderebbe muto
             # l'allarme del blocco dopo, che diventerebbe una modifica di corpo.
             #
-            # ponytail: due tetti dichiarati. (1) Chiudere la issue a mano senza
+            # ponytail: tre tetti dichiarati. (0) Una chiusura fallita lascia la
+            # issue aperta, e il blocco successivo la aggiorna invece di aprirne
+            # una nuova: quel blocco non notifica nessuno. E' l'unico fallimento di
+            # questo ciclo che non si ripara da solo al giro dopo, ed e' scritto
+            # nell'annotazione perche' si legga senza aprire il log. (1) Chiudere la issue a mano senza
             # sbloccare ne fa nascere una nuova ogni 24h: manca uno snooze, si
             # aggiunge cercando anche fra le chiuse di recente. (2) La PR di
             # contenuto non mergiata e' un quarto gate umano senza contatore, e il
@@ -140,7 +150,7 @@ jobs:
               --comment "Sbloccato: la pipeline e' ripartita (stadio: $stage)."; then
               echo "attesa finita: issue #$aperta chiusa"
             else
-              echo "avviso: chiusura della issue di attesa fallita, resta aperta la #$aperta" >&2
+              echo "::warning::chiusura della issue di attesa fallita: la #$aperta resta aperta, e il blocco successivo la aggiornera' invece di aprirne una nuova, quindi non notifichera' nessuno"
             fi
           fi
           case "$stage" in
