@@ -136,22 +136,40 @@ test('nessun trattino lungo usato come pausa dentro una frase, in tutto il sito'
 // Dentro <code> e <pre> il backtick e' legittimo: sono esempi di codice, e nei
 // pezzi ce ne sono (template literal JS, commenti che citano `security.csp`).
 // Quindi si toglie il CONTENUTO di quei blocchi, non solo i loro tag.
-const BLOCCHI_DI_CODICE = /<(pre|code)\b[\s\S]*?<\/\1\s*>/gi;
+// Il tag di chiusura si scrive come gli altri di questo file: `</code foo>` e
+// `</code >` sono entrambi validi per il parser. Con `</\1>` secco il match
+// lazy correrebbe fino al `</code>` SUCCESSIVO, inghiottendo in silenzio tutta
+// la prosa in mezzo — il gate resterebbe verde su testo che ha smesso di
+// guardare.
+const BLOCCHI_DI_CODICE = /<(pre|code)\b[\s\S]*?<\/\1(?:\s[^>]*)?>/gi;
 
 const prosaSenzaCodice = (html) =>
   html
     .replace(/<script[\s\S]*?<\/script(?:\s[^>]*)?>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style(?:\s[^>]*)?>/gi, ' ')
+    // I commenti HTML PRIMA dei tag, e non per eleganza: i commenti di questo
+    // repo citano gli identificatori fra backtick (BaseLayout.astro:154 nomina
+    // proprio `bellingeri-edition`) e usano le frecce `=>`. Finche' un commento
+    // non contiene un `>`, lo strip generico dei tag se lo mangia per caso e il
+    // gate passa per fortuna; il primo commento con una freccia dentro farebbe
+    // fallire la CI su testo che nessun visitatore vede.
+    .replace(/<!--[\s\S]*?-->/g, ' ')
     .replace(BLOCCHI_DI_CODICE, ' ')
     .replace(/<[^>]+>/g, ' ');
+
+// ponytail: il gate guarda il testo dei nodi, non gli attributi. Un backtick in
+// un `title=`, un `aria-label=` o nella meta description e' visibile al passaggio
+// del mouse e invisibile qui, e lo stesso vale per un `&#96;` mai decodificato.
+// Si estende quando servira', leggendo anche i valori degli attributi visibili.
 
 test('nessun backtick nella prosa resa, fuori dai blocchi di codice', () => {
   const colpevoli = [];
   for (const file of paginePubblicate()) {
     const prosa = prosaSenzaCodice(readFileSync(file, 'utf8'));
-    const i = prosa.indexOf('`');
-    if (i !== -1) {
-      colpevoli.push(`${file.slice(DIST.length)}: ...${prosa.slice(Math.max(0, i - 60), i + 60).replace(/\s+/g, ' ')}...`);
+    // Tutti, non solo il primo: una pagina con tre backtick va sistemata in un
+    // giro, non in tre cicli di build.
+    for (const m of prosa.matchAll(/`/g)) {
+      colpevoli.push(`${file.slice(DIST.length)}: ...${prosa.slice(Math.max(0, m.index - 60), m.index + 60).replace(/\s+/g, ' ')}...`);
     }
   }
   assert.deepEqual(
@@ -162,13 +180,24 @@ test('nessun backtick nella prosa resa, fuori dai blocchi di codice', () => {
 });
 
 // Il rilevatore dei backtick non deve passare perche' non guarda: se i blocchi di
-// codice si mangiassero tutta la pagina, o se paginePubblicate() tornasse vuota,
-// il test sopra sarebbe verde per la ragione sbagliata.
+// codice o i commenti si mangiassero tutta la pagina, il test sopra sarebbe verde
+// per la ragione sbagliata. Il caso "nessuna pagina da leggere" lo copre gia' il
+// test in fondo al file, che pretende piu' di venti pagine.
 test('il rilevatore dei backtick vede davvero la prosa e risparmia il codice', () => {
   const finta = '<p>testo con `segno` in prosa</p><pre><code>const x = `ok`;</code></pre>';
   const prosa = prosaSenzaCodice(finta);
   assert.ok(prosa.includes('`segno`'), 'la prosa non arriva al rilevatore');
   assert.ok(!prosa.includes('`ok`'), 'il contenuto dei blocchi di codice non viene tolto');
+
+  // Il commento con una freccia dentro: e' il caso che oggi passa per fortuna,
+  // perche' lo strip generico dei tag non arriva fino alla chiusura.
+  const conCommento = '<p>prosa</p><!-- la callback (res) => r.ok usa `hidden` -->';
+  assert.ok(!prosaSenzaCodice(conCommento).includes('`'), 'i commenti HTML restano nel testo scandito');
+
+  // Chiusura con attributi: senza `(?:\s[^>]*)?` il match correrebbe fino al
+  // `</code>` successivo e si mangerebbe la prosa in mezzo.
+  const chiusuraStrana = '<code>a</code foo><p>prosa con `segno`</p><code>b</code>';
+  assert.ok(prosaSenzaCodice(chiusuraStrana).includes('`segno`'), 'la prosa fra due blocchi e stata inghiottita');
 });
 
 // Il test sopra non deve poter passare per la ragione sbagliata: se la regex non
