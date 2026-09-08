@@ -73,7 +73,13 @@ jobs:
                   "Ultima run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
                 # Una issue aperta alla volta, aggiornata: il conteggio deve salire
                 # sotto gli occhi, non moltiplicare le notifiche.
+                # --author: il titolo da solo non basta a riconoscere la propria
+                # issue. Il repo e' pubblico, chiunque puo' aprirne una con lo
+                # stesso titolo, e il cron finirebbe per aggiornare quella invece
+                # di aprire la sua: l'allarme resterebbe muto proprio nel caso che
+                # deve coprire.
                 aperta=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+                  --author app/github-actions \
                   --search "\"$titolo\" in:title" --json number --jq '.[0].number // empty')
                 if [ -n "$aperta" ]; then
                   gh issue edit "$aperta" --repo "$GITHUB_REPOSITORY" --body "$corpo"
