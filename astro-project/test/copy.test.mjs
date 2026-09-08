@@ -126,6 +126,51 @@ test('nessun trattino lungo usato come pausa dentro una frase, in tutto il sito'
   );
 });
 
+// Il backtick e' un segno di markup, non un carattere di prosa: se si vede nella
+// pagina, qualcuno ha scritto Markdown dove il Markdown non viene interpretato.
+// L'8 settembre 2026 e' successo in due punti indipendenti — il frontmatter di una
+// Field Note, che FieldNotes.astro interpola come testo senza chiamare render(), e
+// la copy della privacy, che e' una stringa JS dentro <p>{...}</p>. Nessuno dei due
+// dava errore: si leggevano i segni, e basta.
+//
+// Dentro <code> e <pre> il backtick e' legittimo: sono esempi di codice, e nei
+// pezzi ce ne sono (template literal JS, commenti che citano `security.csp`).
+// Quindi si toglie il CONTENUTO di quei blocchi, non solo i loro tag.
+const BLOCCHI_DI_CODICE = /<(pre|code)\b[\s\S]*?<\/\1\s*>/gi;
+
+const prosaSenzaCodice = (html) =>
+  html
+    .replace(/<script[\s\S]*?<\/script(?:\s[^>]*)?>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style(?:\s[^>]*)?>/gi, ' ')
+    .replace(BLOCCHI_DI_CODICE, ' ')
+    .replace(/<[^>]+>/g, ' ');
+
+test('nessun backtick nella prosa resa, fuori dai blocchi di codice', () => {
+  const colpevoli = [];
+  for (const file of paginePubblicate()) {
+    const prosa = prosaSenzaCodice(readFileSync(file, 'utf8'));
+    const i = prosa.indexOf('`');
+    if (i !== -1) {
+      colpevoli.push(`${file.slice(DIST.length)}: ...${prosa.slice(Math.max(0, i - 60), i + 60).replace(/\s+/g, ' ')}...`);
+    }
+  }
+  assert.deepEqual(
+    colpevoli,
+    [],
+    `backtick visibile in pagina (il Markdown non viene reso li': togli i segni o usa <code>):\n  ${colpevoli.join('\n  ')}`,
+  );
+});
+
+// Il rilevatore dei backtick non deve passare perche' non guarda: se i blocchi di
+// codice si mangiassero tutta la pagina, o se paginePubblicate() tornasse vuota,
+// il test sopra sarebbe verde per la ragione sbagliata.
+test('il rilevatore dei backtick vede davvero la prosa e risparmia il codice', () => {
+  const finta = '<p>testo con `segno` in prosa</p><pre><code>const x = `ok`;</code></pre>';
+  const prosa = prosaSenzaCodice(finta);
+  assert.ok(prosa.includes('`segno`'), 'la prosa non arriva al rilevatore');
+  assert.ok(!prosa.includes('`ok`'), 'il contenuto dei blocchi di codice non viene tolto');
+});
+
 // Il test sopra non deve poter passare per la ragione sbagliata: se la regex non
 // combaciasse piu' con niente, o se `testoVisibile` restituisse una stringa
 // vuota, resterebbe verde per sempre senza sorvegliare niente.
