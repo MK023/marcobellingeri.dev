@@ -14,14 +14,22 @@ import { catchTopLevel } from "./lib/sentry.mjs";
 catchTopLevel("advance");
 
 // Il numero più avanti nella pipeline vince; uno per run (cadenza giornaliera).
-const [apr] = await select("issues?select=id,period,created_at&status=eq.approved&order=number.asc&limit=1");
+const [apr] = await select("issues?select=id,period,created_at,approved_at&status=eq.approved&order=number.asc&limit=1");
 let approvato = null;
 if (apr) {
   const [art] = await select(pg`articles?select=id&issue_id=eq.${apr.id}&limit=1`);
   const [emb] = art
     ? await select(pg`article_chunks?select=id&article_id=eq.${art.id}&embedding=not.is.null&limit=1`)
     : [];
-  approvato = { period: apr.period, conArticolo: Boolean(art), embedded: Boolean(emb), attesaDa: apr.created_at };
+  // L'anomalia "approvato senza articolo" nasce con l'approvazione, non con il
+  // numero: contarla da created_at direbbe 25 giorni per un guasto di ieri, e la
+  // soglia di due giorni non potrebbe mai applicarsi su questo ramo.
+  approvato = {
+    period: apr.period,
+    conArticolo: Boolean(art),
+    embedded: Boolean(emb),
+    attesaDa: apr.approved_at ?? apr.created_at,
+  };
 }
 
 const [boz] = approvato ? [] : await select("issues?select=id,sector,created_at&status=eq.draft&order=number.asc&limit=1");

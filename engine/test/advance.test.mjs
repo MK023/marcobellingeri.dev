@@ -150,3 +150,35 @@ test("decidi: lo stato anomalo porta il contatore, perche' e' quello che aspetta
   assert.match(d.motivo, /anomal/);
   assert.equal(d.giorni, 7);
 });
+
+// Il quarto rilievo della review: nessun test copriva il CABLAGGIO fra le righe
+// del DB e decidi(). Togliendo `created_at` da una delle due select, giorniDa
+// tornerebbe null, ATTESA= resterebbe vuota per sempre e l'allarme non
+// suonerebbe mai piu' — con tutti gli altri test verdi. Cioe' esattamente il
+// guasto silenzioso per cui questa feature esiste.
+test("CLI advance: i created_at del DB arrivano fino al contatore", () => {
+  const r = runEngine(["engine/advance.mjs"], [
+    { match: "status=eq.approved", body: [] },
+    { match: "status=eq.draft", body: [{ id: 3, sector: "cloud", created_at: "2020-01-01T00:00:00Z" }] },
+    { match: "articles?select", body: [] },
+    { match: "verified_signals?select", body: [] },
+  ]);
+  assert.equal(r.code, 0);
+  assert.equal(r.stdout.trim(), "niente");
+  assert.match(r.stderr, /^ATTESA=[1-9][0-9]*$/m);
+});
+
+test("CLI advance: l'anomalia si conta dall'approvazione, non dalla nascita del numero", () => {
+  const r = runEngine(["engine/advance.mjs"], [
+    {
+      match: "status=eq.approved",
+      body: [{ id: 7, period: "2026-09", created_at: "2020-01-01T00:00:00Z", approved_at: new Date(Date.now() - 3 * 86_400_000).toISOString() }],
+    },
+    { match: "article_chunks", body: [] },
+    { match: "articles?select", body: [] },
+  ]);
+  assert.equal(r.code, 0);
+  assert.match(r.stderr, /anomal/);
+  // Da approved_at: 3. Da created_at sarebbero migliaia.
+  assert.match(r.stderr, /^ATTESA=3$/m);
+});

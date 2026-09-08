@@ -77,9 +77,12 @@ jobs:
           # Il repo e' pubblico, chiunque puo' aprirne una con lo stesso titolo, e
           # il cron finirebbe per aggiornare quella invece di aprire la sua:
           # l'allarme resterebbe muto proprio nel caso che deve coprire.
+          # `|| true`: questa lettura gira PRIMA del case, quindi un 5xx dell'API
+          # fermerebbe lo step sotto `set -e` e farebbe saltare l'avanzamento del
+          # giorno. Il notificatore non deve poter bloccare la pipeline che sorveglia.
           aperta=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
             --author app/github-actions \
-            --search "\"$titolo\" in:title" --json number --jq '.[0].number // empty')
+            --search "\"$titolo\" in:title" --json number --jq '.[0].number // empty' || true)
           if [ -n "$giorni" ] && [ "$giorni" -ge 2 ]; then
             corpo=$(printf '%s\n\n%s\n\n%s' \
               "La pipeline risponde \`niente\` da **$giorni giorni**: $motivo" \
@@ -91,9 +94,13 @@ jobs:
             else
               gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$corpo"
             fi
-          elif [ -n "$aperta" ]; then
+          elif [ -n "$aperta" ] && [ "$stage" != "niente" ]; then
             # Chiusa alla ripartenza, cosi' il blocco successivo apre una issue
-            # NUOVA, che notifica. Una per blocco, non una per sempre.
+            # NUOVA, che notifica. Una per blocco, non una per sempre. La chiusura
+            # vuole uno stadio che avanza davvero: con `niente` e ATTESA vuota il
+            # numero puo' essere sparito da sotto (pubblicato o cancellato a mano),
+            # e annunciare una ripartenza che non c'e' stata spegnerebbe l'allarme
+            # per un blocco ancora aperto.
             gh issue close "$aperta" --repo "$GITHUB_REPOSITORY" \
               --comment "Sbloccato: la pipeline e' ripartita (stadio: $stage)."
             echo "attesa finita: issue #$aperta chiusa"
