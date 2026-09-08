@@ -12,7 +12,7 @@ const { lang } = Astro.params as { lang: Lang };
 // Niente P.IVA: Marco non ne ha una (2026-07-10). Quando l'aprirà, si aggiunge qui.
 const TITOLARE = 'Marco Bellingeri';
 const CONTATTO = 'mkdevpy@proton.me';
-const UPDATED = '2026-08-12';
+const UPDATED = '2026-09-08';
 const TURNSTILE_POLICY = 'https://www.cloudflare.com/turnstile-privacy-policy/';
 
 // Body per-lingua (il resto del sito segue lo stesso pattern: body nei componenti).
@@ -25,9 +25,9 @@ const copy = {
     controller: `Controller: ${TITOLARE}. Contact: ${CONTATTO}.`,
     dataH: 'Data collected',
     data: 'If you use the contact form, the name, email and message you enter are processed to deliver your request to the controller. They are not stored on the site (see Resend and Cloudflare Turnstile below). Otherwise none directly: the site is served statically. The hosting provider (Cloudflare) may keep technical access logs (IP, user agent) for security and delivery, under its own policy.',
-    cookiesH: 'Cookies',
+    cookiesH: 'Cookies and local storage',
     cookies:
-      'Only one, functional and consent-exempt: "pref-lang", which remembers your language choice. No analytics, advertising, or tracking cookies are set.',
+      'One cookie only, functional and consent-exempt: "pref-lang", which remembers your language choice. No analytics, advertising, or tracking cookies are set. The site also keeps two preferences in your own browser, which never leave it: "bellingeri-edition" in localStorage, which remembers whether you chose the day or the night edition, and "bellingeri-loader-seen" in sessionStorage, which remembers you have already seen the opening animation and disappears when you close the tab. Both hold a choice you made yourself, carry no identifier, and are readable only by this site.',
     thirdH: 'Third-party services',
     third: [
       'Cloudflare (hosting/CDN): serves the site and may process technical logs.',
@@ -57,9 +57,9 @@ const copy = {
     controller: `Titolare: ${TITOLARE}. Contatto: ${CONTATTO}.`,
     dataH: 'Dati raccolti',
     data: 'Se usi il form di contatto, il nome, l’email e il messaggio che inserisci sono trattati per recapitare la tua richiesta al titolare. Non sono conservati sul sito (vedi Resend e Cloudflare Turnstile più sotto). Altrimenti nessuno in modo diretto: il sito è servito staticamente. Il provider di hosting (Cloudflare) può conservare log tecnici di accesso (IP, user agent) per sicurezza ed erogazione, secondo la propria policy.',
-    cookiesH: 'Cookie',
+    cookiesH: 'Cookie e archiviazione locale',
     cookies:
-      'Uno solo, funzionale ed esente da consenso: "pref-lang", che ricorda la lingua scelta. Nessun cookie di analytics, pubblicità o tracciamento.',
+      'Un solo cookie, funzionale ed esente da consenso: "pref-lang", che ricorda la lingua scelta. Nessun cookie di analytics, pubblicità o tracciamento. Il sito conserva inoltre due preferenze nel browser di chi legge, che non partono mai verso l\'esterno: "bellingeri-edition" in localStorage, che ricorda se hai scelto l\'edizione del giorno o della notte, e "bellingeri-loader-seen" in sessionStorage, che ricorda l\'animazione d\'apertura già vista e sparisce alla chiusura della scheda. Entrambe contengono una scelta fatta da te, nessun identificatore, e sono leggibili solo da questo sito.',
     thirdH: 'Servizi di terze parti',
     third: [
       'Cloudflare (hosting/CDN): serve il sito e può trattare log tecnici.',
