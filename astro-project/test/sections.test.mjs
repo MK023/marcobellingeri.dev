@@ -64,3 +64,20 @@ for (const page of PAGES) {
     assert.ok(titoli.size >= 7, `trovati solo ${titoli.size} titoli numerati: il selettore è rotto?`);
   });
 }
+
+// Field Notes tiene UN caso alla volta. La regola e' dichiarata due volte nella
+// prosa — la copy della sezione ("Un caso alla volta" / "One case at a time") e il
+// commento nello script di FieldNotes.astro — e per un mese la sezione ne ha
+// mostrati due contraddicendo il proprio testo, senza che niente fallisse.
+// Una regola che vive solo nella prosa non e' una regola: da qui in poi aggiungere
+// la coppia it/+en/ senza togliere la precedente fa fallire questo test.
+for (const page of PAGES) {
+  test(`${page}: Field Notes mostra un caso solo`, () => {
+    const rese = (readFileSync(page, 'utf8').match(/class="case-card"/g) ?? []).length;
+    assert.equal(
+      rese,
+      1,
+      `card di caso rese: ${rese}. Field Notes ne vuole una sola: togli la precedente da src/content/cases/`,
+    );
+  });
+}
