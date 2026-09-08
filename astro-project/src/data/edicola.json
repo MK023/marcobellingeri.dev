@@ -1,5 +1,17 @@
 [
   {
+    "slug": "green-and-waiting",
+    "label": {
+      "it": "Otto run verdi, nessun pezzo",
+      "en": "Eight green runs, no article"
+    },
+    "sub": {
+      "it": "dev.to · 2026",
+      "en": "dev.to · 2026"
+    },
+    "href": "https://dev.to/mk023/a-week-of-green-runs-and-the-pipeline-was-waiting-for-me-1100"
+  },
+  {
     "slug": "csp-hash-no-highlighter",
     "label": {
       "it": "Una CSP che hasha i suoi stili",
