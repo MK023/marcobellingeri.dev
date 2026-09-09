@@ -306,3 +306,38 @@ test('il nome accessibile del rimando comincia col testo visibile', () => {
     'il nome accessibile non comincia col testo visibile del link',
   );
 });
+
+test('la testatina non spegne il rimando che ci mette dentro', () => {
+  // `.certs-head` non è un contenitore neutro: global.css le mette addosso
+  // `opacity:0.7` e `text-transform:uppercase`, e scendono su tutto ciò che ci sta
+  // dentro. Due conseguenze prese qui:
+  //
+  // - una `opacity` sul link si MOLTIPLICA con quella della testatina. A 0.49 un
+  //   testo da 11px su carta chiara scende sotto il 4.5:1 di WCAG AA, e nessun
+  //   `opacity:1` su hover o focus può rimediare, perché il tetto resta quello del
+  //   genitore. Misurato senza: 6.66:1 di giorno, 8.59:1 di notte.
+  // - senza `text-transform:none` il link si legge DEV.TO/MK023 mentre il suo nome
+  //   accessibile dice `dev.to/mk023`.
+  const regola = magazine.match(/\.fonte-edicola\{([^}]*)\}/);
+  assert.ok(regola, 'sparita la regola del rimando');
+  assert.ok(
+    !/opacity:/.test(regola[1]),
+    'opacity sul rimando: si moltiplica con quella della testatina e il contrasto scende sotto AA',
+  );
+  assert.match(
+    regola[1],
+    /text-transform:none/,
+    'senza text-transform:none il rimando si legge in maiuscolo, diverso dal suo nome accessibile',
+  );
+});
+
+test('il bersaglio del rimando non dipende dal puntatore primario', () => {
+  // `pointer:coarse` descrive il puntatore PRIMARIO: un portatile touch con
+  // trackpad non lo soddisfa, e lì il bersaglio tornerebbe alto quanto il testo.
+  // Il chip che stava qui prima dichiarava min-height:44px senza condizioni.
+  assert.match(
+    magazine,
+    /@media \(any-pointer:coarse\)/,
+    'il bersaglio tattile è condizionato al puntatore primario: sparisce sui portatili touch',
+  );
+});

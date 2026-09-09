@@ -202,10 +202,13 @@ const { head, items, newTab, sameTab = false } = Astro.props;
   .newsstand{ margin-top:34px; }
 
   /* `.certs-head` vive in global.css; qui si aggiunge solo la disposizione della
-     riga, e lo stile è scoped, quindi le altre pile non se ne accorgono. `baseline`
-     e non `center`: l'etichetta e la fonte hanno corpi diversi e devono sedere
-     sulla stessa riga di scrittura. `wrap` perché su uno schermo stretto la fonte
-     va a capo invece di schiacciare l'etichetta. */
+     riga. Lo scope di Astro è per COMPONENTE, non per istanza: questa regola vale
+     quindi per tutte e tre le pile, comprese le due che una fonte non ce l'hanno.
+     Lì `justify-content` non ha niente da distribuire e la testatina resta com'era
+     — inerte, non innocua per scoping.
+     `baseline` e non `center`: etichetta e fonte hanno corpi diversi e devono
+     sedere sulla stessa riga di scrittura. `wrap` perché su uno schermo stretto la
+     fonte va a capo invece di schiacciare l'etichetta. */
   .certs-head{
     display:flex; justify-content:space-between; align-items:baseline;
     gap:8px 18px; flex-wrap:wrap;
