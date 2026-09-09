@@ -33,6 +33,7 @@ const copy = {
     problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA',
     permalink: 'Apri la pagina →',
     edicolaHead: 'Edicola · dove la firma esce anche fuori',
+    profilo: 'Il profilo dev.to',
     newTab: 'si apre in una nuova scheda',
     arretratiHead: 'Numeri arretrati · la pila di quelli usciti prima',
   },
@@ -42,6 +43,7 @@ const copy = {
     problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED',
     permalink: 'Open the page →',
     edicolaHead: 'Edicola · where the byline also runs',
+    profilo: 'The dev.to profile',
     newTab: 'opens in a new tab',
     arretratiHead: 'Back issues · the stack of the ones before',
   },
@@ -120,9 +122,36 @@ const pilaArretrati = arretrati.map((issue) => ({
   )}
 
   <Newsstand head={copy.edicolaHead} items={bylines} newTab={copy.newTab} />
+  {/* Il nome accessibile comincia col testo VISIBILE: chi comanda a voce dice
+      quello che legge, e un aria-label che non lo contiene non risponde
+      (WCAG 2.5.3). È anche come lo costruisce già la pila, in Newsstand.astro.
+      Chip in stile sito e non il badge di dev.to: è la stessa ragione per cui le
+      certificazioni non usano i badge colorati di Credly (DESIGN.md) — il marchio
+      di un altro dentro questa pagina stona. La pila mostra tutte le firme, quindi
+      questo non copre un buco: dice solo dove sta l'archivio di chi le scrive. */}
+  <p class="edicola-profilo">
+    <a class="profilo-chip mono" href="https://dev.to/mk023" target="_blank" rel="noopener"
+       aria-label={`dev.to/mk023 — ${copy.profilo} (${copy.newTab})`}>dev.to/mk023</a>
+  </p>
 </section>
 
 <style>
+  /* Stesso linguaggio dei chip del sito (.svc-chip): mono, bordo netto, hover
+     invertito. min-height 44px lo mette la regola @media (pointer:coarse) in
+     global.css, che nomina i chip uno per uno — questo non è in quella lista, e
+     sotto il dito 44px sono il minimo: se lo dichiara qui, resta vero ovunque. */
+  .edicola-profilo{ margin:18px 4px 0; }
+  .profilo-chip{
+    display:inline-flex; align-items:center; min-height:44px;
+    padding:9px 13px;
+    font-size:12px; letter-spacing:0.04em;
+    border:2px solid var(--ink);
+    background:transparent; color:var(--ink);
+    text-decoration:none;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .profilo-chip:hover{ background:var(--ink); color:var(--paper); }
+  .profilo-chip:focus-visible{ outline:3px solid var(--orange); outline-offset:3px; }
 </style>
 
 <script>

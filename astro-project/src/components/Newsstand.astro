@@ -39,22 +39,55 @@ const { head, items, newTab, sameTab = false } = Astro.props;
 </div>
 
 <script>
+  import { geometriaPila } from '../lib/pila';
+
   // Progressive enhancement. querySelectorAll (non querySelector): la pila può
   // comparire più volte nella pagina (Edicola + Certificazioni) e lo <script> del
   // componente gira una volta sola — deve potenziarle tutte.
-  // Riserva solo dove il ventaglio si apre in hover E il layout misurabile è
-  // quello giusto: sotto i 761px la pila è verticale (media query sotto) e lo
-  // stato pre-enhance NON è più l'aperto — lì lo spostamento resta, com'è già
-  // accettato sul touch (l'apertura è un tap voluto).
-  const hoverFine = window.matchMedia('(hover:hover) and (pointer:fine) and (min-width:761px)');
+  // Riserva l'altezza solo dove il ventaglio si apre passandoci SOPRA: lì il
+  // movimento non lo chiede nessuno, e la sezione sotto non deve saltare. Col dito
+  // l'apertura è un tap voluto, e riservare le righe vuote costerebbe schermate
+  // bianche — quello spostamento resta, com'era già.
+  // Qui prima c'era anche un `min-width:761px`, e serviva a evitare di misurare
+  // dove il layout aperto non era quello pre-enhance. Non è più la larghezza a
+  // dirlo: lo stato base è `wrap` a qualunque larghezza, quindi COINCIDE con
+  // l'aperto — tranne quando la pila è verticale, dove l'aperto è una colonna. La
+  // condizione vera è quella, e ora si legge dalla misura invece che da un numero.
+  const hoverFine = window.matchMedia('(hover:hover) and (pointer:fine)');
   document.querySelectorAll<HTMLElement>('[data-newsstand]').forEach((stack) => {
     // Riserva l'altezza del ventaglio APERTO prima di collassare: lo stato senza
     // .is-enhanced è già il layout aperto (wrap), quindi basta misurarlo. Così
     // l'hover non sposta la sezione sotto. Su touch riservare le righe vuote
     // costerebbe schermate bianche. Tutto sincrono nello stesso frame: niente flash.
+    // Lo sfalso non è più una costante nel CSS: la pila non ha un numero fisso di
+    // voci — l'Edicola la riempie il cron (engine/edicola.mjs) ed è passata da 8 a
+    // 12 senza che nessuno ritoccasse quel numero. Con 12 fogli la riga misurava
+    // 1106px, più larga di ogni iPad, e la pagina scorreva in orizzontale. Qui si
+    // misurano i pezzi e il conto lo fa src/lib/pila.ts, che è la sola parte
+    // provabile senza un browser (test/pila.test.mjs).
+    const misura = () => {
+      const fogli = stack.querySelectorAll<HTMLElement>('.paper');
+      const cs = getComputedStyle(stack);
+      return geometriaPila({
+        n: fogli.length,
+        foglio: fogli[0]?.offsetWidth ?? 0,
+        // Niente `|| 0` qui: su un elemento non reso `columnGap` è la stringa vuota
+        // e parseFloat dà NaN. Trasformarlo in zero lo rende finito, quindi la
+        // guardia in pila.ts non scatta più e il conto esce sbagliato di un gap
+        // per foglio — 154px di sbordo con 12 voci, cioè il difetto di partenza.
+        // Un NaN qui è la verità: la misura non c'è, e va gestita di là.
+        gap: parseFloat(cs.columnGap),
+        padding: parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight),
+        disponibile: (stack.parentElement as HTMLElement).clientWidth,
+      });
+    };
+
     const riserva = () => {
+      const { sfalso, verticale } = misura();
+      stack.style.setProperty('--sfalso', `-${sfalso}px`);
+      stack.classList.toggle('is-vertical', verticale);
       stack.classList.add('no-anim');
-      if (hoverFine.matches) {
+      if (hoverFine.matches && !verticale) {
         stack.classList.remove('is-enhanced');
         stack.style.minHeight = '';
         stack.style.minHeight = `${stack.offsetHeight}px`;
@@ -181,7 +214,7 @@ const { head, items, newTab, sameTab = false } = Astro.props;
      riservata (minHeight via script) quindi conterla non muove nulla intorno. Solo
      `layout`: `paint` cliperebbe rotazioni e ombre dei fogli. */
   .newsstand-stack.is-enhanced{ flex-wrap:nowrap; width:fit-content; contain:layout; }
-  .newsstand-stack.is-enhanced .paper:not(:first-child){ margin-left:-176px; }
+  .newsstand-stack.is-enhanced .paper:not(:first-child){ margin-left:var(--sfalso, -176px); }
   .newsstand-stack.is-enhanced .paper:nth-child(4n+1){ transform:rotate(-2.2deg) translateY(2px); }
   .newsstand-stack.is-enhanced .paper:nth-child(4n+2){ transform:rotate(1.6deg)  translateY(-1px); }
   .newsstand-stack.is-enhanced .paper:nth-child(4n+3){ transform:rotate(-1deg)   translateY(1px); }
@@ -216,22 +249,34 @@ const { head, items, newTab, sameTab = false } = Astro.props;
   .newsstand-stack.is-enhanced:hover .paper:nth-child(n+6),
   .newsstand-stack.is-enhanced.is-open .paper:nth-child(n+6){ transition-delay:0.2s; }
 
-  /* Sotto i 760px la pila orizzontale non ci sta (8 fogli sfalsati ≈ 790px:
-     sbordavano e l'iPhone zoomava fuori l'intera pagina). Si impila in VERTICALE
-     come giornali visti di fronte: resta il taglio da edicola, resta il tap per
-     aprire. ponytail: oltre ~9 voci anche la riga desktop a 760-800px va stretta —
-     se la pila cresce, rivedere l'overlap. */
-  @media (max-width:760px){
-    .newsstand-stack.is-enhanced{ flex-direction:column; flex-wrap:nowrap; }
-    .newsstand-stack.is-enhanced .paper:not(:first-child){ margin-left:0; margin-top:-58px; }
-    .newsstand-stack.is-enhanced:hover .paper,
-    .newsstand-stack.is-enhanced.is-open .paper{ margin-top:0; }
-  }
+  /* Dove nemmeno stringendo la riga ci sta, la pila si impila in VERTICALE, come
+     giornali visti di fronte: resta il taglio da edicola, resta il tap per aprire.
+     Prima era una media query a 760px, cioè un numero tarato su una pila di otto
+     voci; ora la scelta la fa la misura, perché a decidere non è la larghezza
+     dello schermo ma il rapporto fra quella e quante voci ci sono dentro. Con 12
+     fogli su un iPad da 834px la riga ci sta ancora, stringendo; su un telefono no,
+     e infatti lì la classe la mette lo script. */
+  .newsstand-stack.is-enhanced.is-vertical{ flex-direction:column; flex-wrap:nowrap; }
+  /* ponytail: la colonna ha ancora una sovrapposizione fissa, quindi cresce senza
+     limite — ~57px a voce, 896px con le 12 di oggi. In verticale non sborda da
+     nessuna parte, quindi non è il difetto che questa modifica toglie, ma il
+     tetto resta dichiarato: se la pila arriva a numeri da schermate intere,
+     l'altezza va misurata come si misura la larghezza (src/lib/pila.ts). */
+  .newsstand-stack.is-enhanced.is-vertical .paper:not(:first-child){ margin-left:0; margin-top:-58px; }
+  .newsstand-stack.is-enhanced.is-vertical:hover .paper,
+  .newsstand-stack.is-enhanced.is-vertical.is-open .paper{ margin-top:0; }
 
-  /* Reduced motion: niente pila né rotazioni, resta la riga leggibile. */
+  /* Reduced motion: niente pila né rotazioni, resta la riga leggibile.
+     `.is-vertical` va NOMINATA, non sottintesa. Prima la variante verticale viveva
+     in una media query e pareggiava la specificità con questa deroga, che stando
+     più in basso vinceva; ora porta una classe in più e vincerebbe lei. Chi ha
+     chiesto meno movimento si ritroverebbe la colonna con i fogli sovrapposti di
+     58px — cioè proprio la pila, dove questa riga promette di non dargliela. */
   @media (prefers-reduced-motion: reduce){
     .paper{ transition:box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease; }
     .newsstand-stack.is-enhanced .paper,
-    .newsstand-stack.is-enhanced .paper:not(:first-child){ margin:0; transform:none; }
+    .newsstand-stack.is-enhanced .paper:not(:first-child),
+    .newsstand-stack.is-enhanced.is-vertical .paper,
+    .newsstand-stack.is-enhanced.is-vertical .paper:not(:first-child){ margin:0; transform:none; }
   }
 </style>
