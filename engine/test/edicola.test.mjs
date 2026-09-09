@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { canonicalDi } from "../lib/devto.mjs";
-import { mergeCards, slugFromCanonical } from "../lib/edicola.mjs";
+import { annoPubblicazione, hrefSicuro, mergeCards, slugFromCanonical } from "../lib/edicola.mjs";
 import { runEngine } from "./helpers/spawn.mjs";
 
 const CARDS = [
@@ -116,4 +116,103 @@ test("CLI edicola: nessun articolo con canonical nostro -> nessuna card nuova", 
   ], { DEVTO_API_KEY: "dk_fake" });
   assert.equal(r.code, 0);
   assert.match(r.stdout, /nessuna card nuova/);
+});
+
+// L'url dell'articolo arriva dalla API di dev.to e finisce dritto in un href
+// renderizzato dal sito. Il guasto che questi test esistono per prendere è che un
+// URL BEN FORMATO non è per questo innocuo: `javascript:alert(1)` è un URL valido,
+// e l'escaping di Astro mette in salvo l'attributo, non lo schema. Il canonical
+// dice che l'articolo è nostro; l'url dice dove va il lettore, ed è un campo
+// diverso della stessa risposta non fidata.
+
+test("hrefSicuro: gli url veri di dev.to passano", () => {
+  for (const url of [
+    "https://dev.to/mk023/a-week-of-green-runs-1100",
+    "https://dev.to/mk023/qualcosa",
+    "https://www.dev.to/mk023/qualcosa",
+    // Il punto finale è lo stesso host per il DNS: scartarlo sarebbe scartare un
+    // url legittimo in silenzio, e su una run verde non se ne accorgerebbe nessuno.
+    "https://dev.to./mk023/qualcosa",
+  ]) {
+    assert.ok(hrefSicuro(url), url);
+  }
+});
+
+test("hrefSicuro: torna l'url NORMALIZZATO, che è quello guardato", () => {
+  // Validare una stringa e salvarne un'altra lascia una fessura: questo url supera
+  // il controllo perché il parser lo legge come `https://dev.to/@evil.com`, ma il
+  // testo grezzo letto con regole diverse (un feed, una unfurl, una mail) direbbe
+  // un'altra cosa. Si salva quello che si è guardato.
+  assert.equal(hrefSicuro("https://dev.to\\@evil.com"), "https://dev.to/@evil.com");
+  assert.equal(hrefSicuro("  https://dev.to/x  "), "https://dev.to/x");
+  assert.equal(hrefSicuro("https://DEV.TO/x"), "https://dev.to/x");
+  assert.equal(hrefSicuro("https://dev.to./x"), "https://dev.to./x".replace("dev.to.", "dev.to."));
+});
+
+test("hrefSicuro: gli schemi che eseguono codice non passano", () => {
+  for (const url of [
+    "javascript:alert(1)",
+    "JavaScript:alert(1)",
+    "  javascript:alert(1)",
+    "data:text/html,<script>alert(1)</script>",
+    "vbscript:msgbox(1)",
+  ]) {
+    assert.equal(hrefSicuro(url), null, url);
+  }
+});
+
+test("hrefSicuro: un altro host non passa, nemmeno se ci somiglia", () => {
+  for (const url of [
+    "https://evil.com/mk023/pezzo",
+    "https://dev.to.evil.com/pezzo",
+    "https://notdev.to/pezzo",
+    "https://sottodominio.dev.to/pezzo",
+    "https://dev.to@evil.com/pezzo",
+    "http://dev.to/mk023/pezzo",
+  ]) {
+    assert.equal(hrefSicuro(url), null, url);
+  }
+});
+
+test("hrefSicuro: url assente, relativo o spazzatura non passa", () => {
+  for (const url of [undefined, null, "", "/it/writing/pezzo", "dev.to/mk023", "://"]) {
+    assert.equal(hrefSicuro(url), null, String(url));
+  }
+});
+
+// La guardia esiste, ma finché nessuno prova il CLI resta scollegata: invertire la
+// condizione o perdere il `!` lascerebbe tutti i test verdi. Qui l'articolo ha un
+// canonical NOSTRO — quindi supera slugFromCanonical, che è il controllo di prima —
+// e un url che esegue codice. Deve essere saltato, non messo in pila.
+test("CLI edicola: canonical nostro ma url pericoloso -> nessuna card, e lo dice", () => {
+  const r = runEngine(["engine/edicola.mjs"], [
+    { match: "/api/articles/me/published", body: [
+      {
+        url: "javascript:alert(1)",
+        canonical_url: "https://marcobellingeri.dev/en/writing/audit-di-se/",
+        published_at: "2026-07-21T08:00:00Z",
+      },
+    ] },
+  ], { DEVTO_API_KEY: "dk_fake" });
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /nessuna card nuova/);
+  assert.match(r.stderr, /url non ammesso/);
+});
+
+// `published_at` viene dalla stessa risposta di `url`. Non è una falla — finisce
+// in un nodo di testo escapato — ma è lo stesso confine, e trattarlo diversamente
+// sarebbe dire mezza verità nel commento sopra.
+test("annoPubblicazione: le date vere di dev.to danno l'anno", () => {
+  const adesso = new Date("2026-09-09T00:00:00Z");
+  assert.equal(annoPubblicazione("2026-07-21T08:00:00Z", adesso), "2026");
+  assert.equal(annoPubblicazione("2016-01-01T00:00:00Z", adesso), "2016");
+  // Un fuso avanti non è un errore: l'anno successivo si accetta.
+  assert.equal(annoPubblicazione("2027-01-01T00:00:00Z", adesso), "2027");
+});
+
+test("annoPubblicazione: quello che non è un anno torna null", () => {
+  const adesso = new Date("2026-09-09T00:00:00Z");
+  for (const v of [undefined, null, "", "ieri", "0000-01-01", "1999-01-01", "2100-01-01", "20x6-01-01", {}]) {
+    assert.equal(annoPubblicazione(v, adesso), null, String(v));
+  }
 });

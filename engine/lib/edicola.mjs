@@ -16,6 +16,39 @@ export function slugFromCanonical(url) {
   return url?.match(CANONICAL)?.[1] ?? null;
 }
 
+// L'url dell'articolo arriva dalla API di dev.to, cioè da fuori, e finisce dritto
+// in un href renderizzato dal sito. Che sia un URL ben formato non basta:
+// `javascript:alert(1)` lo è, e l'escaping di Astro non lo tocca — quello mette in
+// salvo l'ATTRIBUTO, non lo schema. Pesa che quel dato non lo rilegge nessuno: il
+// workflow edicola-card apre la PR, approva i suoi stessi check e mergia da solo.
+//
+// Lista esatta e non `/^(.+\.)?dev\.to$/`: quella accettava QUALUNQUE sottodominio,
+// cioè molto più di quanto la riga sopra prometta, e un sottodominio abbandonato di
+// dev.to che finisse in quella risposta diventerebbe una card verso fuori. È anche
+// la forma di hostAmmesso() in worker/radar.js, che fa lo stesso lavoro sulle fonti
+// dei bollettini: `hosts.includes(u.hostname)`, niente jolly.
+const HOST_DEVTO = ["dev.to", "www.dev.to"];
+
+// Ritorna l'url NORMALIZZATO se è accettabile, altrimenti null. Non un booleano, e
+// non è pedanteria: validare una stringa e salvarne un'altra lascia una fessura.
+// `https://dev.to\@evil.com` supera il controllo perché il parser lo legge come
+// `https://dev.to/@evil.com` — ma se in edicola.json ci finisse il testo grezzo,
+// chiunque lo rilegga con regole diverse dal parser del browser (un feed, una
+// unfurl, una mail) vedrebbe un'altra cosa. Si salva quello che si è guardato.
+export function hrefSicuro(url) {
+  try {
+    const u = new URL(url);
+    // Il punto finale è lo stesso host: `dev.to.` e `dev.to` sono la stessa cosa
+    // per il DNS, e scartarlo sarebbe scartare un url legittimo in silenzio.
+    const host = u.hostname.replace(/\.$/, "");
+    return u.protocol === "https:" && HOST_DEVTO.includes(host) ? u.href : null;
+  } catch {
+    // URL relativi o spazzatura: `new URL` senza base li rifiuta, ed è quello che
+    // vogliamo — una card dell'Edicola punta sempre fuori, mai in casa.
+    return null;
+  }
+}
+
 // Identità di una card: lo slug quando c'è (regge "stessa firma, casa diversa":
 // interna oggi, dev.to domani), altrimenti l'href.
 const chiave = (c) => c.slug ?? c.href;
@@ -37,4 +70,18 @@ export function mergeCards(cards, pubblicati) {
       href: p.url,
     }));
   return nuove.length ? [...nuove, ...cards] : cards;
+}
+
+// `published_at` arriva dalla stessa risposta di `url`, e il commento sopra dice
+// che quella risposta è non fidata: dirlo per un campo e non per l'altro è una
+// mezza verità. Oggi finisce in `sub` ("dev.to · 2026"), che il sito rende come
+// testo escapato — quindi non è una falla, è un dato sporco che diventerebbe una
+// card con l'anno sbagliato o vuoto. Qui la stringa diventa un anno o niente.
+// dev.to è del 2016, e 2015 è un anno di margine: la data la scrive dev.to, non
+// noi, e stringere fino all'anno esatto di fondazione non protegge da niente in più.
+const ANNO_MINIMO = 2015;
+export function annoPubblicazione(published_at, adesso = new Date()) {
+  const anno = Number(String(published_at ?? "").slice(0, 4));
+  const massimo = adesso.getUTCFullYear() + 1; // un fuso avanti non è un errore
+  return Number.isInteger(anno) && anno >= ANNO_MINIMO && anno <= massimo ? String(anno) : null;
 }

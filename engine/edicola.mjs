@@ -6,7 +6,7 @@
 // Run: doppler run -- node engine/edicola.mjs
 import { readFile, writeFile } from "node:fs/promises";
 import { parseArticle, publishedArticles } from "./lib/devto.mjs";
-import { mergeCards, slugFromCanonical } from "./lib/edicola.mjs";
+import { annoPubblicazione, hrefSicuro, mergeCards, slugFromCanonical } from "./lib/edicola.mjs";
 import { logsafe } from "./lib/logsafe.mjs";
 import { catchTopLevel } from "./lib/sentry.mjs";
 
@@ -20,6 +20,18 @@ const pubblicati = [];
 for (const a of await publishedArticles()) {
   const slug = slugFromCanonical(a.canonical_url);
   if (!slug) continue;
+  // Il canonical dice che l'articolo è nostro; l'url dice dove va il lettore, e
+  // quello arriva dalla stessa risposta non fidata. Va guardato a parte.
+  const href = hrefSicuro(a.url);
+  if (!href) {
+    // L'url scartato entra nel log, tagliato e passato da logsafe: su una run
+    // verde questa riga è l'unica traccia, e senza sapere QUALE url era non ci si
+    // fa niente. Non va invece nel messaggio grezzo: arriva da fuori.
+    console.error(
+      `edicola: salto ${logsafe(slug)} — url non ammesso (serve https su dev.to): ${logsafe(String(a.url).slice(0, 200))}`,
+    );
+    continue;
+  }
   const label = {};
   for (const lang of ["it", "en"]) {
     const file = new URL(`../astro-project/src/content/writing/${lang}/${slug}.md`, import.meta.url);
@@ -32,8 +44,13 @@ for (const a of await publishedArticles()) {
     console.error(`edicola: salto ${logsafe(slug)} — manca la coppia it/en nella writing collection`);
     continue;
   }
-  const anno = (a.published_at ?? "").slice(0, 4) || String(new Date().getUTCFullYear());
-  pubblicati.push({ slug, url: a.url, anno, label });
+  // Se la data non si legge si usa l'anno corrente: una card con l'anno di oggi è
+  // meno sbagliata di una senza anno, e l'articolo esiste adesso. Prima ci finiva
+  // solo la data VUOTA: `"abcd-01-01".slice(0,4)` tornava "abcd", e quella stringa
+  // arrivava fino alla card.
+  const anno = annoPubblicazione(a.published_at) ?? String(new Date().getUTCFullYear());
+  // `href` e non `a.url`: si salva la forma normalizzata, cioè quella guardata.
+  pubblicati.push({ slug, url: href, anno, label });
 }
 
 const merged = mergeCards(cards, pubblicati);
