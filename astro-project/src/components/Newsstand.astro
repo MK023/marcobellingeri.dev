@@ -12,6 +12,24 @@
 interface Item { label: string; sub: string; href: string; sameTab?: boolean }
 interface Props { head: string; items: Item[]; newTab: string; sameTab?: boolean }
 const { head, items, newTab, sameTab = false } = Astro.props;
+
+// Presidio al CONSUMATORE, che è l'altra metà di quello al confine
+// (engine/lib/edicola.mjs): il cron non è l'unico che scrive edicola.json, si può
+// aggiungere una card a mano, e niente rivalida quel file a build time. Qui passa
+// solo ciò che una pila da edicola può contenere: un link https verso fuori o un
+// percorso interno. Uno schema che esegue codice non è un href sbagliato,
+// è un href che l'escaping di Astro lascia passare intatto — quello mette in
+// salvo l'attributo, non lo schema.
+// Senza href l'elemento resta visibile ma non è più un link: si perde la
+// destinazione, non la voce, e il difetto si vede invece di eseguirsi.
+//
+// `^\/[^/\\]` e non `startsWith('/')`: un percorso interno comincia con una barra
+// sola. `//evil.com` ne ha due ed è un url PROTOCOL-RELATIVE — il browser ci mette
+// davanti lo schema della pagina e se ne va fuori sito. `/\evil.com` fa lo stesso,
+// perché dentro uno schema speciale il parser legge la barra rovescia come una
+// dritta. Passavano tutti e due, e la riga sopra prometteva "un percorso interno".
+const hrefSicuro = (href: string) =>
+  /^https:\/\//i.test(href) || /^\/[^/\\]/.test(href) ? href : undefined;
 ---
 
 <div class="newsstand">
@@ -32,7 +50,7 @@ const { head, items, newTab, sameTab = false } = Astro.props;
       return (
         <a
           class="paper"
-          href={b.href}
+          href={hrefSicuro(b.href)}
           target={inCasa ? undefined : '_blank'}
           rel={inCasa ? undefined : 'noopener'}
           aria-label={inCasa ? `${b.label} — ${b.sub}` : `${b.label} — ${b.sub} (${newTab})`}

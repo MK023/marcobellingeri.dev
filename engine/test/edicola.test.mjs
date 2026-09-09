@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import { canonicalDi } from "../lib/devto.mjs";
-import { hrefSicuro, mergeCards, slugFromCanonical } from "../lib/edicola.mjs";
+import { annoPubblicazione, hrefSicuro, mergeCards, slugFromCanonical } from "../lib/edicola.mjs";
 import { runEngine } from "./helpers/spawn.mjs";
 
 const CARDS = [
@@ -197,4 +197,22 @@ test("CLI edicola: canonical nostro ma url pericoloso -> nessuna card, e lo dice
   assert.equal(r.code, 0);
   assert.match(r.stdout, /nessuna card nuova/);
   assert.match(r.stderr, /url non ammesso/);
+});
+
+// `published_at` viene dalla stessa risposta di `url`. Non è una falla — finisce
+// in un nodo di testo escapato — ma è lo stesso confine, e trattarlo diversamente
+// sarebbe dire mezza verità nel commento sopra.
+test("annoPubblicazione: le date vere di dev.to danno l'anno", () => {
+  const adesso = new Date("2026-09-09T00:00:00Z");
+  assert.equal(annoPubblicazione("2026-07-21T08:00:00Z", adesso), "2026");
+  assert.equal(annoPubblicazione("2016-01-01T00:00:00Z", adesso), "2016");
+  // Un fuso avanti non è un errore: l'anno successivo si accetta.
+  assert.equal(annoPubblicazione("2027-01-01T00:00:00Z", adesso), "2027");
+});
+
+test("annoPubblicazione: quello che non è un anno torna null", () => {
+  const adesso = new Date("2026-09-09T00:00:00Z");
+  for (const v of [undefined, null, "", "ieri", "0000-01-01", "1999-01-01", "2100-01-01", "20x6-01-01", {}]) {
+    assert.equal(annoPubblicazione(v, adesso), null, String(v));
+  }
 });

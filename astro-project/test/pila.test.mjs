@@ -341,3 +341,32 @@ test('il bersaglio del rimando non dipende dal puntatore primario', () => {
     'il bersaglio tattile è condizionato al puntatore primario: sparisce sui portatili touch',
   );
 });
+
+test('la pila non rende un href che può eseguire codice', () => {
+  // Presidio al CONSUMATORE, l'altra metà di quello al confine in
+  // engine/lib/edicola.mjs. Il cron non è l'unico che scrive edicola.json: una
+  // card si può aggiungere a mano, e niente rivalida quel file a build time.
+  // L'escaping di Astro mette in salvo l'attributo, non lo schema.
+  assert.match(
+    sorgente,
+    /href=\{hrefSicuro\(b\.href\)\}/,
+    'la pila rende di nuovo b.href grezzo: uno schema javascript: passerebbe intatto',
+  );
+  const guardia = sorgente.match(/const hrefSicuro = \(href: string\) =>\n([^;]*);/);
+  assert.ok(guardia, 'sparita la guardia sul consumatore');
+  assert.match(guardia[1], /\^https:\\\/\\\//, 'la guardia non richiede più https per i link in uscita');
+  assert.match(guardia[1], /\^\\\/\[\^\/\\\\\]/, 'la guardia non ammette più i percorsi interni');
+});
+
+test('un percorso interno ha UNA barra sola', () => {
+  // `//evil.com` è protocol-relative: il browser ci mette davanti lo schema della
+  // pagina e se ne va fuori sito. `/\evil.com` fa lo stesso, perché dentro uno
+  // schema speciale la barra rovescia vale come una dritta. `startsWith('/')` li
+  // faceva passare entrambi, mentre il commento accanto prometteva "interno".
+  const guardia = sorgente.match(/const hrefSicuro = \(href: string\) =>\n([^;]*);/)[1];
+  assert.ok(
+    !/startsWith\('\/'\)/.test(guardia),
+    'la guardia accetta di nuovo qualunque cosa cominci con una barra: //evil.com esce dal sito',
+  );
+  assert.match(guardia, /\^\\\/\[\^\/\\\\\]/, 'manca il controllo sulla seconda barra');
+});

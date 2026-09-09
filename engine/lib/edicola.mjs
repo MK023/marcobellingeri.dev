@@ -71,3 +71,17 @@ export function mergeCards(cards, pubblicati) {
     }));
   return nuove.length ? [...nuove, ...cards] : cards;
 }
+
+// `published_at` arriva dalla stessa risposta di `url`, e il commento sopra dice
+// che quella risposta è non fidata: dirlo per un campo e non per l'altro è una
+// mezza verità. Oggi finisce in `sub` ("dev.to · 2026"), che il sito rende come
+// testo escapato — quindi non è una falla, è un dato sporco che diventerebbe una
+// card con l'anno sbagliato o vuoto. Qui la stringa diventa un anno o niente.
+// dev.to è del 2016, e 2015 è un anno di margine: la data la scrive dev.to, non
+// noi, e stringere fino all'anno esatto di fondazione non protegge da niente in più.
+const ANNO_MINIMO = 2015;
+export function annoPubblicazione(published_at, adesso = new Date()) {
+  const anno = Number(String(published_at ?? "").slice(0, 4));
+  const massimo = adesso.getUTCFullYear() + 1; // un fuso avanti non è un errore
+  return Number.isInteger(anno) && anno >= ANNO_MINIMO && anno <= massimo ? String(anno) : null;
+}
