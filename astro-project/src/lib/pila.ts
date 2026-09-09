@@ -34,6 +34,7 @@ export const STRISCIA_COLONNA_MINIMA = 24;
  */
 export const BUDGET_COLONNA = 520;
 
+
 export interface Pila {
   /** Quanti fogli. */
   n: number;

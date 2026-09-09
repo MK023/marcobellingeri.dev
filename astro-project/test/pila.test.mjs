@@ -248,11 +248,29 @@ test('la riserva d\'altezza sta sul contenitore, non sulla pila', () => {
   // vuota di 5px su tutte e tre.
   assert.match(
     sorgente,
-    /contenitore\.style\.minHeight = `\$\{contenitore\.offsetHeight\}px`/,
+    /contenitore\.style\.minHeight = `\$\{aperto\}px`/,
     'la riserva è tornata sulla pila: torna la banda invisibile che la apre da lontano',
   );
   assert.ok(
     !/stack\.style\.minHeight = `/.test(sorgente),
     'la pila si riserva ancora addosso un\'altezza che non le serve',
   );
+  // L'altezza riservata è quella dello stato APERTO, misurata togliendo
+  // .is-enhanced: riservare quella chiusa non riserverebbe niente.
+  assert.match(sorgente, /const aperto = contenitore\.offsetHeight;/, 'non si misura più lo stato aperto');
 });
+
+test('reduced-motion torna alla riga a capo, non solo senza margini', () => {
+  // Azzerare i margini non basta: `.is-enhanced` porta anche `flex-wrap:nowrap`,
+  // quindi senza sovrapposizione la riga torna larga quanto la somma dei fogli —
+  // 3042px misurati con 12 voci, cioè lo sbordo orizzontale che questo lavoro
+  // toglie, servito intatto a chi ha chiesto meno movimento.
+  const blocco = sorgente.match(/@media \(prefers-reduced-motion: reduce\)\{([\s\S]*?)\n {2}\}/);
+  assert.ok(blocco, 'sparito il blocco reduced-motion');
+  assert.match(
+    blocco[1],
+    /flex-wrap:wrap/,
+    'reduced-motion azzera i margini ma lascia nowrap: la riga resta larga quanto la somma dei fogli',
+  );
+});
+

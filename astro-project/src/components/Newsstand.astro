@@ -48,12 +48,20 @@ const { head, items, newTab, sameTab = false } = Astro.props;
   // movimento non lo chiede nessuno, e la sezione sotto non deve saltare. Col dito
   // l'apertura è un tap voluto, e riservare le righe vuote costerebbe schermate
   // bianche — quello spostamento resta, com'era già.
-  // Qui prima c'era anche un `min-width:761px`, e serviva a evitare di misurare
-  // dove il layout aperto non era quello pre-enhance. Non è più la larghezza a
-  // dirlo: lo stato base è `wrap` a qualunque larghezza, quindi COINCIDE con
-  // l'aperto — tranne quando la pila è verticale, dove l'aperto è una colonna. La
-  // condizione vera è quella, e ora si legge dalla misura invece che da un numero.
-  const hoverFine = window.matchMedia('(hover:hover) and (pointer:fine)');
+  // Due condizioni, e servono per due ragioni diverse.
+  // `!verticale` (sotto, in riserva): l'altezza da riservare è quella del layout
+  // aperto, e lo stato base coincide con l'aperto SOLO quando la pila è a riga.
+  // In colonna l'aperto è un'altra cosa, e misurare il base darebbe un numero che
+  // non c'entra.
+  // `min-width:761px`: qui la larghezza non riguarda la correttezza ma QUANTO
+  // bianco si riserva. La banda cresce mentre la finestra si stringe, perché il
+  // ventaglio aperto va a capo su più righe: 219px a 1280, 306 a 1024 e a 834,
+  // 480 a 760. Mezza schermata di vuoto per non far spostare il contenuto è un
+  // cambio peggiore del difetto, e sotto quella soglia il sito ha sempre accettato
+  // lo spostamento. Toglierla — cosa che una versione precedente di questo lavoro
+  // aveva fatto, credendola solo un residuo della media query verticale — portava
+  // la banda a 480px su una finestra da 760.
+  const hoverFine = window.matchMedia('(hover:hover) and (pointer:fine) and (min-width:761px)');
   document.querySelectorAll<HTMLElement>('[data-newsstand]').forEach((stack) => {
     // Riserva l'altezza del ventaglio APERTO prima di collassare: lo stato senza
     // .is-enhanced è già il layout aperto (wrap), quindi basta misurarlo. Così
@@ -89,9 +97,13 @@ const { head, items, newTab, sameTab = false } = Astro.props;
         padding: parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight),
         disponibile: (stack.parentElement as HTMLElement).clientWidth,
       });
-      // Le altezze si leggono nello stato APERTO, che è quello in cui questa
-      // funzione gira (riserva() misura prima di collassare): lì ogni foglio è
-      // alto quanto il suo titolo, e sono quelle le altezze che la colonna somma.
+      // Le altezze dei fogli non dipendono dallo stato: `align-items:flex-start` e
+      // la larghezza fissa `min(240px, 78vw)` le rendono identiche a riga, a riga
+      // a capo e in colonna. Vale la pena dirlo perché la prima stesura affermava
+      // invece che si misura "nello stato aperto" — vero solo alla prima chiamata,
+      // mentre su resize e su fonts.ready `misura()` gira a pila già collassata. Se
+      // un giorno la larghezza del foglio smette di essere fissa, questo invariante
+      // cade e geometriaColonna riceve numeri sbagliati in silenzio.
       const altezze = fogli.map((f) => f.offsetHeight);
       const colonna = geometriaColonna({
         n: fogli.length,
@@ -108,18 +120,19 @@ const { head, items, newTab, sameTab = false } = Astro.props;
       stack.style.setProperty('--sfalso-colonna', `-${sfalsoColonna}px`);
       stack.classList.toggle('is-vertical', verticale);
       stack.classList.add('no-anim');
+      // La riserva si toglie sempre prima di rimisurare: senza, la banda di ieri
+      // fa da pavimento a quella di oggi e non si stringe più. Si toglie anche
+      // dalla pila, che la portava nelle versioni precedenti — una pagina aperta
+      // mentre si passa da mouse a dito se la ritroverebbe addosso.
+      contenitore.style.minHeight = '';
+      stack.style.minHeight = '';
+      // Niente misura (e niente reflow in più) dove non serve: su mobile il resize
+      // scatta a ogni comparsa della barra URL durante lo scroll.
       if (hoverFine.matches && !verticale) {
         stack.classList.remove('is-enhanced');
-        contenitore.style.minHeight = '';
-        contenitore.style.minHeight = `${contenitore.offsetHeight}px`;
-      } else {
-        // niente misura (e niente doppio reflow) dove non serve: su mobile il
-        // resize scatta a ogni comparsa della barra URL durante lo scroll. La
-        // riserva si toglie da entrambi: la pila la portava nelle versioni
-        // precedenti, e una pagina aperta mentre si passa da mouse a dito se la
-        // ritroverebbe addosso.
-        contenitore.style.minHeight = '';
-        stack.style.minHeight = '';
+        const aperto = contenitore.offsetHeight;
+        stack.classList.add('is-enhanced');
+        contenitore.style.minHeight = `${aperto}px`;
       }
       stack.classList.add('is-enhanced');
       void stack.offsetHeight; // reflow: separa il collasso dalla riattivazione delle transizioni
@@ -303,6 +316,14 @@ const { head, items, newTab, sameTab = false } = Astro.props;
      58px — cioè proprio la pila, dove questa riga promette di non dargliela. */
   @media (prefers-reduced-motion: reduce){
     .paper{ transition:box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease; }
+    /* Azzerare i margini non basta, e per anni non è bastato: `.is-enhanced` porta
+       anche `flex-wrap:nowrap`, quindi senza sovrapposizione la riga tornava larga
+       quanto la SOMMA dei fogli — 3042px misurati con 12 voci, cioè lo sbordo
+       orizzontale che questa modifica esiste per togliere, servito intatto a chi ha
+       chiesto meno movimento. Qui si torna allo stato base: riga a capo, tutti i
+       fogli visibili, nessuna sovrapposizione da aprire. */
+    .newsstand-stack.is-enhanced,
+    .newsstand-stack.is-enhanced.is-vertical{ flex-direction:row; flex-wrap:wrap; width:auto; }
     .newsstand-stack.is-enhanced .paper,
     .newsstand-stack.is-enhanced .paper:not(:first-child),
     .newsstand-stack.is-enhanced.is-vertical .paper,
