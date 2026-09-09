@@ -1,0 +1,24 @@
+# Security & cache headers per Cloudflare (Workers static assets / Pages).
+# Hosting = Cloudflare (ADR-0001). Migrati dal vecchio vercel.json, poi rimosso.
+#
+# La CSP non sta qui: la genera Astro (`security.csp` in astro.config.mjs) come
+# <meta http-equiv>, perché solo in build può calcolare gli hash dei propri script.
+# Se una CSP vivesse anche qui, le due policy verrebbero applicate entrambe come
+# intersezione: un `script-src 'self'` in questo file annullerebbe gli hash del meta
+# e rimetterebbe il sito offline. `frame-ancestors` è l'eccezione — dentro un <meta>
+# è ignorato per specifica, quindi è l'unica direttiva CSP che deve restare header.
+/*
+  Content-Security-Policy: frame-ancestors 'none'
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+
+# Astro emette i bundle con l'hash nel nome sotto /_astro/, non /assets/.
+# La regola precedente puntava a una directory che non esiste: nessun file
+# ha mai ricevuto il Cache-Control immutable.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/data/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400

@@ -1,0 +1,9 @@
+# RFC 9116 — dove segnalare una vulnerabilità di questo sito.
+# La policy completa (cosa includere, cosa NON fare) sta in SECURITY.md nel repo.
+# Il repo è pubblico apposta: si verifica, non si prende sulla parola.
+
+Contact: mailto:mkdevpy@proton.me
+Expires: 2027-07-22T00:00:00.000Z
+Preferred-Languages: it, en
+Canonical: https://marcobellingeri.dev/.well-known/security.txt
+Policy: https://github.com/MK023/marcobellingeri.dev/blob/main/SECURITY.md
