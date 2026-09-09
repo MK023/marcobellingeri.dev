@@ -15,7 +15,15 @@ const { head, items, newTab, sameTab = false } = Astro.props;
 ---
 
 <div class="newsstand">
-  <p class="certs-head mono">{head}</p>
+  {/* Testatina come quella della sezione Security (`.live-stack-head`): etichetta a
+      sinistra, fonte a destra sulla stessa riga. È la piega di una testata di
+      giornale, ed è dove il rimando si legge come attributo della pila invece che
+      come un bottone lasciato lì sotto. Slot e non prop: chi chiama porta la sua
+      copy e il suo href, e le pile che non hanno una fonte non pagano niente. */}
+  <p class="certs-head mono">
+    <span>{head}</span>
+    <slot name="fonte" />
+  </p>
   {/* Stato base (senza JS): riga a capo, ogni link raggiungibile — fallback
       accessibile. Lo <script> aggiunge .is-enhanced e la collassa in pila. */}
   <div class="newsstand-stack" data-newsstand>
@@ -192,6 +200,16 @@ const { head, items, newTab, sameTab = false } = Astro.props;
   /* Scoped: Astro ne hasha lo stile nella CSP (niente style="" inline). Tutto su
      var(--ink/--paper) → giorno e notte. */
   .newsstand{ margin-top:34px; }
+
+  /* `.certs-head` vive in global.css; qui si aggiunge solo la disposizione della
+     riga, e lo stile è scoped, quindi le altre pile non se ne accorgono. `baseline`
+     e non `center`: l'etichetta e la fonte hanno corpi diversi e devono sedere
+     sulla stessa riga di scrittura. `wrap` perché su uno schermo stretto la fonte
+     va a capo invece di schiacciare l'etichetta. */
+  .certs-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    gap:8px 18px; flex-wrap:wrap;
+  }
 
   .newsstand-stack{
     display:flex; flex-wrap:wrap; align-items:flex-start;

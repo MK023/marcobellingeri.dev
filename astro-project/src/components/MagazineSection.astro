@@ -121,37 +121,43 @@ const pilaArretrati = arretrati.map((issue) => ({
     <Newsstand head={copy.arretratiHead} items={pilaArretrati} newTab={copy.newTab} sameTab />
   )}
 
-  <Newsstand head={copy.edicolaHead} items={bylines} newTab={copy.newTab} />
-  {/* Il nome accessibile comincia col testo VISIBILE: chi comanda a voce dice
-      quello che legge, e un aria-label che non lo contiene non risponde
-      (WCAG 2.5.3). È anche come lo costruisce già la pila, in Newsstand.astro.
-      Chip in stile sito e non il badge di dev.to: è la stessa ragione per cui le
-      certificazioni non usano i badge colorati di Credly (DESIGN.md) — il marchio
-      di un altro dentro questa pagina stona. La pila mostra tutte le firme, quindi
-      questo non copre un buco: dice solo dove sta l'archivio di chi le scrive. */}
-  <p class="edicola-profilo">
-    <a class="profilo-chip mono" href="https://dev.to/mk023" target="_blank" rel="noopener"
-       aria-label={`dev.to/mk023 — ${copy.profilo} (${copy.newTab})`}>dev.to/mk023</a>
-  </p>
+  {/* Testo del link e non il badge di dev.to: il marchio di un altro dentro questa
+      pagina stona, ed è la stessa ragione per cui le certificazioni non usano i
+      badge colorati di Credly (DESIGN.md). Il nome accessibile comincia col testo
+      VISIBILE, perché chi comanda a voce dice quello che legge (WCAG 2.5.3). */}
+  <Newsstand head={copy.edicolaHead} items={bylines} newTab={copy.newTab}>
+    <a
+      slot="fonte"
+      class="fonte-edicola"
+      href="https://dev.to/mk023"
+      target="_blank"
+      rel="noopener"
+      aria-label={`dev.to/mk023 — ${copy.profilo} (${copy.newTab})`}
+    >dev.to/mk023</a>
+  </Newsstand>
 </section>
 
 <style>
-  /* Stesso linguaggio dei chip del sito (.svc-chip): mono, bordo netto, hover
-     invertito. min-height 44px lo mette la regola @media (pointer:coarse) in
-     global.css, che nomina i chip uno per uno — questo non è in quella lista, e
-     sotto il dito 44px sono il minimo: se lo dichiara qui, resta vero ovunque. */
-  .edicola-profilo{ margin:18px 4px 0; }
-  .profilo-chip{
-    display:inline-flex; align-items:center; min-height:44px;
-    padding:9px 13px;
-    font-size:12px; letter-spacing:0.04em;
-    border:2px solid var(--ink);
-    background:transparent; color:var(--ink);
-    text-decoration:none;
-    transition:background 0.15s ease, color 0.15s ease;
+  /* Come il `.src` della sezione Security: piccolo, sommesso, a destra della sua
+     etichetta. Sotto il dito però quel corpo non basta come bersaglio, e il padding
+     verticale lo porta a 44px senza gonfiare la riga col mouse. */
+  .fonte-edicola{
+    /* Quando la riga va a capo (etichetta lunga su schermo stretto) la fonte
+       resterebbe a sinistra sotto l'etichetta, cioè di nuovo una riga orfana.
+       `margin-left:auto` la tiene a destra anche lì. */
+    margin-left:auto;
+    font-size:11px; letter-spacing:0.06em;
+    color:var(--ink); opacity:0.7;
+    text-decoration-thickness:1.5px; text-underline-offset:4px;
+    transition:opacity 0.15s ease, color 0.15s ease;
   }
-  .profilo-chip:hover{ background:var(--ink); color:var(--paper); }
-  .profilo-chip:focus-visible{ outline:3px solid var(--orange); outline-offset:3px; }
+  .fonte-edicola:hover{ opacity:1; color:var(--orange-text); }
+  .fonte-edicola:focus-visible{ outline:3px solid var(--orange); outline-offset:3px; opacity:1; }
+  /* 16 e non 13: 13px di corpo più 2x16 fanno 45px di bersaglio, sopra i 44
+     raccomandati. Con 13 ne facevano 39, misurati — sotto la soglia. */
+  @media (pointer:coarse){
+    .fonte-edicola{ display:inline-block; padding:16px 0; }
+  }
 </style>
 
 <script>

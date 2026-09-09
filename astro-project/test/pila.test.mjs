@@ -274,3 +274,35 @@ test('reduced-motion torna alla riga a capo, non solo senza margini', () => {
   );
 });
 
+
+// --- il rimando al profilo dev.to --------------------------------------------
+
+const magazine = readFileSync('src/components/MagazineSection.astro', 'utf8');
+
+test('il rimando a dev.to sta nella testatina della pila', () => {
+  // Non su una riga sua sotto la pila: lì non apparteneva né alla testatina né ai
+  // fogli, e si leggeva come una cosa appiccicata dopo. Va nello slot `fonte`, che
+  // la testatina dispone a destra come fa `.live-stack-head` nella sezione
+  // Security — etichetta a sinistra, fonte a destra, la piega di una testata.
+  assert.match(magazine, /slot="fonte"/, 'il rimando non passa più dallo slot della testatina');
+  assert.match(magazine, /dev\.to\/mk023/, 'sparito il rimando al profilo dev.to');
+  assert.ok(
+    !/edicola-profilo|profilo-chip/.test(magazine),
+    'è tornata la riga orfana sotto la pila',
+  );
+  assert.match(sorgente, /<slot name="fonte" \/>/, 'la pila non ha più lo slot per la fonte');
+  assert.match(
+    sorgente,
+    /\.certs-head\{[^}]*justify-content:space-between/,
+    'la testatina non dispone più etichetta e fonte sulla stessa riga',
+  );
+});
+
+test('il nome accessibile del rimando comincia col testo visibile', () => {
+  // WCAG 2.5.3: chi comanda a voce dice quello che legge.
+  assert.match(
+    magazine,
+    /aria-label=\{`dev\.to\/mk023 —/,
+    'il nome accessibile non comincia col testo visibile del link',
+  );
+});
