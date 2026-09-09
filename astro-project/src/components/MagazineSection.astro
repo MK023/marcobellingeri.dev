@@ -33,6 +33,7 @@ const copy = {
     problem: 'PROBLEMA', approach: 'APPROCCIO', result: 'RISULTATO', lesson: 'LEZIONE APPRESA',
     permalink: 'Apri la pagina →',
     edicolaHead: 'Edicola · dove la firma esce anche fuori',
+    profilo: 'Il profilo dev.to',
     newTab: 'si apre in una nuova scheda',
     arretratiHead: 'Numeri arretrati · la pila di quelli usciti prima',
   },
@@ -42,6 +43,7 @@ const copy = {
     problem: 'PROBLEM', approach: 'APPROACH', result: 'RESULT', lesson: 'LESSON LEARNED',
     permalink: 'Open the page →',
     edicolaHead: 'Edicola · where the byline also runs',
+    profilo: 'The dev.to profile',
     newTab: 'opens in a new tab',
     arretratiHead: 'Back issues · the stack of the ones before',
   },
@@ -119,10 +121,57 @@ const pilaArretrati = arretrati.map((issue) => ({
     <Newsstand head={copy.arretratiHead} items={pilaArretrati} newTab={copy.newTab} sameTab />
   )}
 
-  <Newsstand head={copy.edicolaHead} items={bylines} newTab={copy.newTab} />
+  {/* Testo del link e non il badge di dev.to: il marchio di un altro dentro questa
+      pagina stona, ed è la stessa ragione per cui le certificazioni non usano i
+      badge colorati di Credly (DESIGN.md). Il nome accessibile comincia col testo
+      VISIBILE, perché chi comanda a voce dice quello che legge (WCAG 2.5.3). */}
+  <Newsstand head={copy.edicolaHead} items={bylines} newTab={copy.newTab}>
+    <a
+      slot="fonte"
+      class="fonte-edicola"
+      href="https://dev.to/mk023"
+      target="_blank"
+      rel="noopener"
+      aria-label={`dev.to/mk023 — ${copy.profilo} (${copy.newTab})`}
+    >dev.to/mk023</a>
+  </Newsstand>
 </section>
 
 <style>
+  /* Come il `.src` della sezione Security: piccolo, sommesso, a destra della sua
+     etichetta. Ma `.certs-head` NON è il contenitore neutro che `.live-stack-head`
+     è: global.css le mette addosso `opacity:0.7` e `text-transform:uppercase`, e
+     l'una e l'altra scendono qui dentro. Quindi:
+
+     - niente `opacity` sul link. Si moltiplicava con quella del genitore — 0.49
+       effettivo, che su carta chiara porta un testo da 11px sotto il 4.5:1 di WCAG
+       AA. E nessun `opacity:1` su hover o focus poteva rimediare, perché il tetto
+       resta quello del genitore: anche il contorno di focus arrivava sbiadito al
+       70%, sotto il 3:1 che un indicatore di focus deve avere. Il link resta
+       sommesso lo stesso, perché lo è già la testatina intera.
+     - `text-transform:none`, o il link si legge DEV.TO/MK023 mentre il suo nome
+       accessibile dice `dev.to/mk023`. */
+  .fonte-edicola{
+    /* Quando la riga va a capo (etichetta lunga su schermo stretto) la fonte
+       resterebbe a sinistra sotto l'etichetta, cioè di nuovo una riga orfana.
+       `margin-left:auto` la tiene a destra anche lì. */
+    margin-left:auto;
+    font-size:11px; letter-spacing:0.06em;
+    color:var(--ink);
+    text-transform:none;
+    text-decoration-thickness:1.5px; text-underline-offset:4px;
+    transition:color 0.15s ease;
+  }
+  .fonte-edicola:hover{ color:var(--orange-text); }
+  .fonte-edicola:focus-visible{ outline:3px solid var(--orange); outline-offset:3px; }
+  /* `any-pointer` e non `pointer`: `pointer` descrive il puntatore PRIMARIO, quindi
+     un portatile touch con trackpad non lo soddisfa e lì il bersaglio tornava alto
+     quanto il testo. Il chip che stava qui prima dichiarava `min-height:44px` senza
+     condizioni, e quella garanzia non deve perdersi nel trasloco.
+     16px di padding sopra e sotto un corpo da 11 fanno 43-45px misurati. */
+  @media (any-pointer:coarse){
+    .fonte-edicola{ display:inline-block; padding:16px 0; }
+  }
 </style>
 
 <script>
