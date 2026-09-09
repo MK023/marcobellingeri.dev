@@ -18,9 +18,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
+  altezzaColonna,
+  geometriaColonna,
   geometriaPila,
   larghezzaRiga,
+  BUDGET_COLONNA,
+  SFALSO_COLONNA_DISEGNO,
   SFALSO_DISEGNO,
+  STRISCIA_COLONNA_MINIMA,
   STRISCIA_MINIMA,
 } from '../src/lib/pila.ts';
 
@@ -123,5 +128,131 @@ test('la pila verticale non dipende da una soglia in pixel', () => {
   assert.ok(
     !/@media \(max-width:\d+px\)\{?[\s\S]{0,400}is-enhanced/.test(sorgente),
     'la variante verticale è tornata dentro una media query: quel numero è tarato su un conto di voci che cambia',
+  );
+});
+
+// --- la colonna, cioè la pila quando va in verticale --------------------------
+//
+// Qui la promessa è più debole che in larghezza, e il test lo dice: i fogli non
+// sono alti uguale (titolo tagliato a tre righe: da 77 a 135px misurati su
+// iPhone) e la sovrapposizione toglie gli stessi pixel a tutti, quindi un tetto
+// assoluto farebbe sparire il foglio più basso. Quello che si garantisce è che la
+// crescita RALLENTI e si fermi a una striscia minima, invece di andare avanti
+// lineare per sempre.
+
+// Numeri veri, misurati sull'anteprima a 390px: il foglio più basso è 77px, il più
+// alto 135. La MEDIA però non è (77+135)/2 — i titoli lunghi sono l'eccezione — e
+// prenderla per tale falsava il test in modo interessante: con 106px a foglio la
+// colonna sfondava il budget già a 12 voci, cioè affermava che l'aspetto di oggi
+// cambia, mentre nel browser misura 490px e non cambia niente. La media si ricava
+// quindi all'indietro dalla misura vera: 490px chiusi con lo sfalso di disegno
+// significano 490 + 11*(58-14) = 974px di fogli, cioè ~81 l'uno.
+const FOGLIO_MIN = 77;
+const FOGLIO_MEDIO = 81;
+const GAP_COLONNA = 14;
+
+const colonna = (n) => ({
+  n,
+  somma: n * FOGLIO_MEDIO,
+  minima: FOGLIO_MIN,
+  gap: GAP_COLONNA,
+});
+
+test('la colonna non si allarga mai oltre il disegno', () => {
+  // Poche voci: deve restare esattamente com'è oggi, non "sistemarsi".
+  for (const n of [2, 5, 12]) {
+    const { sfalso } = geometriaColonna(colonna(n));
+    assert.ok(
+      sfalso >= SFALSO_COLONNA_DISEGNO,
+      `n=${n}: sfalso ${sfalso} sotto il disegno ${SFALSO_COLONNA_DISEGNO}, la colonna si allargherebbe`,
+    );
+  }
+  // Con le 12 di oggi la colonna sta nel budget, quindi non si stringe affatto.
+  assert.equal(geometriaColonna(colonna(12)).sfalso, SFALSO_COLONNA_DISEGNO);
+});
+
+test('la striscia in colonna resta un bersaglio toccabile', () => {
+  // In colonna la striscia visibile è il bersaglio da toccare del foglio: 24px è
+  // il minimo di WCAG 2.5.8. Non è un numero estetico e non si abbassa per
+  // guadagnare altezza.
+  assert.ok(
+    STRISCIA_COLONNA_MINIMA >= 24,
+    `striscia minima ${STRISCIA_COLONNA_MINIMA}px, sotto i 24 di WCAG 2.5.8`,
+  );
+});
+
+test('il foglio più basso non sparisce mai', () => {
+  const falliti = [];
+  for (let n = 2; n <= 200; n++) {
+    const { sfalso } = geometriaColonna(colonna(n));
+    const striscia = FOGLIO_MIN + GAP_COLONNA - sfalso;
+    if (striscia < STRISCIA_COLONNA_MINIMA) falliti.push(`n=${n} striscia=${striscia}`);
+  }
+  assert.deepEqual(falliti.slice(0, 5), [], `${falliti.length} casi schiacciano il foglio più basso`);
+});
+
+test('la crescita della colonna rallenta invece di restare lineare', () => {
+  const altezza = (n) => altezzaColonna(colonna(n), geometriaColonna(colonna(n)).sfalso);
+  const fissa = (n) => altezzaColonna(colonna(n), SFALSO_COLONNA_DISEGNO);
+
+  // Fino al budget le due curve coincidono: oggi non cambia niente.
+  assert.equal(altezza(12), fissa(12));
+
+  // Oltre, quella adattiva cresce meno, e il divario si allarga.
+  for (const n of [20, 40, 80]) {
+    assert.ok(altezza(n) < fissa(n), `n=${n}: la colonna adattiva (${altezza(n)}) non è più bassa della fissa (${fissa(n)})`);
+  }
+
+  // Il passo per voce si dimezza. Il tetto NON è la striscia minima secca: quella
+  // vale per il foglio più BASSO, ed è lui a fermare la sovrapposizione. Un foglio
+  // di altezza media resta più alto di così, esattamente della differenza fra la
+  // media e il minimo — 24px invece di 20 coi numeri veri. Asserire 20 sarebbe
+  // stato asserire un modello che il codice non ha.
+  const passoMassimo = STRISCIA_COLONNA_MINIMA + (FOGLIO_MEDIO - FOGLIO_MIN);
+  const passoFisso = (fissa(80) - fissa(40)) / 40;
+  const passoAdattivo = (altezza(80) - altezza(40)) / 40;
+  assert.ok(
+    passoAdattivo <= passoMassimo,
+    `passo ${passoAdattivo}px per voce, sopra il tetto di ${passoMassimo}px`,
+  );
+  // Niente rapporto fra i due passi: un `< passoFisso * 0.75` sarebbe un numero
+  // inventato qui, non una proprietà del disegno. Quello che il disegno garantisce
+  // è il tetto assoluto sopra, più il fatto che rallenti — e tanto basta.
+  assert.ok(
+    passoAdattivo < passoFisso,
+    `passo ${passoAdattivo}px contro ${passoFisso}px a sovrapposizione fissa: non rallenta`,
+  );
+});
+
+test('una misura che non c\'è non manda in vacca la colonna', () => {
+  for (const rotta of [{ somma: NaN }, { minima: NaN }, { gap: NaN }]) {
+    const { sfalso } = geometriaColonna({ ...colonna(12), ...rotta });
+    assert.equal(sfalso, SFALSO_COLONNA_DISEGNO, `con ${Object.keys(rotta)[0]} NaN`);
+  }
+});
+
+test('il budget della colonna è dichiarato e non finto', () => {
+  // 520px: con le 12 voci di oggi la colonna ne misura 490 su un iPhone. Se
+  // qualcuno lo abbassa sotto quel numero, l'aspetto di oggi cambia in silenzio.
+  assert.ok(BUDGET_COLONNA >= 490, `budget ${BUDGET_COLONNA}px: sotto i 490 di oggi, la colonna si stringe subito`);
+});
+
+// --- l'area che tiene aperta la pila -----------------------------------------
+
+test('la riserva d\'altezza sta sul contenitore, non sulla pila', () => {
+  // Sulla pila, la sua scatola restava alta quanto il ventaglio aperto mentre i
+  // fogli ne occupavano un terzo: 264px contro 82 sulle Certificazioni. I 182px
+  // di differenza erano area invisibile che valeva comunque come :hover, quindi
+  // la pila si apriva col puntatore 120px sotto i fogli, dove non c'è niente.
+  // Misurato prima: "SI APRE DA LONTANO" su Edicola e Certificazioni; dopo, banda
+  // vuota di 5px su tutte e tre.
+  assert.match(
+    sorgente,
+    /contenitore\.style\.minHeight = `\$\{contenitore\.offsetHeight\}px`/,
+    'la riserva è tornata sulla pila: torna la banda invisibile che la apre da lontano',
+  );
+  assert.ok(
+    !/stack\.style\.minHeight = `/.test(sorgente),
+    'la pila si riserva ancora addosso un\'altezza che non le serve',
   );
 });

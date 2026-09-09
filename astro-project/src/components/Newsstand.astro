@@ -39,7 +39,7 @@ const { head, items, newTab, sameTab = false } = Astro.props;
 </div>
 
 <script>
-  import { geometriaPila } from '../lib/pila';
+  import { geometriaColonna, geometriaPila } from '../lib/pila';
 
   // Progressive enhancement. querySelectorAll (non querySelector): la pila può
   // comparire più volte nella pagina (Edicola + Certificazioni) e lo <script> del
@@ -59,6 +59,15 @@ const { head, items, newTab, sameTab = false } = Astro.props;
     // .is-enhanced è già il layout aperto (wrap), quindi basta misurarlo. Così
     // l'hover non sposta la sezione sotto. Su touch riservare le righe vuote
     // costerebbe schermate bianche. Tutto sincrono nello stesso frame: niente flash.
+    //
+    // La riserva sta sul CONTENITORE, non sulla pila, e non è un dettaglio: messa
+    // sulla pila le dava una scatola alta quanto il ventaglio aperto mentre i fogli
+    // ne occupavano un terzo — 264px contro 82 sulle Certificazioni. Il resto era
+    // area invisibile che continuava a valere come `:hover`, quindi la pila restava
+    // aperta col puntatore visibilmente lontano, e a chiuderla era solo l'uscita
+    // dalla banda vuota. Sul contenitore lo spazio è riservato lo stesso, ma la
+    // pila torna alta quanto i suoi fogli.
+    const contenitore = stack.parentElement as HTMLElement;
     // Lo sfalso non è più una costante nel CSS: la pila non ha un numero fisso di
     // voci — l'Edicola la riempie il cron (engine/edicola.mjs) ed è passata da 8 a
     // 12 senza che nessuno ritoccasse quel numero. Con 12 fogli la riga misurava
@@ -66,9 +75,9 @@ const { head, items, newTab, sameTab = false } = Astro.props;
     // misurano i pezzi e il conto lo fa src/lib/pila.ts, che è la sola parte
     // provabile senza un browser (test/pila.test.mjs).
     const misura = () => {
-      const fogli = stack.querySelectorAll<HTMLElement>('.paper');
+      const fogli = [...stack.querySelectorAll<HTMLElement>('.paper')];
       const cs = getComputedStyle(stack);
-      return geometriaPila({
+      const larghezza = geometriaPila({
         n: fogli.length,
         foglio: fogli[0]?.offsetWidth ?? 0,
         // Niente `|| 0` qui: su un elemento non reso `columnGap` è la stringa vuota
@@ -80,20 +89,36 @@ const { head, items, newTab, sameTab = false } = Astro.props;
         padding: parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight),
         disponibile: (stack.parentElement as HTMLElement).clientWidth,
       });
+      // Le altezze si leggono nello stato APERTO, che è quello in cui questa
+      // funzione gira (riserva() misura prima di collassare): lì ogni foglio è
+      // alto quanto il suo titolo, e sono quelle le altezze che la colonna somma.
+      const altezze = fogli.map((f) => f.offsetHeight);
+      const colonna = geometriaColonna({
+        n: fogli.length,
+        somma: altezze.reduce((a, h) => a + h, 0),
+        minima: altezze.length ? Math.min(...altezze) : 0,
+        gap: parseFloat(cs.rowGap),
+      });
+      return { ...larghezza, sfalsoColonna: colonna.sfalso };
     };
 
     const riserva = () => {
-      const { sfalso, verticale } = misura();
+      const { sfalso, verticale, sfalsoColonna } = misura();
       stack.style.setProperty('--sfalso', `-${sfalso}px`);
+      stack.style.setProperty('--sfalso-colonna', `-${sfalsoColonna}px`);
       stack.classList.toggle('is-vertical', verticale);
       stack.classList.add('no-anim');
       if (hoverFine.matches && !verticale) {
         stack.classList.remove('is-enhanced');
-        stack.style.minHeight = '';
-        stack.style.minHeight = `${stack.offsetHeight}px`;
+        contenitore.style.minHeight = '';
+        contenitore.style.minHeight = `${contenitore.offsetHeight}px`;
       } else {
         // niente misura (e niente doppio reflow) dove non serve: su mobile il
-        // resize scatta a ogni comparsa della barra URL durante lo scroll.
+        // resize scatta a ogni comparsa della barra URL durante lo scroll. La
+        // riserva si toglie da entrambi: la pila la portava nelle versioni
+        // precedenti, e una pagina aperta mentre si passa da mouse a dito se la
+        // ritroverebbe addosso.
+        contenitore.style.minHeight = '';
         stack.style.minHeight = '';
       }
       stack.classList.add('is-enhanced');
@@ -257,12 +282,16 @@ const { head, items, newTab, sameTab = false } = Astro.props;
      fogli su un iPad da 834px la riga ci sta ancora, stringendo; su un telefono no,
      e infatti lì la classe la mette lo script. */
   .newsstand-stack.is-enhanced.is-vertical{ flex-direction:column; flex-wrap:nowrap; }
-  /* ponytail: la colonna ha ancora una sovrapposizione fissa, quindi cresce senza
-     limite — ~57px a voce, 896px con le 12 di oggi. In verticale non sborda da
-     nessuna parte, quindi non è il difetto che questa modifica toglie, ma il
-     tetto resta dichiarato: se la pila arriva a numeri da schermate intere,
-     l'altezza va misurata come si misura la larghezza (src/lib/pila.ts). */
-  .newsstand-stack.is-enhanced.is-vertical .paper:not(:first-child){ margin-left:0; margin-top:-58px; }
+  /* Anche la colonna si stringe da sola, con la stessa regola della larghezza:
+     resta com'è finché sta nel budget (520px: con le 12 voci di oggi ne misura 490
+     su un iPhone, quindi oggi non cambia niente), poi sovrappone di più.
+     ponytail: il tetto qui è morbido, non assoluto. I fogli non sono alti uguale —
+     il titolo è tagliato a tre righe, quindi vanno da 77 a 135px — e la
+     sovrapposizione toglie gli stessi pixel a tutti: per far stare 40 voci in
+     520px il foglio più basso dovrebbe sparire. La crescita per voce scende da
+     ~40px a ~20 e lì si ferma; se servisse il tetto duro, la leva è il numero di
+     righe del titolo, non questa. */
+  .newsstand-stack.is-enhanced.is-vertical .paper:not(:first-child){ margin-left:0; margin-top:var(--sfalso-colonna, -58px); }
   .newsstand-stack.is-enhanced.is-vertical:hover .paper,
   .newsstand-stack.is-enhanced.is-vertical.is-open .paper{ margin-top:0; }
 
