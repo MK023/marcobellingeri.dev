@@ -249,6 +249,51 @@ const suggestTargets = (Object.keys(languages) as Lang[])
     revealEls.forEach((el) => io.observe(el));
   </script>
   <script>
+    // Sospende il blend della grana mentre la pila da edicola si muove: il perché
+    // e le misure stanno accanto alla regola, in global.css. Globale come lo
+    // scroll-reveal qui sopra, perché globale è l'overlay che costa: la pila
+    // compare tre volte fra Magazine e Stack, e un domani il costo lo pagherebbe
+    // qualunque altro componente animato aggiunto a questa lista.
+    const animati = document.querySelectorAll('[data-newsstand]');
+    if (animati.length) {
+      // Le pile attive si CONTANO, non si sovrascrivono: con un timer solo,
+      // uscire da una pila spegneva la sospensione anche per un'altra ancora
+      // aperta. Succede davvero: dopo un click su un foglio il focus resta sul
+      // link (target=_blank), e basta passare sull'altra pila perché l'uscita
+      // dalla prima riaccenda il blend mentre la seconda si sta richiudendo.
+      const attive = new Set();
+      let coda = 0;
+      const sospendi = (el: Element) => {
+        attive.add(el);
+        clearTimeout(coda);
+        document.body.classList.add('in-movimento');
+      };
+      // La chiusura del ventaglio parte DOPO che il puntatore è uscito: riaccendere
+      // subito rimetterebbe la scia sulla richiusura, che è l'animazione più lunga
+      // delle due. 700ms copre transizione (450ms) e delay a cascata (fino a 200ms).
+      const riprendi = (el: Element) => {
+        attive.delete(el);
+        if (attive.size) return;
+        clearTimeout(coda);
+        coda = window.setTimeout(() => document.body.classList.remove('in-movimento'), 700);
+      };
+      animati.forEach((el) => {
+        el.addEventListener('pointerenter', () => sospendi(el));
+        el.addEventListener('pointerleave', () => riprendi(el));
+        el.addEventListener('focusin', () => sospendi(el));
+        el.addEventListener('focusout', () => riprendi(el));
+      });
+      // Tornando INDIETRO dalla bfcache la pagina si ripresenta com'era: se si è
+      // usciti col puntatore sulla pila, la classe è ancora lì e la grana resta
+      // `normal` finché non ci si passa sopra un'altra volta.
+      window.addEventListener('pageshow', () => {
+        attive.clear();
+        clearTimeout(coda);
+        document.body.classList.remove('in-movimento');
+      });
+    }
+  </script>
+  <script>
     // Banner-suggerimento lingua: mostra l'invito solo se il browser preferisce
     // una lingua che offriamo, diversa da quella corrente, e se l'utente non ha
     // già scelto (cookie pref-lang). Nessun redirect → SEO-safe.
