@@ -16,6 +16,39 @@ export function slugFromCanonical(url) {
   return url?.match(CANONICAL)?.[1] ?? null;
 }
 
+// L'url dell'articolo arriva dalla API di dev.to, cioè da fuori, e finisce dritto
+// in un href renderizzato dal sito. Che sia un URL ben formato non basta:
+// `javascript:alert(1)` lo è, e l'escaping di Astro non lo tocca — quello mette in
+// salvo l'ATTRIBUTO, non lo schema. Pesa che quel dato non lo rilegge nessuno: il
+// workflow edicola-card apre la PR, approva i suoi stessi check e mergia da solo.
+//
+// Lista esatta e non `/^(.+\.)?dev\.to$/`: quella accettava QUALUNQUE sottodominio,
+// cioè molto più di quanto la riga sopra prometta, e un sottodominio abbandonato di
+// dev.to che finisse in quella risposta diventerebbe una card verso fuori. È anche
+// la forma di hostAmmesso() in worker/radar.js, che fa lo stesso lavoro sulle fonti
+// dei bollettini: `hosts.includes(u.hostname)`, niente jolly.
+const HOST_DEVTO = ["dev.to", "www.dev.to"];
+
+// Ritorna l'url NORMALIZZATO se è accettabile, altrimenti null. Non un booleano, e
+// non è pedanteria: validare una stringa e salvarne un'altra lascia una fessura.
+// `https://dev.to\@evil.com` supera il controllo perché il parser lo legge come
+// `https://dev.to/@evil.com` — ma se in edicola.json ci finisse il testo grezzo,
+// chiunque lo rilegga con regole diverse dal parser del browser (un feed, una
+// unfurl, una mail) vedrebbe un'altra cosa. Si salva quello che si è guardato.
+export function hrefSicuro(url) {
+  try {
+    const u = new URL(url);
+    // Il punto finale è lo stesso host: `dev.to.` e `dev.to` sono la stessa cosa
+    // per il DNS, e scartarlo sarebbe scartare un url legittimo in silenzio.
+    const host = u.hostname.replace(/\.$/, "");
+    return u.protocol === "https:" && HOST_DEVTO.includes(host) ? u.href : null;
+  } catch {
+    // URL relativi o spazzatura: `new URL` senza base li rifiuta, ed è quello che
+    // vogliamo — una card dell'Edicola punta sempre fuori, mai in casa.
+    return null;
+  }
+}
+
 // Identità di una card: lo slug quando c'è (regge "stessa firma, casa diversa":
 // interna oggi, dev.to domani), altrimenti l'href.
 const chiave = (c) => c.slug ?? c.href;
