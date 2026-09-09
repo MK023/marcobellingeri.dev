@@ -10,22 +10,18 @@
   a{display:inline-block;margin-right:16px}
   ul{padding-left:20px;color:#444}
 </style>
-<h1>Anteprima: PR #296 + #297</h1>
-<p>Copia statica del sito con le due correzioni grafiche applicate insieme. Non indicizzata.</p>
+<h1>Anteprima: PR #299</h1>
+<p>Copia statica del sito con la PR #299 applicata. Non indicizzata.</p>
 <p>
   <a href="/marcobellingeri.dev/anteprima/it/">Italiano</a>
   <a href="/marcobellingeri.dev/anteprima/en/">English</a>
 </p>
+<p>Questa PR tocca il <b>motore</b>, non l'aspetto: mette una guardia sull'url che
+arriva dalla API di dev.to prima che diventi un link nell'Edicola. Nel sito non
+cambia un pixel, e l'anteprima serve proprio a verificarlo.</p>
 <p>Cosa guardare:</p>
 <ul>
-  <li><b>Tutte le voci ci sono</b>: 12 firme nell'Edicola, 10 certificazioni nello Stack.</li>
-  <li><b>Le certificazioni</b>: passa col mouse un centinaio di pixel <i>sotto</i> i fogli, dove non c'è niente. Prima la pila si apriva da lì; ora no.</li>
-  <li>Sezione <b>Magazine</b>, blocco <i>Edicola</i>: col mouse il ventaglio si apre senza scia.</li>
-  <li>Su desktop largo la pila è identica a oggi. Restringi la finestra: i fogli si stringono da soli invece di sbordare.</li>
-  <li>Su iPad, apri e chiudi la pila: la pagina non deve più allargarsi e restringersi.</li>
-  <li>Su iPhone la pila si impila in verticale, come faceva prima.</li>
-  <li>Ruota il dispositivo: in landscape non deve esserci scorrimento orizzontale.</li>
-  <li>Sotto l'Edicola c'è il chip <i>dev.to/mk023</i>.</li>
-  <li>Prova anche il tema giorno/notte, e se hai <i>Riduci movimento</i> attivo la pila diventa una lista piatta.</li>
+  <li>Sezione <b>Magazine</b>, blocco <i>Edicola</i>: tutte e 12 le firme, i link portano ancora dove devono.</li>
+  <li>Il resto della pagina identico a quello che vedi in produzione.</li>
 </ul>
 <p><b>Non funzionano</b>, ed è atteso: Radar, il Terminale e il form contatti. Su Pages non c'è il Worker che serve <code>/api/*</code>.</p>
