@@ -15,7 +15,7 @@ process.env.LANGFUSE_PUBLIC_KEY = "pk_fake";
 process.env.LANGFUSE_SECRET_KEY = "sk_lf_fake";
 process.env.ANTHROPIC_API_KEY = "sk-ant_fake";
 
-const { select, insert, update, remove } = await import("../lib/supabase.mjs");
+const { select, insert, update, remove, rpc } = await import("../lib/supabase.mjs");
 const { countTokens, generateJson } = await import("../lib/anthropic.mjs");
 const { startTrace } = await import("../lib/langfuse.mjs");
 const { search } = await import("../lib/valyu.mjs");
@@ -62,6 +62,30 @@ test("supabase: 504 su una POST -> NON ritenta, l'insert non è idempotente", as
   const calls = mockFetch(() => new Response('{"message":"Gateway Timeout"}', { status: 504 }));
   await assert.rejects(() => insert("signals", [{ url: "u" }]), /supabase POST .* 504/);
   assert.equal(calls.length, 1, "una sola scrittura: dietro il 504 può essere già passata");
+});
+
+test("supabase: 504 su una rpc di lettura -> ritenta (match_article_chunks è `stable`)", async () => {
+  const calls = mockFetch((n) =>
+    n === 1 ? new Response('{"message":"Gateway Timeout"}', { status: 504 }) : [{ id: "C1" }],
+  );
+  assert.deepEqual(await rpc("match_article_chunks", { q: 1 }), [{ id: "C1" }]);
+  assert.equal(calls.length, 2, "una POST rpc/ è una lettura: si ritenta");
+});
+
+test("supabase: connessione caduta su una GET -> ritenta; su una POST no", async () => {
+  let n = 0;
+  globalThis.fetch = async () => {
+    n += 1;
+    if (n === 1) throw new TypeError("fetch failed"); // il progetto che si sveglia chiude la connessione
+    return new Response(JSON.stringify([{ id: "I1" }]), { status: 200 });
+  };
+  assert.deepEqual(await select("issues?select=id"), [{ id: "I1" }]);
+  assert.equal(n, 2);
+
+  n = 0;
+  globalThis.fetch = async () => { n += 1; throw new TypeError("fetch failed"); };
+  await assert.rejects(() => insert("signals", [{ url: "u" }]), /fetch failed/);
+  assert.equal(n, 1, "la scrittura non si rigioca nemmeno quando la rete cade");
 });
 
 test("supabase: 404 -> errore subito, non è ritentabile", async () => {

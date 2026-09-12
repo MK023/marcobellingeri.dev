@@ -17,21 +17,35 @@ function headers(extra = {}) {
 
 // Supabase risponde 504 quando il progetto si sveglia da freddo: il 2026-09-12 ha
 // ucciso il cron advance su una GET sana, e poche ore dopo la stessa identica query
-// tornava 200 in 80ms. Ritentare costa 1.5s nel caso peggiore, il cron fallito costa
-// una issue aperta a mano.
-// Mai le POST: dietro un 504 la scrittura può essere già passata, e insert() non è
-// idempotente — rifarla duplicherebbe le righe. PATCH e DELETE portano il filtro con
-// sé, rifarli approda allo stesso stato.
-const RETRIABLE = new Set([429, 502, 503, 504]);
+// tornava 200 in 80ms. La stessa transitorietà si presenta anche come connessione
+// caduta, quindi vanno ritentate entrambe le forme.
+// Quanto dura un tentativo perso lo decide il gateway remoto, non questo file: qui
+// si aggiunge solo l'attesa fra un tentativo e l'altro, 500ms e poi 1s.
+// Mai le POST, tranne le rpc/: dietro un 504 la scrittura può essere già passata e
+// insert() non è idempotente. match_article_chunks è invece `language sql stable`
+// (0001_init.sql:121), e a una funzione stable Postgres vieta di scrivere — non è
+// una lettura del codice, è il motore che la impone. Una rpc che muti va esclusa qui.
+// PATCH e DELETE portano il filtro con sé, rifarli approda allo stesso stato.
+const RETRIABLE = new Set([502, 503, 504]);
 const MAX_RETRIES = 2;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function rest(path, init = {}) {
   const method = init.method ?? "GET";
+  const replayable = method !== "POST" || path.startsWith("rpc/");
+  const built = headers(init.headers); // fuori dal loop: env mancante muore subito, non dopo tre giri
   for (let attempt = 0; ; attempt++) {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: headers(init.headers) });
+    const last = attempt === MAX_RETRIES;
+    let r;
+    try {
+      r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: built });
+    } catch (e) {
+      if (!replayable || last) throw e;
+      await sleep(500 * 2 ** attempt);
+      continue;
+    }
     if (r.ok) return r;
-    if (method === "POST" || !RETRIABLE.has(r.status) || attempt === MAX_RETRIES) {
+    if (!replayable || !RETRIABLE.has(r.status) || last) {
       throw new Error(`supabase ${method} ${path} -> ${r.status}: ${await r.text()}`);
     }
     await sleep(500 * 2 ** attempt);
