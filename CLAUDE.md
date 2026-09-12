@@ -73,9 +73,7 @@ Always `lint` + `check` + `test` green before saying "done".
 - **Verify in the browser, do not trust the reading**: every serious bug here came out by
   running it. Serve the build, measure.
 - **`git add` the files you touched, not `-A`.** More than one session works in this copy
-  at a time. On 2026-08-14 a branch cut from `HEAD` carried another session's just-committed
-  fix into production inside a PR whose review was about something else — #205 then closed
-  itself with zero commits, because #206 had already shipped its content.
+  at a time.
 - **The CVs never get the tone-rewrite pass** that every other public text gets.
 
 ## Code conventions
