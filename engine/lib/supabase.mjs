@@ -15,10 +15,27 @@ function headers(extra = {}) {
   };
 }
 
+// Supabase risponde 504 quando il progetto si sveglia da freddo: il 2026-09-12 ha
+// ucciso il cron advance su una GET sana, e poche ore dopo la stessa identica query
+// tornava 200 in 80ms. Ritentare costa 1.5s nel caso peggiore, il cron fallito costa
+// una issue aperta a mano.
+// Mai le POST: dietro un 504 la scrittura può essere già passata, e insert() non è
+// idempotente — rifarla duplicherebbe le righe. PATCH e DELETE portano il filtro con
+// sé, rifarli approda allo stesso stato.
+const RETRIABLE = new Set([429, 502, 503, 504]);
+const MAX_RETRIES = 2;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function rest(path, init = {}) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: headers(init.headers) });
-  if (!r.ok) throw new Error(`supabase ${init.method || "GET"} ${path} -> ${r.status}: ${await r.text()}`);
-  return r;
+  const method = init.method ?? "GET";
+  for (let attempt = 0; ; attempt++) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: headers(init.headers) });
+    if (r.ok) return r;
+    if (method === "POST" || !RETRIABLE.has(r.status) || attempt === MAX_RETRIES) {
+      throw new Error(`supabase ${method} ${path} -> ${r.status}: ${await r.text()}`);
+    }
+    await sleep(500 * 2 ** attempt);
+  }
 }
 
 // encodeURIComponent lascia passare ! ' ( ) * — che in PostgREST non sono innocui:

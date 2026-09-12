@@ -15,7 +15,7 @@ process.env.LANGFUSE_PUBLIC_KEY = "pk_fake";
 process.env.LANGFUSE_SECRET_KEY = "sk_lf_fake";
 process.env.ANTHROPIC_API_KEY = "sk-ant_fake";
 
-const { update, remove } = await import("../lib/supabase.mjs");
+const { select, insert, update, remove } = await import("../lib/supabase.mjs");
 const { countTokens, generateJson } = await import("../lib/anthropic.mjs");
 const { startTrace } = await import("../lib/langfuse.mjs");
 const { search } = await import("../lib/valyu.mjs");
@@ -48,6 +48,26 @@ test("supabase: update -> PATCH col filtro e Prefer minimal; remove -> DELETE", 
   assert.equal(JSON.parse(calls[0].init.body).status, "published");
   assert.equal(calls[1].init.method, "DELETE");
   assert.ok(calls[1].url.endsWith("/rest/v1/article_chunks?article_id=eq.A1"));
+});
+
+test("supabase: 504 su una GET -> ritenta e passa (il 504 che uccise il cron advance)", async () => {
+  const calls = mockFetch((n) =>
+    n === 1 ? new Response('{"message":"Gateway Timeout"}', { status: 504 }) : [{ id: "I1" }],
+  );
+  assert.deepEqual(await select("issues?select=id&limit=1"), [{ id: "I1" }]);
+  assert.equal(calls.length, 2, "un solo retry, poi la risposta buona");
+});
+
+test("supabase: 504 su una POST -> NON ritenta, l'insert non è idempotente", async () => {
+  const calls = mockFetch(() => new Response('{"message":"Gateway Timeout"}', { status: 504 }));
+  await assert.rejects(() => insert("signals", [{ url: "u" }]), /supabase POST .* 504/);
+  assert.equal(calls.length, 1, "una sola scrittura: dietro il 504 può essere già passata");
+});
+
+test("supabase: 404 -> errore subito, non è ritentabile", async () => {
+  const calls = mockFetch(() => new Response("no such table", { status: 404 }));
+  await assert.rejects(() => select("nope?select=id"), /supabase GET .* 404/);
+  assert.equal(calls.length, 1);
 });
 
 // ---- anthropic: retry ---------------------------------------------------------
