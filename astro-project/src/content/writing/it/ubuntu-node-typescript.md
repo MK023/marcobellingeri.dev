@@ -63,7 +63,7 @@ Il changelog non dice cosa abbia cambiato quel "solved upstream". I miei test ve
 
 ## Perché la CI non se n'è mai accorta
 
-Il README di `setup-node` dice che l'action controlla prima la tool cache del runner, poi prende le versioni LTS dalle release di `actions/node-versions` e, se non le trova, ripiega sul download da nodejs.org. Nessuna di queste fonti è il pacchetto di Ubuntu. I quattro file di test in CI passano, quindi il Node che gira lì toglie i tipi. Quello sul mio server no, ed entrambi dicono versione major 22.
+Il README di `setup-node` dice che l'action controlla prima la tool cache del runner, poi prende le versioni LTS dalle release di `actions/node-versions` e, se non le trova, ripiega sul download da nodejs.org. Nessuna di queste fonti è il pacchetto di Ubuntu. I quattro file di test in CI passano, quindi il Node che gira lì toglie i tipi. Quello sul mio server no, ed entrambi riportano la versione major 22.
 
 È così che lo stesso repository può essere verde in CI e rosso sul mio server senza che cambi una riga di codice.
 
