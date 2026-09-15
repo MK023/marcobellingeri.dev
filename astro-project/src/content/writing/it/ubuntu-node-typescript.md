@@ -2,7 +2,7 @@
 lang: it
 title: "Node 22.22 esegue TypeScript. Il Node 22.22 di Ubuntu no."
 date: 2026-09-16
-description: "Il type stripping è attivo di default da Node 22.18. Sul mio server Ubuntu i test che importano file .ts fallivano mentre la CI passava, con la stessa versione major. La versione era giusta. La build no."
+description: "Il type stripping è attivo di default da Node 22.18. Sul mio server Ubuntu i test che importano file .ts fallivano mentre la CI passava, a parità di versione major. La versione era giusta. La build no."
 tags: [node, typescript, ubuntu, devops]
 edicola: "Il Node senza TypeScript"
 ---
@@ -17,11 +17,11 @@ Sul mio server Ubuntu, con Node 22.22.1, falliscono tutti e quattro prima ancora
 TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".ts" for .../src/lib/faq.ts
 ```
 
-22.22.1 è più recente di 22.18.0, quindi sulla carta la funzionalità c'è. **Il numero di versione era giusto. Il binario dietro era una build diversa.**
+La 22.22.1 è più recente della 22.18.0, quindi sulla carta la funzionalità c'è. **Il numero di versione era giusto. Dietro c'era una build diversa.**
 
 ## Stessa versione, binario diverso
 
-Node dice da solo se toglie i tipi. La documentazione della v22 descrive `process.features.typescript` come `"strip"` di default, `"transform"` con `--experimental-transform-types`, e `false` se Node parte con `--no-experimental-strip-types`.
+Node sa dirti se toglie i tipi. La documentazione della v22 dice che `process.features.typescript` vale `"strip"` di default, `"transform"` con `--experimental-transform-types`, e `false` se Node parte con `--no-experimental-strip-types`.
 
 Quel flag non l'avevo passato:
 
@@ -32,7 +32,7 @@ $ /usr/bin/node -p 'process.features.typescript'
 false
 ```
 
-Quel `node` viene dal pacchetto `nodejs` di Ubuntu, versione `22.22.1+dfsg+~cs22.19.15-1ubuntu1`. Chiedere la funzionalità in modo esplicito non la riporta indietro:
+Quel `node` viene dal pacchetto `nodejs` di Ubuntu, versione `22.22.1+dfsg+~cs22.19.15-1ubuntu1`. Chiedere la funzionalità in modo esplicito non la riattiva:
 
 ```
 $ /usr/bin/node --experimental-strip-types t.ts
@@ -44,13 +44,13 @@ Per escludere che dipendesse dalla versione, ho scaricato la build ufficiale 22.
 
 ## Dov'è finito TypeScript
 
-Il changelog del pacchetto spiega quasi tutto. La voce di dicembre 2024, `22.12.0+dfsg-1`, dice:
+Il changelog del pacchetto spiega gran parte della storia. La voce di dicembre 2024, `22.12.0+dfsg-1`, dice:
 
 > dfsg-exclude amaro, build without it - it requires swc. This disables the ability to execute TypeScript files using the --experimental-strip-types flag.
 
 La voce di novembre 2025, `22.21.1+dfsg+~cs22.19.0-1`, dice: "we build without-amaro for now, disable strip-types".
 
-La voce Debian confluita nella versione che ho io, di marzo 2026, dice: "Drop "no amaro" patch, solved upstream". La build risponde comunque `false`, e dice anche come è stata compilata:
+La voce Debian di marzo 2026, confluita nella versione che ho io, dice: "Drop 'no amaro' patch, solved upstream". La build risponde comunque `false`, e dice anche come è stata compilata:
 
 ```
 $ /usr/bin/node -p 'process.config.variables.node_use_amaro'
@@ -59,11 +59,11 @@ false
 
 La build ufficiale 22.22.1 stampa `true`.
 
-Il changelog non dice cosa abbia cambiato quel "solved upstream". Quello che vedono i miei test è la risposta della build.
+Il changelog non dice cosa abbia cambiato quel "solved upstream". I miei test vedono solo quello che fa la build.
 
-## Perché la CI non l'ha mai visto
+## Perché la CI non se n'è mai accorta
 
-Il README di `setup-node` dice che l'azione controlla prima la cache degli strumenti del runner, poi prende le versioni LTS dalle release di `actions/node-versions` e, se non le trova, ripiega sul download da nodejs.org. Nessuna di queste è il pacchetto di Ubuntu. I quattro file di test in CI passano, quindi il Node che gira lì toglie i tipi. Quello sul mio server no, ed entrambi dicono 22.
+Il README di `setup-node` dice che l'action controlla prima la tool cache del runner, poi prende le versioni LTS dalle release di `actions/node-versions` e, se non le trova, ripiega sul download da nodejs.org. Nessuna di queste fonti è il pacchetto di Ubuntu. I quattro file di test in CI passano, quindi il Node che gira lì toglie i tipi. Quello sul mio server no, ed entrambi dicono versione major 22.
 
 È così che lo stesso repository può essere verde in CI e rosso sul mio server senza che cambi una riga di codice.
 
@@ -81,7 +81,7 @@ Stessi quattro file, binario ufficiale:
 # fail 0
 ```
 
-## Il controllo da eseguire accanto al controllo della versione
+## Chiedi a Node cosa sa fare
 
 Se un progetto conta sul type stripping, il controllo non è `node --version`. È questo:
 
@@ -89,4 +89,4 @@ Se un progetto conta sul type stripping, il controllo non è `node --version`. �
 node -p 'process.features.typescript'
 ```
 
-Su queste build stampa `strip` quando la funzionalità c'è e `false` quando manca, qualunque cosa dica il numero di versione. Va in uno script di setup, accanto al controllo della versione, perché sul mio server il controllo della versione era proprio quello che passava.
+Sulle due build viste sopra stampa `strip` quando il type stripping funziona e `false` quando no, qualunque cosa dica il numero di versione. Va in uno script di setup, accanto al controllo della versione, perché sul mio server era proprio quello a passare.

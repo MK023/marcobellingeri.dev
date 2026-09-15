@@ -50,7 +50,7 @@ The package's own changelog explains most of it. The December 2024 entry, `22.12
 
 The November 2025 entry, `22.21.1+dfsg+~cs22.19.0-1`, says: "we build without-amaro for now, disable strip-types".
 
-The Debian entry merged into the version I have, from March 2026, says: "Drop "no amaro" patch, solved upstream". The build still answers `false`, and it reports how it was compiled:
+The March 2026 Debian entry, merged into the version I have, says: "Drop 'no amaro' patch, solved upstream". The build still answers `false`, and it reports how it was compiled:
 
 ```
 $ /usr/bin/node -p 'process.config.variables.node_use_amaro'
@@ -59,11 +59,11 @@ false
 
 The official 22.22.1 build prints `true`.
 
-The changelog doesn't say what "solved upstream" changed. What my tests see is the build's answer.
+The changelog doesn't say what "solved upstream" changed. My tests only see what the build does.
 
 ## Why CI never saw it
 
-The `setup-node` README says the action first checks the runner's tool cache, then pulls LTS versions from the `actions/node-versions` releases and, on a miss, falls back to downloading from nodejs.org. None of those is Ubuntu's package. The four test files pass in CI, so the Node there strips types. The one on my server does not, and both report 22.
+The `setup-node` README says the action first checks the runner's tool cache, then pulls LTS versions from the `actions/node-versions` releases and, on a miss, falls back to downloading from nodejs.org. None of those is Ubuntu's package. The four test files pass in CI, so the Node there strips types. The one on my server does not, and both report major version 22.
 
 That is how one repository can be green in CI and red on my server without a line of code changing.
 
@@ -81,7 +81,7 @@ Same four files, official binary:
 # fail 0
 ```
 
-## The check to run next to the version check
+## Ask Node what it can do
 
 If a project relies on type stripping, `node --version` is not the check. This is:
 
@@ -89,4 +89,4 @@ If a project relies on type stripping, `node --version` is not the check. This i
 node -p 'process.features.typescript'
 ```
 
-On these builds it prints `strip` when the feature works and `false` when it doesn't, whatever the version string says. It belongs in a setup script next to the version check, because on my server the version check was the one that passed.
+On the two builds above it prints `strip` when the feature works and `false` when it doesn't, whatever the version string says. It belongs in a setup script next to the version check, because on my server the version check was the one that passed.
