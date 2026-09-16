@@ -1,5 +1,17 @@
 [
   {
+    "slug": "ubuntu-node-typescript",
+    "label": {
+      "it": "Il Node senza TypeScript",
+      "en": "The Node without TypeScript"
+    },
+    "sub": {
+      "it": "dev.to · 2026",
+      "en": "dev.to · 2026"
+    },
+    "href": "https://dev.to/mk023/node-2222-runs-typescript-ubuntus-node-2222-doesnt-1pn8"
+  },
+  {
     "slug": "green-and-waiting",
     "label": {
       "it": "Otto run verdi, nessun pezzo",
