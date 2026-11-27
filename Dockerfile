@@ -33,13 +33,13 @@ WORKDIR /repo
 # lista non va mantenuta a mano a ogni versione.
 # `ca-certificates` invece va chiesto a mano: la slim non ce l'ha, e da wrangler
 # 4.168 workerd non parte senza ("service internet: TLS configuration: No CA
-# certificates were loaded from the system", misurato il 27-11-2026).
+# certificates were loaded from the system", misurato il 27-11-2026). Viene dopo
+# playwright per riusare l'indice apt che `--with-deps` ha appena scaricato.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
-    && npm init -y > /dev/null \
+RUN npm init -y > /dev/null \
     && npm install --no-save playwright@1.62.1 \
     && npx playwright install --with-deps chromium \
+    && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Le dipendenze si installano PRIMA del codice: cambiano di rado, e così il
